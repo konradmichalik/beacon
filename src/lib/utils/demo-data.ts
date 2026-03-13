@@ -1,0 +1,148 @@
+import type { UnifiedNotification } from '$lib/types';
+
+const now = new Date();
+const ago = (minutes: number): string =>
+  new Date(now.getTime() - minutes * 60_000).toISOString();
+
+export const demoNotifications: readonly UnifiedNotification[] = [
+  {
+    id: 'github-demo-1',
+    source: 'github',
+    type: 'pull_request',
+    title: 'feat: add dark mode support for dashboard components',
+    repository: 'acme/frontend',
+    url: 'https://github.com/acme/frontend/pull/342',
+    reason: 'review_requested',
+    unread: true,
+    updatedAt: ago(3),
+    createdAt: ago(120),
+    author: { login: 'sarah-chen', avatarUrl: '' },
+    subjectState: 'open'
+  },
+  {
+    id: 'gitlab-demo-2',
+    source: 'gitlab',
+    type: 'merge_request',
+    title: 'fix: resolve race condition in webhook processor',
+    repository: 'platform/event-bus',
+    url: 'https://gitlab.com/platform/event-bus/-/merge_requests/87',
+    reason: 'mention',
+    unread: true,
+    updatedAt: ago(8),
+    createdAt: ago(240),
+    author: { login: 'mwilliams', avatarUrl: '' },
+    subjectState: 'open'
+  },
+  {
+    id: 'github-demo-3',
+    source: 'github',
+    type: 'issue',
+    title: 'Memory leak in SSE connection handler after v3.2 upgrade',
+    repository: 'acme/api-gateway',
+    url: 'https://github.com/acme/api-gateway/issues/1024',
+    reason: 'assign',
+    unread: true,
+    updatedAt: ago(15),
+    createdAt: ago(300),
+    author: { login: 'jpark', avatarUrl: '' },
+    subjectState: 'open'
+  },
+  {
+    id: 'github-demo-4',
+    source: 'github',
+    type: 'pull_request',
+    title: 'refactor: migrate auth middleware to edge runtime',
+    repository: 'acme/frontend',
+    url: 'https://github.com/acme/frontend/pull/339',
+    reason: 'comment',
+    unread: true,
+    updatedAt: ago(25),
+    createdAt: ago(480),
+    author: { login: 'elena-v', avatarUrl: '' },
+    subjectState: 'open'
+  },
+  {
+    id: 'gitlab-demo-5',
+    source: 'gitlab',
+    type: 'merge_request',
+    title: 'chore: upgrade PostgreSQL driver to v5.1',
+    repository: 'platform/data-layer',
+    url: 'https://gitlab.com/platform/data-layer/-/merge_requests/201',
+    reason: 'approved',
+    unread: false,
+    updatedAt: ago(45),
+    createdAt: ago(600),
+    author: { login: 'tgraham', avatarUrl: '' },
+    subjectState: 'merged'
+  },
+  {
+    id: 'github-demo-6',
+    source: 'github',
+    type: 'pull_request',
+    title: 'fix: correct timezone handling in scheduled reports',
+    repository: 'acme/api-gateway',
+    url: 'https://github.com/acme/api-gateway/pull/512',
+    reason: 'review_submitted',
+    unread: false,
+    updatedAt: ago(60),
+    createdAt: ago(720),
+    author: { login: 'danield', avatarUrl: '' },
+    subjectState: 'closed'
+  },
+  {
+    id: 'github-demo-7',
+    source: 'github',
+    type: 'release',
+    title: 'v4.2.0 — Notification grouping & filter presets',
+    repository: 'acme/frontend',
+    url: 'https://github.com/acme/frontend/releases/tag/v4.2.0',
+    reason: 'subscribed',
+    unread: true,
+    updatedAt: ago(90),
+    createdAt: ago(90),
+    author: { login: 'sarah-chen', avatarUrl: '' },
+    subjectState: null
+  },
+  {
+    id: 'gitlab-demo-8',
+    source: 'gitlab',
+    type: 'issue',
+    title: 'Investigate flaky CI pipeline on merge train',
+    repository: 'platform/event-bus',
+    url: 'https://gitlab.com/platform/event-bus/-/issues/445',
+    reason: 'assign',
+    unread: true,
+    updatedAt: ago(110),
+    createdAt: ago(1440),
+    author: { login: 'lina-k', avatarUrl: '' },
+    subjectState: 'open'
+  },
+  {
+    id: 'github-demo-9',
+    source: 'github',
+    type: 'discussion',
+    title: 'RFC: API versioning strategy for public endpoints',
+    repository: 'acme/api-gateway',
+    url: 'https://github.com/acme/api-gateway/discussions/88',
+    reason: 'team_mention',
+    unread: false,
+    updatedAt: ago(180),
+    createdAt: ago(2880),
+    author: { login: 'cto-alex', avatarUrl: '' },
+    subjectState: null
+  },
+  {
+    id: 'gitlab-demo-10',
+    source: 'gitlab',
+    type: 'merge_request',
+    title: 'feat: add OpenTelemetry tracing to ingestion pipeline',
+    repository: 'platform/data-layer',
+    url: 'https://gitlab.com/platform/data-layer/-/merge_requests/198',
+    reason: 'review_requested',
+    unread: true,
+    updatedAt: ago(200),
+    createdAt: ago(3000),
+    author: { login: 'mwilliams', avatarUrl: '' },
+    subjectState: 'open'
+  }
+];

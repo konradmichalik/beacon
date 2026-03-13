@@ -16,6 +16,7 @@ export default defineConfig({
   define: {
     __APP_VERSION__: JSON.stringify(pkg.version),
     __APP_NAME__: JSON.stringify(pkg.description || 'Beacon'),
-    __BUILD_DATE__: JSON.stringify(new Date().toISOString())
+    __BUILD_DATE__: JSON.stringify(new Date().toISOString()),
+    __DEMO_MODE__: JSON.stringify(!!process.env.BEACON_DEMO)
   }
 });

@@ -6,7 +6,7 @@
     hasAnyServiceConfigured
   } from './lib/stores/connections.svelte';
   import { initializeSettings, setPollingChangeCallback, setBadgeModeChangeCallback, setNotifyChangeCallback } from './lib/stores/settings.svelte';
-  import { startPolling, stopPolling, restartPolling, refreshBadge } from './lib/stores/notifications.svelte';
+  import { startPolling, stopPolling, restartPolling, refreshBadge, isDemoMode, loadDemoData } from './lib/stores/notifications.svelte';
   import { startSummaryTimer, stopSummaryTimer } from './lib/services/desktop-notifications';
   import { onMount } from 'svelte';
 
@@ -22,7 +22,9 @@
         setNotifyChangeCallback(startSummaryTimer);
         await initializeConnections();
 
-        if (hasAnyServiceConfigured()) {
+        if (isDemoMode()) {
+          loadDemoData();
+        } else if (hasAnyServiceConfigured()) {
           startPolling();
           startSummaryTimer();
         } else {

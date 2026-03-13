@@ -6,6 +6,7 @@ import { fetchGitLabTodos, markGitLabTodoDone } from '$lib/services/gitlab/clien
 import { settingsState } from './settings.svelte';
 import { isTauri } from '$lib/utils/storage';
 import { processNewNotifications } from '$lib/services/desktop-notifications';
+import { demoNotifications } from '$lib/utils/demo-data';
 
 let notifications: UnifiedNotification[] = $state([]);
 let isLoading = $state(false);
@@ -154,7 +155,7 @@ async function updateTrayBadge(count: number): Promise<void> {
 
   try {
     const { invoke } = await import('@tauri-apps/api/core');
-    await invoke('update_badge', { count, mode: settingsState.badgeMode });
+    await invoke('update_badge', { count, mode: settingsState.badgeMode, dotColor: settingsState.dotColor });
   } catch {
     // Badge update is best-effort — ignore failures
   }
@@ -249,6 +250,17 @@ export function stopPolling(): void {
 
 export function restartPolling(): void {
   startPolling();
+}
+
+declare const __DEMO_MODE__: boolean;
+
+export function isDemoMode(): boolean {
+  return __DEMO_MODE__ || new URLSearchParams(window.location.search).has('demo');
+}
+
+export function loadDemoData(): void {
+  notifications = [...demoNotifications];
+  lastRefresh = new Date().toISOString();
 }
 
 export function refreshBadge(): void {
