@@ -1,0 +1,54 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - 'v*'
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    name: Build macOS
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - uses: dtolnay/rust-toolchain@stable
+
+      - uses: swatinem/rust-cache@v2
+        with:
+          workspaces: src-tauri
+
+      - run: npm ci
+
+      - name: Build Tauri app
+        uses: tauri-apps/tauri-action@v0
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          tagName: ${{ github.ref_name }}
+          releaseName: Beacon ${{ github.ref_name }}
+          releaseBody: 'See the [changelog](https://github.com/${{ github.repository }}/commits/${{ github.ref_name }}) for details.'
+          releaseDraft: true
+          prerelease: false
+          args: --target universal-apple-darwin
+
+  update-tap:
+    name: Update Homebrew tap
+    needs: build
+    runs-on: ubuntu-latest
+    steps:
+      - name: Trigger tap update
+        uses: peter-evans/repository-dispatch@v3
+        with:
+          token: ${{ secrets.TAP_GITHUB_TOKEN }}
+          repository: konradmichalik/homebrew-tap
+          event-type: update-beacon
+          client-payload: '{"version": "${{ github.ref_name }}"}'
