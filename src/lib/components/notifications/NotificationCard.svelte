@@ -14,6 +14,7 @@
   let repoShort = $derived(notification.repository.split('/').slice(-2).join('/'));
 
   const avatarColors = ['#bf616a', '#d08770', '#ebcb8b', '#a3be8c', '#88c0d0', '#5e81ac', '#b48ead'];
+  let avatarFailed = $state(false);
   let avatarInitial = $derived(notification.author?.login?.charAt(0).toUpperCase() ?? '');
   let avatarColor = $derived.by(() => {
     const name = notification.author?.login ?? '';
@@ -162,11 +163,12 @@
 
   <!-- Avatar with username tooltip -->
   <div class="group/avatar relative mt-0.5 flex-shrink-0">
-    {#if notification.author?.avatarUrl}
+    {#if notification.author?.avatarUrl && !avatarFailed}
       <img
         src={notification.author.avatarUrl}
         alt={notification.author.login}
         class="h-8 w-8 rounded-full"
+        onerror={() => avatarFailed = true}
       />
     {:else if notification.author}
       <div
