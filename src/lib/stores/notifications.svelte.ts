@@ -256,6 +256,38 @@ export function refreshBadge(): void {
   updateTrayBadge(unreadCount);
 }
 
+export function markAllAsRead(): void {
+  const unread = notifications.filter((n) => n.unread);
+  if (unread.length === 0) return;
+
+  for (const n of unread) {
+    locallyReadIds.add(n.id);
+  }
+  notifications = notifications.map((n) => (n.unread ? { ...n, unread: false } : n));
+  updateTrayBadge(0);
+
+  // Mark on servers (best-effort)
+  const githubConfig = getGitHubConfig();
+  const gitlabConfig = getGitLabConfig();
+  for (const n of unread) {
+    if (n.source === 'github' && githubConfig) {
+      markGitHubThreadRead(githubConfig.token, n.id.replace('github-', '')).catch(() => {});
+    } else if (n.source === 'gitlab' && gitlabConfig) {
+      markGitLabTodoDone(gitlabConfig.token, gitlabConfig.baseUrl, Number(n.id.replace('gitlab-', ''))).catch(() => {});
+    }
+  }
+}
+
+export function markAsUnread(id: string): void {
+  const notification = notifications.find((n) => n.id === id);
+  if (!notification || notification.unread) return;
+
+  locallyReadIds.delete(id);
+  notifications = notifications.map((n) => (n.id === id ? { ...n, unread: true } : n));
+  const unreadCount = notifications.filter((n) => n.unread).length;
+  updateTrayBadge(unreadCount);
+}
+
 export function markAsRead(id: string): void {
   const notification = notifications.find((n) => n.id === id);
   if (!notification || !notification.unread) return;

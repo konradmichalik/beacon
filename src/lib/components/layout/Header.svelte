@@ -1,11 +1,12 @@
 <script lang="ts">
-  import { Settings, RefreshCw } from '@lucide/svelte';
+  import { Settings, RefreshCw, CheckCheck } from '@lucide/svelte';
   import BeaconIcon from '$lib/components/icons/BeaconIcon.svelte';
-  import { getIsLoading, refreshNotifications } from '$lib/stores/notifications.svelte';
+  import { getIsLoading, getUnreadCount, refreshNotifications, markAllAsRead } from '$lib/stores/notifications.svelte';
 
   let { onSettingsToggle }: { onSettingsToggle: () => void } = $props();
 
   let isLoading = $derived(getIsLoading());
+  let unreadCount = $derived(getUnreadCount());
 </script>
 
 <header class="flex items-center justify-between border-b border-border px-4 py-2.5">
@@ -14,6 +15,15 @@
     <span class="text-sm font-semibold text-foreground">beacon</span>
   </div>
   <div class="flex items-center gap-0.5">
+    <button
+      type="button"
+      onclick={() => markAllAsRead()}
+      disabled={unreadCount === 0}
+      class="rounded-md p-1.5 text-muted-foreground transition-colors hover:bg-secondary hover:text-foreground disabled:opacity-30"
+      title="Mark all as read"
+    >
+      <CheckCheck size={14} />
+    </button>
     <button
       type="button"
       onclick={() => refreshNotifications()}
