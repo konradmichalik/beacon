@@ -158,7 +158,7 @@
 >
   <!-- New-since-last-open indicator -->
   {#if isNew}
-    <span class="absolute left-1 top-1/2 h-1.5 w-1.5 -translate-y-1/2 rounded-full bg-primary"></span>
+    <span class="absolute right-2 top-2 h-1.5 w-1.5 rounded-full bg-primary"></span>
   {/if}
 
   <!-- Avatar with username tooltip -->
