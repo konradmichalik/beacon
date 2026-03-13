@@ -5,13 +5,21 @@ on:
     tags:
       - 'v*'
 
-permissions:
-  contents: write
-
 jobs:
-  build:
-    name: Build macOS
-    runs-on: macos-latest
+  release:
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - target: aarch64-apple-darwin
+            runner: macos-latest
+          - target: x86_64-apple-darwin
+            runner: macos-latest
+
+    runs-on: ${{ matrix.runner }}
+    permissions:
+      contents: write
+
     steps:
       - uses: actions/checkout@v4
 
@@ -21,34 +29,93 @@ jobs:
           cache: npm
 
       - uses: dtolnay/rust-toolchain@stable
-
-      - uses: swatinem/rust-cache@v2
         with:
-          workspaces: src-tauri
+          targets: ${{ matrix.target }}
+
+      - uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cargo/registry
+            ~/.cargo/git
+            src-tauri/target
+          key: ${{ runner.os }}-cargo-${{ matrix.target }}-${{ hashFiles('**/Cargo.lock') }}
+          restore-keys: |
+            ${{ runner.os }}-cargo-${{ matrix.target }}-
 
       - run: npm ci
 
-      - name: Build Tauri app
+      - name: Build and Release
         uses: tauri-apps/tauri-action@v0
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
           tagName: ${{ github.ref_name }}
-          releaseName: Beacon ${{ github.ref_name }}
-          releaseBody: 'See the [changelog](https://github.com/${{ github.repository }}/commits/${{ github.ref_name }}) for details.'
-          releaseDraft: true
-          prerelease: false
-          args: --target universal-apple-darwin
+          releaseName: ${{ github.ref_name }}
+          releaseBody: |
+            Download Beacon ${{ github.ref_name }}
 
-  update-tap:
-    name: Update Homebrew tap
-    needs: build
-    runs-on: ubuntu-latest
+            **macOS:** Right-click the app → "Open" on first launch, or install via Homebrew:
+            ```
+            brew install konradmichalik/tap/beacon
+            ```
+          releaseDraft: false
+          prerelease: false
+          args: --target ${{ matrix.target }}
+
+  update-homebrew:
+    needs: release
+    runs-on: macos-latest
+    permissions:
+      contents: read
+
     steps:
-      - name: Trigger tap update
-        uses: peter-evans/repository-dispatch@v3
-        with:
-          token: ${{ secrets.TAP_GITHUB_TOKEN }}
-          repository: konradmichalik/homebrew-tap
-          event-type: update-beacon
-          client-payload: '{"version": "${{ github.ref_name }}"}'
+      - uses: actions/checkout@v4
+
+      - name: Wait for release assets
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          TAG="${{ github.ref_name }}"
+          echo "Waiting for DMG assets on release ${TAG}..."
+          for i in $(seq 1 30); do
+            ASSETS=$(gh release view "$TAG" --json assets --jq '[.assets[].name | select(endswith(".dmg"))] | length')
+            if [ "$ASSETS" -ge 2 ]; then
+              echo "Both DMGs are available."
+              exit 0
+            fi
+            echo "Found ${ASSETS}/2 DMGs, waiting 30s... (attempt ${i}/30)"
+            sleep 30
+          done
+          echo "Timed out waiting for assets."
+          exit 1
+
+      - name: Download DMGs and compute SHA256
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          TAG="${{ github.ref_name }}"
+          gh release download "$TAG" --pattern "*_aarch64.dmg" --dir /tmp/dmg
+          gh release download "$TAG" --pattern "*_x64.dmg" --dir /tmp/dmg
+
+          SHA_ARM=$(shasum -a 256 /tmp/dmg/*_aarch64.dmg | awk '{print $1}')
+          SHA_INTEL=$(shasum -a 256 /tmp/dmg/*_x64.dmg | awk '{print $1}')
+
+          APP_VERSION=$(cat package.json | python3 -c "import sys,json; print(json.load(sys.stdin)['version'])")
+
+          echo "SHA_ARM=${SHA_ARM}" >> "$GITHUB_ENV"
+          echo "SHA_INTEL=${SHA_INTEL}" >> "$GITHUB_ENV"
+          echo "APP_VERSION=${APP_VERSION}" >> "$GITHUB_ENV"
+          echo "TAG=${TAG}" >> "$GITHUB_ENV"
+
+      - name: Trigger Homebrew tap update
+        env:
+          GH_TOKEN: ${{ secrets.HOMEBREW_TAP_TOKEN }}
+        run: |
+          gh api repos/konradmichalik/homebrew-tap/dispatches \
+            --method POST \
+            --field event_type="update-cask" \
+            --field "client_payload[app]=beacon" \
+            --field "client_payload[version]=${APP_VERSION}" \
+            --field "client_payload[tag]=${TAG}" \
+            --field "client_payload[sha_arm]=${SHA_ARM}" \
+            --field "client_payload[sha_intel]=${SHA_INTEL}"
