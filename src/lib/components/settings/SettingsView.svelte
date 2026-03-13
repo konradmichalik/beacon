@@ -1,17 +1,34 @@
 <script lang="ts">
-  import { Sun, Moon, Monitor, Hash, Circle, Link, SlidersHorizontal, BellOff, Bell, BellDot } from '@lucide/svelte';
+  import { Sun, Moon, Monitor, Hash, Circle, Link, SlidersHorizontal, BellOff, Bell, BellDot, Info, ExternalLink, BookOpen } from '@lucide/svelte';
   import { settingsState, updateSettings } from '$lib/stores/settings.svelte';
   import type { BadgeMode, NotifyMode } from '$lib/stores/settings.svelte';
   import GitHubConnectionForm from '../connection/GitHubConnectionForm.svelte';
   import GitLabConnectionForm from '../connection/GitLabConnectionForm.svelte';
+  import BeaconIcon from '../icons/BeaconIcon.svelte';
+  import { sendNotification } from '$lib/services/desktop-notifications';
 
-  type SettingsTab = 'connections' | 'notifications' | 'preferences';
+  type SettingsTab = 'connections' | 'notifications' | 'preferences' | 'about';
   let activeTab: SettingsTab = $state('connections');
+
+  async function setNotifyMode(mode: NotifyMode): Promise<void> {
+    await updateSettings({ notifyMode: mode });
+    if (mode !== 'disabled') {
+      sendNotification('Beacon', `Notifications set to ${mode} mode.`);
+    }
+  }
+
+  const version = __APP_VERSION__;
+  const buildDate = new Date(__BUILD_DATE__).toLocaleDateString('de-DE', {
+    day: 'numeric',
+    month: 'short',
+    year: 'numeric'
+  });
 
   const tabs: { value: SettingsTab; label: string; icon: typeof Link }[] = [
     { value: 'connections', label: 'Connections', icon: Link },
     { value: 'notifications', label: 'Notifications', icon: Bell },
-    { value: 'preferences', label: 'Preferences', icon: SlidersHorizontal }
+    { value: 'preferences', label: 'Preferences', icon: SlidersHorizontal },
+    { value: 'about', label: 'About', icon: Info }
   ];
 
   const intervalOptions = [
@@ -80,7 +97,7 @@
           {@const Icon = option.icon}
           <button
             type="button"
-            onclick={() => updateSettings({ notifyMode: option.value })}
+            onclick={() => setNotifyMode(option.value)}
             class="flex items-center gap-1.5 rounded-md px-3 py-1.5 text-xs font-medium transition-colors {settingsState.notifyMode === option.value
               ? 'bg-primary text-primary-foreground'
               : 'bg-secondary text-secondary-foreground hover:bg-secondary/80'}"
@@ -122,7 +139,7 @@
         </div>
       </section>
     {/if}
-  {:else}
+  {:else if activeTab === 'preferences'}
     <!-- Refresh Interval -->
     <section>
       <h3 class="mb-3 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
@@ -212,9 +229,48 @@
       </div>
     </section>
 
-    <!-- About -->
-    <section class="text-center text-[10px] text-muted-foreground">
-      <p>beacon v{__APP_VERSION__}</p>
-    </section>
+  {:else if activeTab === 'about'}
+    <div class="flex flex-col items-center gap-5 py-4">
+      <BeaconIcon size={48} class="text-primary" />
+
+      <div>
+        <h2 class="text-center text-base font-semibold text-foreground">Beacon</h2>
+        <p class="text-center text-xs text-muted-foreground">GitHub & GitLab Notification Tracker</p>
+      </div>
+
+      <div class="w-full rounded-xl border border-border bg-muted/30 divide-y divide-border">
+        <div class="flex items-center justify-between px-4 py-2.5">
+          <span class="text-xs text-muted-foreground">Version</span>
+          <span class="text-xs font-mono font-medium text-foreground">v{version}</span>
+        </div>
+        <div class="flex items-center justify-between px-4 py-2.5">
+          <span class="text-xs text-muted-foreground">Build</span>
+          <span class="text-xs font-medium text-foreground">{buildDate}</span>
+        </div>
+      </div>
+
+      <div class="flex items-center gap-2">
+        <a
+          href="https://github.com/konradmichalik/beacon"
+          target="_blank"
+          rel="noopener noreferrer"
+          class="inline-flex items-center gap-1.5 rounded-lg border border-border bg-card px-3 py-1.5 text-xs font-medium text-foreground hover:bg-accent transition-colors"
+        >
+          <ExternalLink size={12} />
+          GitHub
+        </a>
+        <a
+          href="https://github.com/konradmichalik/beacon#readme"
+          target="_blank"
+          rel="noopener noreferrer"
+          class="inline-flex items-center gap-1.5 rounded-lg border border-border bg-card px-3 py-1.5 text-xs font-medium text-foreground hover:bg-accent transition-colors"
+        >
+          <BookOpen size={12} />
+          Documentation
+        </a>
+      </div>
+
+      <p class="text-[10px] text-muted-foreground">&copy; {new Date().getFullYear()} Konrad Michalik</p>
+    </div>
   {/if}
 </div>
