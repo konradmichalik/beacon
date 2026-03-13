@@ -3,25 +3,31 @@ import { getStorageItem, setStorageItem } from '$lib/utils/storage';
 const STORAGE_KEY = 'settings';
 
 export type BadgeMode = 'count' | 'dot';
+export type NotifyMode = 'disabled' | 'instant' | 'summary';
 
 interface Settings {
   pollingInterval: number; // in seconds
   theme: 'light' | 'dark' | 'system';
   badgeMode: BadgeMode;
   hideClosed: boolean;
+  notifyMode: NotifyMode;
+  notifySummaryMinutes: number; // summary interval in minutes
 }
 
 const defaultSettings: Settings = {
   pollingInterval: 300,
   theme: 'system',
   badgeMode: 'count',
-  hideClosed: false
+  hideClosed: false,
+  notifyMode: 'disabled',
+  notifySummaryMinutes: 15
 };
 
 export const settingsState: Settings = $state({ ...defaultSettings });
 
 let onPollingChange: (() => void) | null = null;
 let onBadgeModeChange: (() => void) | null = null;
+let onNotifyChange: (() => void) | null = null;
 
 export function setPollingChangeCallback(callback: () => void): void {
   onPollingChange = callback;
@@ -29,6 +35,10 @@ export function setPollingChangeCallback(callback: () => void): void {
 
 export function setBadgeModeChangeCallback(callback: () => void): void {
   onBadgeModeChange = callback;
+}
+
+export function setNotifyChangeCallback(callback: () => void): void {
+  onNotifyChange = callback;
 }
 
 export async function initializeSettings(): Promise<void> {
@@ -54,6 +64,9 @@ export async function updateSettings(updates: Partial<Settings>): Promise<void> 
   }
   if (updates.badgeMode !== undefined && onBadgeModeChange) {
     onBadgeModeChange();
+  }
+  if ((updates.notifyMode !== undefined || updates.notifySummaryMinutes !== undefined) && onNotifyChange) {
+    onNotifyChange();
   }
 }
 

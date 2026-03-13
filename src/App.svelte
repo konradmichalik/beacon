@@ -5,8 +5,9 @@
     initializeConnections,
     hasAnyServiceConfigured
   } from './lib/stores/connections.svelte';
-  import { initializeSettings, setPollingChangeCallback, setBadgeModeChangeCallback } from './lib/stores/settings.svelte';
+  import { initializeSettings, setPollingChangeCallback, setBadgeModeChangeCallback, setNotifyChangeCallback } from './lib/stores/settings.svelte';
   import { startPolling, stopPolling, restartPolling, refreshBadge } from './lib/stores/notifications.svelte';
+  import { startSummaryTimer, stopSummaryTimer } from './lib/services/desktop-notifications';
   import { onMount } from 'svelte';
 
   let isInitializing = $state(true);
@@ -18,10 +19,12 @@
         await initializeSettings();
         setPollingChangeCallback(restartPolling);
         setBadgeModeChangeCallback(refreshBadge);
+        setNotifyChangeCallback(startSummaryTimer);
         await initializeConnections();
 
         if (hasAnyServiceConfigured()) {
           startPolling();
+          startSummaryTimer();
         } else {
           initialTab = 'settings';
         }
@@ -34,6 +37,7 @@
 
     return () => {
       stopPolling();
+      stopSummaryTimer();
     };
   });
 </script>

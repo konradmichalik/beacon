@@ -5,6 +5,7 @@ import { fetchGitHubNotifications, markGitHubThreadRead } from '$lib/services/gi
 import { fetchGitLabTodos, markGitLabTodoDone } from '$lib/services/gitlab/client';
 import { settingsState } from './settings.svelte';
 import { isTauri } from '$lib/utils/storage';
+import { processNewNotifications } from '$lib/services/desktop-notifications';
 
 let notifications: UnifiedNotification[] = $state([]);
 let isLoading = $state(false);
@@ -211,6 +212,9 @@ export async function refreshNotifications(): Promise<void> {
       locallyReadIds.has(n.id) ? { ...n, unread: false } : n
     );
     lastRefresh = new Date().toISOString();
+
+    // Desktop notifications for newly appeared items
+    processNewNotifications(notifications);
 
     // Update tray badge based on the final (locally-adjusted) list
     const unreadCount = notifications.filter((n) => n.unread).length;
