@@ -1,7 +1,7 @@
 <script lang="ts">
   import { Settings, RefreshCw, CheckCheck, Power } from '@lucide/svelte';
   import { invoke } from '@tauri-apps/api/core';
-  import BeaconIcon from '$lib/components/icons/BeaconIcon.svelte';
+  import BeaconLogo from '$lib/components/icons/BeaconLogo.svelte';
   import { getIsLoading, getUnreadCount, refreshNotifications, markAllAsRead } from '$lib/stores/notifications.svelte';
 
   let { onSettingsToggle }: { onSettingsToggle: () => void } = $props();
@@ -11,9 +11,8 @@
 </script>
 
 <header class="flex items-center justify-between border-b border-border px-4 py-2.5">
-  <div class="flex items-center gap-2">
-    <BeaconIcon size={16} class="text-primary" />
-    <span class="text-sm font-semibold text-foreground">beacon</span>
+  <div class="flex items-center">
+    <BeaconLogo height={18} class="text-foreground" />
   </div>
   <div class="flex items-center gap-0.5">
     <button

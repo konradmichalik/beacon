@@ -1,10 +1,10 @@
 <script lang="ts">
   import { Sun, Moon, Monitor, Hash, Circle, Link, SlidersHorizontal, BellOff, Bell, BellDot, Info, ExternalLink, BookOpen } from '@lucide/svelte';
   import { settingsState, updateSettings } from '$lib/stores/settings.svelte';
-  import type { BadgeMode, NotifyMode } from '$lib/stores/settings.svelte';
+  import type { BadgeMode, NotifyMode, DotColor } from '$lib/stores/settings.svelte';
   import GitHubConnectionForm from '../connection/GitHubConnectionForm.svelte';
   import GitLabConnectionForm from '../connection/GitLabConnectionForm.svelte';
-  import BeaconIcon from '../icons/BeaconIcon.svelte';
+  import BeaconLogo from '../icons/BeaconLogo.svelte';
   import { sendNotification } from '$lib/services/desktop-notifications';
 
   type SettingsTab = 'connections' | 'notifications' | 'preferences' | 'about';
@@ -47,6 +47,11 @@
   const badgeOptions: { value: BadgeMode; label: string; icon: typeof Hash }[] = [
     { value: 'count', label: 'Count', icon: Hash },
     { value: 'dot', label: 'Dot', icon: Circle }
+  ];
+
+  const dotColorOptions: { value: DotColor; label: string; color: string }[] = [
+    { value: 'blue', label: 'Blue', color: '#5e81ac' },
+    { value: 'red', label: 'Red', color: '#ff786e' }
   ];
 
   const notifyOptions: { value: NotifyMode; label: string; icon: typeof Bell }[] = [
@@ -183,6 +188,26 @@
       <p class="mt-1.5 text-[10px] text-muted-foreground">
         {settingsState.badgeMode === 'count' ? 'Shows the number of notifications next to the icon.' : 'Shows a dot indicator when notifications are pending.'}
       </p>
+
+      {#if settingsState.badgeMode === 'dot'}
+        <div class="mt-3">
+          <h4 class="mb-2 text-[11px] font-medium text-muted-foreground">Dot Color</h4>
+          <div class="flex gap-1.5">
+            {#each dotColorOptions as option}
+              <button
+                type="button"
+                onclick={() => updateSettings({ dotColor: option.value })}
+                class="flex items-center gap-1.5 rounded-md px-3 py-1.5 text-xs font-medium transition-colors {settingsState.dotColor === option.value
+                  ? 'bg-primary text-primary-foreground'
+                  : 'bg-secondary text-secondary-foreground hover:bg-secondary/80'}"
+              >
+                <span class="inline-block h-2.5 w-2.5 rounded-full" style="background-color: {option.color}"></span>
+                {option.label}
+              </button>
+            {/each}
+          </div>
+        </div>
+      {/if}
     </section>
 
     <!-- Filtering -->
@@ -231,12 +256,8 @@
 
   {:else if activeTab === 'about'}
     <div class="flex flex-col items-center gap-5 py-4">
-      <BeaconIcon size={48} class="text-primary" />
-
-      <div>
-        <h2 class="text-center text-base font-semibold text-foreground">Beacon</h2>
-        <p class="text-center text-xs text-muted-foreground">GitHub & GitLab Notification Tracker</p>
-      </div>
+      <BeaconLogo height={30} class="text-foreground" />
+      <p class="text-center text-xs text-muted-foreground">GitHub & GitLab Notification Tracker</p>
 
       <div class="w-full rounded-xl border border-border bg-muted/30 divide-y divide-border">
         <div class="flex items-center justify-between px-4 py-2.5">
