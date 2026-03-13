@@ -4,11 +4,13 @@ const STORAGE_KEY = 'settings';
 
 export type BadgeMode = 'count' | 'dot';
 export type NotifyMode = 'disabled' | 'instant' | 'summary';
+export type DotColor = 'blue' | 'red';
 
 interface Settings {
   pollingInterval: number; // in seconds
   theme: 'light' | 'dark' | 'system';
   badgeMode: BadgeMode;
+  dotColor: DotColor;
   hideClosed: boolean;
   notifyMode: NotifyMode;
   notifySummaryMinutes: number; // summary interval in minutes
@@ -18,6 +20,7 @@ const defaultSettings: Settings = {
   pollingInterval: 300,
   theme: 'system',
   badgeMode: 'count',
+  dotColor: 'blue',
   hideClosed: false,
   notifyMode: 'disabled',
   notifySummaryMinutes: 15
@@ -62,7 +65,7 @@ export async function updateSettings(updates: Partial<Settings>): Promise<void> 
   if (pollingChanged && onPollingChange) {
     onPollingChange();
   }
-  if (updates.badgeMode !== undefined && onBadgeModeChange) {
+  if ((updates.badgeMode !== undefined || updates.dotColor !== undefined) && onBadgeModeChange) {
     onBadgeModeChange();
   }
   if ((updates.notifyMode !== undefined || updates.notifySummaryMinutes !== undefined) && onNotifyChange) {
