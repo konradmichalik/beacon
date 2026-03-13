@@ -6,7 +6,7 @@
   import EmptyState from './EmptyState.svelte';
   import GitHubIcon from '$lib/components/icons/GitHubIcon.svelte';
   import GitLabIcon from '$lib/components/icons/GitLabIcon.svelte';
-  import { Inbox, ChevronRight } from '@lucide/svelte';
+  import { Inbox, ChevronRight, PartyPopper } from '@lucide/svelte';
   import type { UnifiedNotification } from '$lib/types';
 
   let items = $derived(getFilteredNotifications(filterState.source, filterState.project, filterState.sort, filterState.types, filterState.projects, filterState.statuses));
@@ -92,8 +92,9 @@
 
     <!-- Spacer pushes read section to bottom when unread list is short -->
     {#if unreadItems.length === 0}
-      <div class="flex flex-1 items-center justify-center text-[11px] text-muted-foreground">
-        No unread notifications
+      <div class="flex flex-1 flex-col items-center justify-center gap-2 py-12 text-muted-foreground">
+        <PartyPopper size={72} strokeWidth={1} class="opacity-20" />
+        <span class="text-[11px]">No unread notifications</span>
       </div>
     {:else}
       <div class="flex-1"></div>
