@@ -13,7 +13,7 @@ function mapTargetType(type: string): NotificationType {
   }
 }
 
-function mapActionToReason(action: string): string {
+function mapActionToReason(action: string, body: string): string {
   switch (action) {
     case 'assigned':
       return 'assign';
@@ -27,8 +27,14 @@ function mapActionToReason(action: string): string {
       return 'review_requested';
     case 'approval_required':
       return 'approval_requested';
-    case 'review_submitted':
+    case 'approved':
+      return 'approved';
+    case 'review_submitted': {
+      if (!body.trim()) return 'approved';
+      const lower = body.toLowerCase();
+      if (lower.includes('requested changes') || lower.includes('change')) return 'change_requested';
       return 'review_submitted';
+    }
     case 'change_requested':
       return 'change_requested';
     case 'unmergeable':
@@ -57,7 +63,7 @@ function mapToUnified(todo: GitLabTodo): UnifiedNotification {
     title: todo.target.title,
     repository: todo.project.path_with_namespace,
     url: todo.target_url,
-    reason: mapActionToReason(todo.action_name),
+    reason: mapActionToReason(todo.action_name, todo.body),
     unread: todo.state === 'pending',
     updatedAt: todo.updated_at,
     createdAt: todo.created_at,

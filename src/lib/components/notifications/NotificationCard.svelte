@@ -1,6 +1,6 @@
 <script lang="ts">
   import type { UnifiedNotification } from '$lib/types';
-  import { markAsRead } from '$lib/stores/notifications.svelte';
+  import { markAsRead, getLastSeenAt } from '$lib/stores/notifications.svelte';
   import { timeAgo } from '$lib/utils/time';
   import { isTauri } from '$lib/utils/storage';
   import GitHubIcon from '$lib/components/icons/GitHubIcon.svelte';
@@ -12,6 +12,11 @@
   let dismissing = $state(false);
   let timeLabel = $derived(timeAgo(notification.updatedAt));
   let repoShort = $derived(notification.repository.split('/').slice(-2).join('/'));
+  let isNew = $derived.by(() => {
+    const seen = getLastSeenAt();
+    if (!seen) return false;
+    return notification.unread && notification.updatedAt > seen;
+  });
 
   const typeConfig: Record<string, { short: string; full: string }> = {
     issue: { short: 'Issue', full: 'Issue' },
@@ -36,6 +41,7 @@
     subscribed: { label: 'Subscribed', icon: Bell },
     state_change: { label: 'State changed', icon: GitPullRequest },
     ci_activity: { label: 'CI activity', icon: GitPullRequest },
+    approved: { label: 'Approved', icon: ShieldCheck },
     approval_requested: { label: 'Approval requested', icon: ShieldCheck },
     security_alert: { label: 'Security alert', icon: ShieldCheck },
     team_mention: { label: 'Team mentioned', icon: Users },
@@ -89,8 +95,13 @@
 <button
   type="button"
   onclick={handleClick}
-  class="group flex w-full items-start gap-3 px-4 py-3 text-left transition-all duration-200 ease-in-out hover:bg-secondary/40 {notification.unread ? '' : 'opacity-45'} {notification.subjectState === 'closed' || notification.subjectState === 'merged' ? 'opacity-60' : ''} {dismissing ? 'translate-x-full opacity-0' : 'translate-x-0 opacity-100'}"
+  class="group relative flex w-full items-start gap-3 px-4 py-3 text-left transition-all duration-200 ease-in-out hover:bg-secondary/40 {notification.unread ? '' : 'opacity-45'} {notification.subjectState === 'closed' || notification.subjectState === 'merged' ? 'opacity-60' : ''} {dismissing ? 'translate-x-full opacity-0' : 'translate-x-0 opacity-100'}"
 >
+  <!-- New-since-last-open indicator -->
+  {#if isNew}
+    <span class="absolute left-1 top-1/2 h-1.5 w-1.5 -translate-y-1/2 rounded-full bg-primary"></span>
+  {/if}
+
   <!-- Avatar with username tooltip -->
   <div class="group/avatar relative mt-0.5 flex-shrink-0">
     {#if notification.author?.avatarUrl}
