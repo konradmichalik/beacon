@@ -120,21 +120,45 @@ pub fn run() {
                 use tauri::Manager;
                 app.set_activation_policy(tauri::ActivationPolicy::Accessory);
 
-                // Make window appear on all Spaces and above fullscreen apps
+                // Convert NSWindow → NSPanel so the popover appears above fullscreen apps.
+                // NSPanel has special macOS treatment for auxiliary/floating windows.
                 if let Some(window) = app.get_webview_window("main") {
-                    use objc2_app_kit::{NSWindow, NSWindowCollectionBehavior, NSFloatingWindowLevel};
+                    use objc2::runtime::AnyObject;
+                    use objc2_app_kit::{
+                        NSPanel, NSWindowCollectionBehavior,
+                        NSWindowStyleMask, NSPopUpMenuWindowLevel,
+                    };
+
                     if let Ok(ns_window) = window.ns_window() {
-                        let ns_window = unsafe { &*(ns_window as *const NSWindow) };
-                        // canJoinAllSpaces: appear on every Space
-                        // stationary: don't move with Space switches
-                        // fullScreenAuxiliary: appear above fullscreen apps
-                        ns_window.setCollectionBehavior(
-                            NSWindowCollectionBehavior::CanJoinAllSpaces
-                                | NSWindowCollectionBehavior::Stationary
-                                | NSWindowCollectionBehavior::FullScreenAuxiliary,
-                        );
-                        // Floating panel level — above normal windows
-                        ns_window.setLevel(NSFloatingWindowLevel);
+                        unsafe {
+                            // Swap the ObjC class from NSWindow to NSPanel at runtime
+                            let obj = &*(ns_window as *const AnyObject);
+                            let panel_class = objc2::runtime::AnyClass::get(
+                                c"NSPanel"
+                            ).expect("NSPanel class not found");
+                            AnyObject::set_class(obj, panel_class);
+
+                            // Now treat it as NSPanel
+                            let panel = &*(ns_window as *const NSPanel);
+
+                            // Add NonactivatingPanel so clicking the panel
+                            // doesn't steal focus from the fullscreen app
+                            let mut mask = panel.styleMask();
+                            mask |= NSWindowStyleMask::NonactivatingPanel;
+                            panel.setStyleMask(mask);
+
+                            // Floating panel appears above other windows
+                            panel.setFloatingPanel(true);
+
+                            panel.setCollectionBehavior(
+                                NSWindowCollectionBehavior::CanJoinAllSpaces
+                                    | NSWindowCollectionBehavior::Stationary
+                                    | NSWindowCollectionBehavior::FullScreenAuxiliary
+                                    | NSWindowCollectionBehavior::IgnoresCycle,
+                            );
+
+                            panel.setLevel(NSPopUpMenuWindowLevel);
+                        }
                     }
                 }
             }

@@ -51,6 +51,19 @@ pub fn create_tray(app: &App) -> Result<(), Box<dyn std::error::Error>> {
                         let _ = window.set_position(PhysicalPosition::new(x, y));
                         let _ = window.show();
                         let _ = window.set_focus();
+
+                        // Re-apply panel level to stay above fullscreen apps
+                        #[cfg(target_os = "macos")]
+                        {
+                            use objc2_app_kit::{NSPanel, NSPopUpMenuWindowLevel};
+                            if let Ok(ns_window) = window.ns_window() {
+                                unsafe {
+                                    let panel = &*(ns_window as *const NSPanel);
+                                    panel.setFloatingPanel(true);
+                                    panel.setLevel(NSPopUpMenuWindowLevel);
+                                }
+                            }
+                        }
                     }
                 }
             }
