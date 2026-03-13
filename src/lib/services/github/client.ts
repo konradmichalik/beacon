@@ -23,7 +23,8 @@ function buildHtmlUrl(notification: GitHubNotification): string {
   if (subject.url) {
     const match = subject.url.match(/\/(issues|pulls)\/(\d+)$/);
     if (match) {
-      return `${repository.html_url}/${match[1]}/${match[2]}`;
+      const path = match[1] === 'pulls' ? 'pull' : match[1];
+      return `${repository.html_url}/${path}/${match[2]}`;
     }
   }
 
