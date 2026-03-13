@@ -139,7 +139,7 @@ html[data-color-mode='dark'] {
     @apply border-border outline-ring/50;
   }
   body {
-    @apply bg-background text-foreground;
+    @apply bg-transparent text-foreground;
     font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, sans-serif;
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
@@ -151,6 +151,9 @@ html[data-color-mode='dark'] {
 #app {
   height: 100vh;
   overflow: hidden;
+  @apply bg-background;
+  border-radius: 12px;
+  border: none;
 }
 
 .scrollbar-none::-webkit-scrollbar {
