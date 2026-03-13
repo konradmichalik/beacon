@@ -1,0 +1,22 @@
+export type {
+  NotificationSource,
+  NotificationType,
+  NotificationAuthor,
+  SubjectState,
+  UnifiedNotification,
+  GitHubNotification,
+  GitLabTodo,
+  NotificationGroup
+} from './notifications';
+
+export { NOTIFICATION_TYPE_LABELS } from './notifications';
+
+export type {
+  ServiceId,
+  GitHubConnectionConfig,
+  GitLabConnectionConfig,
+  ConnectionConfig,
+  ConnectionStatus,
+  ServiceState,
+  AllConnectionsState
+} from './connections';

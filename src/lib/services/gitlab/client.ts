@@ -1,0 +1,101 @@
+import type { GitLabTodo, UnifiedNotification, NotificationType, SubjectState } from '$lib/types';
+
+function mapTargetType(type: string): NotificationType {
+  switch (type) {
+    case 'Issue':
+      return 'issue';
+    case 'MergeRequest':
+      return 'merge_request';
+    case 'Pipeline':
+      return 'pipeline';
+    default:
+      return 'other';
+  }
+}
+
+function mapActionToReason(action: string): string {
+  switch (action) {
+    case 'assigned':
+      return 'assign';
+    case 'mentioned':
+    case 'directly_addressed':
+      return 'mention';
+    case 'build_failed':
+      return 'ci_activity';
+    case 'marked':
+    case 'review_requested':
+      return 'review_requested';
+    case 'approval_required':
+      return 'approval_requested';
+    case 'review_submitted':
+      return 'review_submitted';
+    case 'change_requested':
+      return 'change_requested';
+    case 'unmergeable':
+      return 'unmergeable';
+    case 'merge_train_removed':
+      return 'merge_train_removed';
+    case 'member_access_requested':
+      return 'member_access_requested';
+    default:
+      return action;
+  }
+}
+
+function mapTargetState(state?: string): SubjectState {
+  if (state === 'merged') return 'merged';
+  if (state === 'closed') return 'closed';
+  if (state === 'opened') return 'open';
+  return null;
+}
+
+function mapToUnified(todo: GitLabTodo): UnifiedNotification {
+  return {
+    id: `gitlab-${todo.id}`,
+    source: 'gitlab',
+    type: mapTargetType(todo.target_type),
+    title: todo.target.title,
+    repository: todo.project.path_with_namespace,
+    url: todo.target_url,
+    reason: mapActionToReason(todo.action_name),
+    unread: todo.state === 'pending',
+    updatedAt: todo.updated_at,
+    createdAt: todo.created_at,
+    author: todo.author
+      ? { login: todo.author.username, avatarUrl: todo.author.avatar_url }
+      : null,
+    subjectState: mapTargetState(todo.target.state)
+  };
+}
+
+export async function fetchGitLabTodos(
+  token: string,
+  baseUrl: string
+): Promise<UnifiedNotification[]> {
+  const url = `${baseUrl.replace(/\/$/, '')}/api/v4/todos?state=pending&per_page=50`;
+  const response = await fetch(url, {
+    headers: {
+      Authorization: `Bearer ${token}`
+    }
+  });
+
+  if (!response.ok) {
+    throw new Error(`GitLab API error: ${response.status}`);
+  }
+
+  const data: GitLabTodo[] = await response.json();
+  return data.map(mapToUnified);
+}
+
+export async function markGitLabTodoDone(
+  token: string,
+  baseUrl: string,
+  todoId: number
+): Promise<void> {
+  await fetch(`${baseUrl.replace(/\/$/, '')}/api/v4/todos/${todoId}/mark_as_done`, {
+    method: 'POST',
+    headers: {
+      Authorization: `Bearer ${token}`
+    }
+  });
+}

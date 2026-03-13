@@ -1,0 +1,146 @@
+<script lang="ts">
+  import type { UnifiedNotification } from '$lib/types';
+  import { markAsRead } from '$lib/stores/notifications.svelte';
+  import { timeAgo } from '$lib/utils/time';
+  import { isTauri } from '$lib/utils/storage';
+  import GitHubIcon from '$lib/components/icons/GitHubIcon.svelte';
+  import GitLabIcon from '$lib/components/icons/GitLabIcon.svelte';
+  import { CircleCheck, GitMerge, CircleDot, AtSign, MessageSquare, Eye, GitPullRequest, UserCheck, ShieldCheck, Tag, Users, Bell, PenLine, AlertTriangle, TrainFront, UserPlus } from '@lucide/svelte';
+
+  let { notification }: { notification: UnifiedNotification } = $props();
+
+  let timeLabel = $derived(timeAgo(notification.updatedAt));
+  let repoShort = $derived(notification.repository.split('/').slice(-2).join('/'));
+
+  const typeConfig: Record<string, { short: string; full: string }> = {
+    issue: { short: 'Issue', full: 'Issue' },
+    pull_request: { short: 'PR', full: 'Pull Request' },
+    merge_request: { short: 'MR', full: 'Merge Request' },
+    review: { short: 'Review', full: 'Review' },
+    pipeline: { short: 'Pipeline', full: 'Pipeline' },
+    release: { short: 'Release', full: 'Release' },
+    discussion: { short: 'Discussion', full: 'Discussion' },
+    other: { short: 'Other', full: 'Other' }
+  };
+
+  let typeInfo = $derived(typeConfig[notification.type] ?? { short: notification.type, full: notification.type });
+
+  const reasonMap: Record<string, { label: string; icon: typeof AtSign }> = {
+    mention: { label: 'Mentioned', icon: AtSign },
+    comment: { label: 'Commented', icon: MessageSquare },
+    review_requested: { label: 'Review requested', icon: Eye },
+    review_submitted: { label: 'Review submitted', icon: Eye },
+    change_requested: { label: 'Changes requested', icon: PenLine },
+    assign: { label: 'Assigned', icon: UserCheck },
+    subscribed: { label: 'Subscribed', icon: Bell },
+    state_change: { label: 'State changed', icon: GitPullRequest },
+    ci_activity: { label: 'CI activity', icon: GitPullRequest },
+    approval_requested: { label: 'Approval requested', icon: ShieldCheck },
+    security_alert: { label: 'Security alert', icon: ShieldCheck },
+    team_mention: { label: 'Team mentioned', icon: Users },
+    author: { label: 'Authored', icon: Tag },
+    unmergeable: { label: 'Unmergeable', icon: AlertTriangle },
+    merge_train_removed: { label: 'Merge train removed', icon: TrainFront },
+    member_access_requested: { label: 'Access requested', icon: UserPlus }
+  };
+
+  let reasonInfo = $derived.by(() => {
+    const mapped = reasonMap[notification.reason];
+    if (mapped) return mapped;
+    if (notification.reason) {
+      // Fallback: capitalize the raw reason
+      const label = notification.reason.replace(/_/g, ' ').replace(/^\w/, (c) => c.toUpperCase());
+      return { label, icon: Bell };
+    }
+    return null;
+  });
+
+  let stateInfo = $derived.by(() => {
+    const s = notification.subjectState;
+    if (s === 'merged') return { label: 'Merged', class: 'text-discovery', icon: GitMerge };
+    if (s === 'closed') return { label: 'Closed', class: 'text-destructive', icon: CircleCheck };
+    if (s === 'open') return { label: 'Open', class: 'text-success-text', icon: CircleDot };
+    return null;
+  });
+
+  async function handleClick(): Promise<void> {
+    markAsRead(notification.id);
+
+    if (isTauri()) {
+      const { open } = await import('@tauri-apps/plugin-shell');
+      await open(notification.url);
+    } else {
+      window.open(notification.url, '_blank');
+    }
+  }
+</script>
+
+<button
+  type="button"
+  onclick={handleClick}
+  class="group flex w-full items-start gap-3 border-b border-border/60 px-4 py-3 text-left transition-colors hover:bg-secondary/40 {notification.unread ? '' : 'opacity-45'} {notification.subjectState === 'closed' || notification.subjectState === 'merged' ? 'opacity-60' : ''}"
+>
+  <!-- Avatar with username tooltip -->
+  <div class="group/avatar relative mt-0.5 flex-shrink-0">
+    {#if notification.author?.avatarUrl}
+      <img
+        src={notification.author.avatarUrl}
+        alt={notification.author.login}
+        class="h-8 w-8 rounded-full"
+      />
+    {:else}
+      <div class="flex h-8 w-8 items-center justify-center rounded-full bg-secondary text-muted-foreground">
+        {#if notification.source === 'github'}
+          <GitHubIcon size={14} />
+        {:else}
+          <GitLabIcon size={14} />
+        {/if}
+      </div>
+    {/if}
+    {#if notification.author}
+      <span class="pointer-events-none absolute -bottom-6 left-1/2 z-20 -translate-x-1/2 whitespace-nowrap rounded bg-foreground px-1.5 py-0.5 text-[10px] font-medium text-background opacity-0 shadow-sm transition-opacity group-hover/avatar:opacity-100">
+        {notification.author.login}
+      </span>
+    {/if}
+  </div>
+
+  <!-- Content -->
+  <div class="min-w-0 flex-1">
+    <!-- Row 1: Source icon + repo -->
+    <div class="flex items-center gap-1.5">
+      {#if notification.source === 'github'}
+        <GitHubIcon size={11} class="flex-shrink-0 text-muted-foreground/70" />
+      {:else}
+        <GitLabIcon size={11} class="flex-shrink-0 text-muted-foreground/70" />
+      {/if}
+      <span class="truncate text-[11px] text-muted-foreground">{repoShort}</span>
+    </div>
+
+    <!-- Row 2: Title -->
+    <p class="mt-0.5 truncate text-[13px] font-medium leading-snug text-foreground">
+      {notification.title}
+    </p>
+
+    <!-- Row 3: Type badge + state + time (right-aligned) -->
+    <div class="mt-1 flex items-center gap-1.5">
+      <span title={typeInfo.full} class="shrink-0 rounded bg-secondary px-1.5 py-0.5 text-[10px] font-medium text-muted-foreground">
+        {typeInfo.short}
+      </span>
+      {#if stateInfo}
+        {@const StateIcon = stateInfo.icon}
+        <span class="flex shrink-0 items-center gap-0.5 text-[10px] font-medium {stateInfo.class}">
+          <StateIcon size={10} />
+          {stateInfo.label}
+        </span>
+      {/if}
+      {#if reasonInfo}
+        {@const ReasonIcon = reasonInfo.icon}
+        <span class="flex shrink-0 items-center gap-0.5 text-[10px] text-muted-foreground">
+          <ReasonIcon size={9} />
+          {reasonInfo.label}
+        </span>
+      {/if}
+      <span class="ml-auto shrink-0 text-[11px] text-muted-foreground">{timeLabel}</span>
+    </div>
+  </div>
+</button>

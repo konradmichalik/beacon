@@ -1,0 +1,144 @@
+<script lang="ts">
+  import { clickOutside } from '$lib/actions/clickOutside';
+  import { filterState, setSourceFilter, setSortMode, hasActiveFilters } from '$lib/stores/filters.svelte';
+  import type { SortMode } from '$lib/stores/filters.svelte';
+  import { getUnreadCount, getCountBySource } from '$lib/stores/notifications.svelte';
+  import { isServiceConnected } from '$lib/stores/connections.svelte';
+  import GitHubIcon from '$lib/components/icons/GitHubIcon.svelte';
+  import GitLabIcon from '$lib/components/icons/GitLabIcon.svelte';
+  import FilterPopover from './FilterPopover.svelte';
+  import { ArrowDownUp, Filter } from '@lucide/svelte';
+  import type { NotificationSource } from '$lib/types';
+
+  type FilterOption = NotificationSource | 'all';
+
+  let totalCount = $derived(getUnreadCount());
+  let githubCount = $derived(getCountBySource('github'));
+  let gitlabCount = $derived(getCountBySource('gitlab'));
+
+  let githubConnected = $derived(isServiceConnected('github'));
+  let gitlabConnected = $derived(isServiceConnected('gitlab'));
+  let bothConnected = $derived(githubConnected && gitlabConnected);
+
+  let filtersActive = $derived(hasActiveFilters());
+  let popoverOpen = $state(false);
+  let filterBtnEl: HTMLButtonElement | undefined = $state();
+  let sortOpen = $state(false);
+  let sortBtnEl: HTMLButtonElement | undefined = $state();
+
+  const sortOptions: { value: SortMode; label: string }[] = [
+    { value: 'date', label: 'Date' },
+    { value: 'project', label: 'Project' }
+  ];
+
+  function pickSort(value: SortMode) {
+    setSortMode(value);
+    sortOpen = false;
+  }
+
+  function isActive(value: FilterOption): boolean {
+    return filterState.source === value;
+  }
+
+  const btnBase = 'flex items-center gap-1 px-2.5 py-1 text-[11px] font-medium transition-colors';
+  const btnActive = 'bg-foreground text-background';
+  const btnInactive = 'text-muted-foreground hover:text-foreground';
+
+  const badgeBase = 'ml-0.5 rounded-full px-1 py-px text-[9px] font-semibold leading-tight';
+  const badgeActive = 'bg-background/20 text-background';
+  const badgeInactive = 'bg-secondary text-muted-foreground';
+</script>
+
+<div class="flex items-center gap-1.5 overflow-x-auto border-b border-border px-4 py-2.5 scrollbar-none">
+  {#if bothConnected}
+    <div class="flex shrink-0 overflow-hidden rounded-md border border-border" role="group">
+      <button
+        type="button"
+        onclick={() => setSourceFilter('all')}
+        class="{btnBase} rounded-l-md {isActive('all') ? btnActive : btnInactive}"
+      >
+        All
+        {#if totalCount > 0}
+          <span class="{badgeBase} {isActive('all') ? badgeActive : badgeInactive}">{totalCount}</span>
+        {/if}
+      </button>
+
+      <button
+        type="button"
+        onclick={() => setSourceFilter('github')}
+        title="GitHub"
+        class="{btnBase} border-l border-border {isActive('github') ? btnActive : btnInactive}"
+      >
+        <GitHubIcon size={12} />
+        {#if githubCount > 0}
+          <span class="{badgeBase} {isActive('github') ? badgeActive : badgeInactive}">{githubCount}</span>
+        {/if}
+      </button>
+
+      <button
+        type="button"
+        onclick={() => setSourceFilter('gitlab')}
+        title="GitLab"
+        class="{btnBase} rounded-r-md border-l border-border {isActive('gitlab') ? btnActive : btnInactive}"
+      >
+        <GitLabIcon size={12} />
+        {#if gitlabCount > 0}
+          <span class="{badgeBase} {isActive('gitlab') ? badgeActive : badgeInactive}">{gitlabCount}</span>
+        {/if}
+      </button>
+    </div>
+  {/if}
+
+  <div class="ml-auto flex items-center gap-1.5">
+    <!-- Filter button -->
+    <button
+      type="button"
+      bind:this={filterBtnEl}
+      onclick={() => (popoverOpen = !popoverOpen)}
+      title="Filter"
+      class="relative rounded-full border border-border p-1.5 text-muted-foreground transition-colors hover:border-foreground/20 hover:text-foreground"
+    >
+      <Filter size={11} />
+      {#if filtersActive}
+        <span class="absolute -right-0.5 -top-0.5 h-2 w-2 rounded-full bg-primary"></span>
+      {/if}
+    </button>
+
+    {#if popoverOpen && filterBtnEl}
+      <FilterPopover anchorEl={filterBtnEl} onClose={() => (popoverOpen = false)} />
+    {/if}
+
+    <!-- Sort button -->
+    <button
+      type="button"
+      bind:this={sortBtnEl}
+      onclick={() => (sortOpen = !sortOpen)}
+      title="Sort"
+      class="rounded-full border border-border p-1.5 text-muted-foreground transition-colors hover:border-foreground/20 hover:text-foreground"
+    >
+      <ArrowDownUp size={11} />
+    </button>
+
+    {#if sortOpen && sortBtnEl}
+      {@const rect = sortBtnEl.getBoundingClientRect()}
+      <div
+        use:clickOutside={() => (sortOpen = false)}
+        style="position:fixed;top:{rect.bottom + 4}px;right:{window.innerWidth - rect.right}px;"
+        class="z-50 min-w-[100px] rounded-lg border border-border bg-card py-1 shadow-lg"
+      >
+        {#each sortOptions as opt (opt.value)}
+          <button
+            type="button"
+            onclick={() => pickSort(opt.value)}
+            class="flex w-full items-center px-3 py-1.5 text-[11px] font-medium transition-colors
+              {filterState.sort === opt.value
+                ? 'text-primary'
+                : 'text-muted-foreground hover:bg-secondary hover:text-foreground'}"
+          >
+            {opt.label}
+          </button>
+        {/each}
+      </div>
+    {/if}
+  </div>
+</div>
