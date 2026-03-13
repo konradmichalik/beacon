@@ -1,0 +1,56 @@
+<p align="center">
+  <img src="assets/beacon-logo.svg" alt="Beacon" width="280">
+</p>
+
+<p align="center">
+  A lightweight macOS menu bar app that brings GitHub and GitLab notifications into one place.
+</p>
+
+<p align="center">
+  <img src="assets/screenshot.jpg" alt="Beacon screenshot" width="680">
+</p>
+
+---
+
+## ✨ Features
+
+- **Unified inbox** for GitHub and GitLab notifications side by side
+- **Menu bar popup** — lives quietly in the tray, one click to open
+- **Filter & sort** by source, project, type, or read status
+- **Desktop notifications** — instant alerts or batched summaries
+- **Configurable badge** — unread count or a colored dot indicator
+
+## 🍺 Installation
+
+```bash
+brew install konradmichalik/tap/beacon
+```
+
+### Update
+
+```bash
+brew upgrade beacon
+```
+
+## ⚙️ Configuration
+
+On first launch, open **Settings** via the gear icon or the tray context menu and add your tokens.
+
+| Service | Token                                                                              | Required scope  |
+| ------- | ---------------------------------------------------------------------------------- | --------------- |
+| GitHub  | [Personal Access Token](https://github.com/settings/tokens/new)                    | `notifications` |
+| GitLab  | [Personal Access Token](https://gitlab.com/-/user_settings/personal_access_tokens) | `read_api`      |
+
+> [!TIP]
+> GitLab supports self-hosted instances — set your instance's base URL in the GitLab settings panel.
+
+> [!NOTE]
+> Tokens are stored locally using Tauri's encrypted store. Nothing is sent to any server other than GitHub and GitLab.
+
+## 🛠 Development
+
+See [DEVELOPMENT.md](DEVELOPMENT.md) for build instructions, demo mode, and project structure.
+
+## 📜 License
+
+[MIT](LICENSE)
