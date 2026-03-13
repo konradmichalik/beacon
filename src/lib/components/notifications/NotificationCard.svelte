@@ -5,7 +5,7 @@
   import { isTauri } from '$lib/utils/storage';
   import GitHubIcon from '$lib/components/icons/GitHubIcon.svelte';
   import GitLabIcon from '$lib/components/icons/GitLabIcon.svelte';
-  import { CircleCheck, GitMerge, CircleDot, AtSign, MessageSquare, Eye, GitPullRequest, UserCheck, ShieldCheck, Tag, Users, Bell, PenLine, AlertTriangle, TrainFront, UserPlus } from '@lucide/svelte';
+  import { CircleCheck, GitMerge, CircleDot, AtSign, MessageSquare, Eye, GitPullRequest, UserCheck, ShieldCheck, Tag, Users, Bell, PenLine, AlertTriangle, TrainFront, UserPlus, ExternalLink, CheckCheck, ClipboardCopy } from '@lucide/svelte';
 
   let { notification }: { notification: UnifiedNotification } = $props();
 
@@ -92,8 +92,46 @@
     if (dismissing) return;
     dismissing = true;
     openUrl();
-    // Delay markAsRead so the card stays in the DOM during animation
     setTimeout(() => markAsRead(notification.id), 350);
+  }
+
+  let contextMenu: { x: number; y: number } | null = $state(null);
+
+  function handleContextMenu(event: MouseEvent): void {
+    event.preventDefault();
+    contextMenu = { x: event.clientX, y: event.clientY };
+
+    function close() {
+      contextMenu = null;
+      window.removeEventListener('click', close);
+      window.removeEventListener('contextmenu', close);
+    }
+    // Close on next click or right-click anywhere
+    requestAnimationFrame(() => {
+      window.addEventListener('click', close);
+      window.addEventListener('contextmenu', close);
+    });
+  }
+
+  function closeContextMenu(action: () => void): void {
+    contextMenu = null;
+    action();
+  }
+
+  function handleContextOpen(): void {
+    closeContextMenu(() => handleClick());
+  }
+
+  function handleContextCopyLink(): void {
+    closeContextMenu(() => navigator.clipboard.writeText(notification.url));
+  }
+
+  function handleContextMarkRead(): void {
+    closeContextMenu(() => {
+      if (!notification.unread) return;
+      dismissing = true;
+      setTimeout(() => markAsRead(notification.id), 350);
+    });
   }
 </script>
 
@@ -104,6 +142,7 @@
 <button
   type="button"
   onclick={handleClick}
+  oncontextmenu={handleContextMenu}
   class="group relative flex w-full items-start gap-3 px-4 py-3 text-left transition-all duration-200 ease-in-out hover:bg-secondary/40 {notification.unread ? '' : 'opacity-45'} {notification.subjectState === 'closed' || notification.subjectState === 'merged' ? 'opacity-60' : ''} {dismissing ? 'translate-x-full opacity-0' : 'translate-x-0 opacity-100'}"
 >
   <!-- New-since-last-open indicator -->
@@ -183,3 +222,37 @@
   </div>
 </button>
 </div>
+
+{#if contextMenu}
+  <div
+    class="fixed z-50 min-w-[140px] rounded-md border border-border bg-popover py-1 shadow-lg"
+    style="left: {contextMenu.x}px; top: {contextMenu.y}px;"
+  >
+    <button
+      type="button"
+      onclick={handleContextOpen}
+      class="flex w-full items-center gap-2 px-3 py-1.5 text-left text-xs text-foreground hover:bg-secondary"
+    >
+      <ExternalLink size={12} />
+      Open
+    </button>
+    <button
+      type="button"
+      onclick={handleContextCopyLink}
+      class="flex w-full items-center gap-2 px-3 py-1.5 text-left text-xs text-foreground hover:bg-secondary"
+    >
+      <ClipboardCopy size={12} />
+      Copy link
+    </button>
+    {#if notification.unread}
+      <button
+        type="button"
+        onclick={handleContextMarkRead}
+        class="flex w-full items-center gap-2 px-3 py-1.5 text-left text-xs text-foreground hover:bg-secondary"
+      >
+        <CheckCheck size={12} />
+        Mark as read
+      </button>
+    {/if}
+  </div>
+{/if}
