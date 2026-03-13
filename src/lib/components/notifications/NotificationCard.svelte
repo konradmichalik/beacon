@@ -1,11 +1,11 @@
 <script lang="ts">
   import type { UnifiedNotification } from '$lib/types';
-  import { markAsRead, getLastSeenAt } from '$lib/stores/notifications.svelte';
+  import { markAsRead, markAsUnread, getLastSeenAt } from '$lib/stores/notifications.svelte';
   import { timeAgo } from '$lib/utils/time';
   import { isTauri } from '$lib/utils/storage';
   import GitHubIcon from '$lib/components/icons/GitHubIcon.svelte';
   import GitLabIcon from '$lib/components/icons/GitLabIcon.svelte';
-  import { CircleCheck, GitMerge, CircleDot, AtSign, MessageSquare, Eye, GitPullRequest, UserCheck, ShieldCheck, Tag, Users, Bell, PenLine, AlertTriangle, TrainFront, UserPlus, ExternalLink, CheckCheck, ClipboardCopy } from '@lucide/svelte';
+  import { CircleCheck, GitMerge, CircleDot, AtSign, MessageSquare, Eye, GitPullRequest, UserCheck, ShieldCheck, Tag, Users, Bell, PenLine, AlertTriangle, TrainFront, UserPlus, ExternalLink, CheckCheck, ClipboardCopy, CircleDashed } from '@lucide/svelte';
 
   let { notification }: { notification: UnifiedNotification } = $props();
 
@@ -90,16 +90,22 @@
 
   function handleClick(): void {
     if (dismissing) return;
-    dismissing = true;
     openUrl();
-    setTimeout(() => markAsRead(notification.id), 350);
+    if (notification.unread) {
+      dismissing = true;
+      setTimeout(() => markAsRead(notification.id), 350);
+    }
   }
 
   let contextMenu: { x: number; y: number } | null = $state(null);
 
   function handleContextMenu(event: MouseEvent): void {
     event.preventDefault();
-    contextMenu = { x: event.clientX, y: event.clientY };
+    const menuHeight = 100; // approximate max height of context menu
+    const y = event.clientY + menuHeight > window.innerHeight
+      ? event.clientY - menuHeight
+      : event.clientY;
+    contextMenu = { x: event.clientX, y };
 
     function close() {
       contextMenu = null;
@@ -132,6 +138,10 @@
       dismissing = true;
       setTimeout(() => markAsRead(notification.id), 350);
     });
+  }
+
+  function handleContextMarkUnread(): void {
+    closeContextMenu(() => markAsUnread(notification.id));
   }
 </script>
 
@@ -252,6 +262,15 @@
       >
         <CheckCheck size={12} />
         Mark as read
+      </button>
+    {:else}
+      <button
+        type="button"
+        onclick={handleContextMarkUnread}
+        class="flex w-full items-center gap-2 px-3 py-1.5 text-left text-xs text-foreground hover:bg-secondary"
+      >
+        <CircleDashed size={12} />
+        Mark as unread
       </button>
     {/if}
   </div>
