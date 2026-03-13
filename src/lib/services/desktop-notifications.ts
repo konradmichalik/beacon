@@ -6,7 +6,7 @@ const knownIds = new Set<string>();
 let summaryBuffer: UnifiedNotification[] = [];
 let summaryTimer: ReturnType<typeof setInterval> | null = null;
 
-async function sendNotification(title: string, body: string): Promise<void> {
+export async function sendNotification(title: string, body: string): Promise<void> {
   if (!isTauri()) return;
 
   try {
