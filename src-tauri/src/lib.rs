@@ -43,7 +43,10 @@ fn create_tray_icon(with_dot: bool, dot_rgb: [u8; 3]) -> (Vec<u8>, u32, u32) {
                         / ((radius + 1.0) * (radius + 1.0) - r2);
                     let a = (alpha * 255.0).clamp(0.0, 255.0) as u8;
                     let existing = *canvas.get_pixel(px as u32, py as u32);
-                    let blended = blend_pixel(existing, image::Rgba([dot_color[0], dot_color[1], dot_color[2], a]));
+                    let blended = blend_pixel(
+                        existing,
+                        image::Rgba([dot_color[0], dot_color[1], dot_color[2], a]),
+                    );
                     canvas.put_pixel(px as u32, py as u32, blended);
                 }
             }
@@ -67,14 +70,20 @@ fn blend_pixel(base: image::Rgba<u8>, overlay: image::Rgba<u8>) -> image::Rgba<u
 }
 
 #[tauri::command]
-async fn update_badge(app: tauri::AppHandle, count: u32, mode: String, dot_color: String) -> Result<(), String> {
+async fn update_badge(
+    app: tauri::AppHandle,
+    count: u32,
+    mode: String,
+    dot_color: String,
+) -> Result<(), String> {
     if let Some(tray) = app.tray_by_id(tray::TRAY_ID) {
         let tooltip = if count > 0 {
             format!("Beacon — {} unread", count)
         } else {
             "Beacon — No notifications".to_string()
         };
-        tray.set_tooltip(Some(&tooltip)).map_err(|e| e.to_string())?;
+        tray.set_tooltip(Some(&tooltip))
+            .map_err(|e| e.to_string())?;
 
         #[cfg(target_os = "macos")]
         {
@@ -93,7 +102,8 @@ async fn update_badge(app: tauri::AppHandle, count: u32, mode: String, dot_color
             let (rgba, w, h) = create_tray_icon(with_dot, rgb);
             let icon = tauri::image::Image::new_owned(rgba, w, h);
             tray.set_icon(Some(icon)).map_err(|e| e.to_string())?;
-            tray.set_icon_as_template(false).map_err(|e| e.to_string())?;
+            tray.set_icon_as_template(false)
+                .map_err(|e| e.to_string())?;
             tray.set_title(Some(&title)).map_err(|e| e.to_string())?;
         }
     }
@@ -125,17 +135,16 @@ pub fn run() {
                 if let Some(window) = app.get_webview_window("main") {
                     use objc2::runtime::AnyObject;
                     use objc2_app_kit::{
-                        NSPanel, NSWindowCollectionBehavior,
-                        NSWindowStyleMask, NSPopUpMenuWindowLevel,
+                        NSPanel, NSPopUpMenuWindowLevel, NSWindowCollectionBehavior,
+                        NSWindowStyleMask,
                     };
 
                     if let Ok(ns_window) = window.ns_window() {
                         unsafe {
                             // Swap the ObjC class from NSWindow to NSPanel at runtime
                             let obj = &*(ns_window as *const AnyObject);
-                            let panel_class = objc2::runtime::AnyClass::get(
-                                c"NSPanel"
-                            ).expect("NSPanel class not found");
+                            let panel_class = objc2::runtime::AnyClass::get(c"NSPanel")
+                                .expect("NSPanel class not found");
                             AnyObject::set_class(obj, panel_class);
 
                             // Now treat it as NSPanel
