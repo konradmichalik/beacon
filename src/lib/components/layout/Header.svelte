@@ -2,7 +2,12 @@
   import { Settings, RefreshCw, CheckCheck, Power } from '@lucide/svelte';
   import { invoke } from '@tauri-apps/api/core';
   import BeaconLogo from '$lib/components/icons/BeaconLogo.svelte';
-  import { getIsLoading, getUnreadCount, refreshNotifications, markAllAsRead } from '$lib/stores/notifications.svelte';
+  import {
+    getIsLoading,
+    getUnreadCount,
+    refreshNotifications,
+    markAllAsRead
+  } from '$lib/stores/notifications.svelte';
 
   let { onSettingsToggle }: { onSettingsToggle: () => void } = $props();
 

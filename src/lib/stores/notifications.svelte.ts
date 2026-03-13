@@ -1,4 +1,9 @@
-import type { UnifiedNotification, NotificationSource, NotificationType, NotificationGroup } from '$lib/types';
+import type {
+  UnifiedNotification,
+  NotificationSource,
+  NotificationType,
+  NotificationGroup
+} from '$lib/types';
 import type { SortMode, StatusFilter } from './filters.svelte';
 import { isServiceConnected, getGitHubConfig, getGitLabConfig } from './connections.svelte';
 import { fetchGitHubNotifications, markGitHubThreadRead } from '$lib/services/github/client';
@@ -73,8 +78,13 @@ export function getFilteredNotifications(
   }
   if (statusFilter.size > 0) {
     filtered = filtered.filter((n) => {
-      if (statusFilter.has('open') && (n.subjectState === 'open' || n.subjectState === null)) return true;
-      if (statusFilter.has('closed') && (n.subjectState === 'closed' || n.subjectState === 'merged')) return true;
+      if (statusFilter.has('open') && (n.subjectState === 'open' || n.subjectState === null))
+        return true;
+      if (
+        statusFilter.has('closed') &&
+        (n.subjectState === 'closed' || n.subjectState === 'merged')
+      )
+        return true;
       return false;
     });
   }
@@ -155,7 +165,11 @@ async function updateTrayBadge(count: number): Promise<void> {
 
   try {
     const { invoke } = await import('@tauri-apps/api/core');
-    await invoke('update_badge', { count, mode: settingsState.badgeMode, dotColor: settingsState.dotColor });
+    await invoke('update_badge', {
+      count,
+      mode: settingsState.badgeMode,
+      dotColor: settingsState.dotColor
+    });
   } catch {
     // Badge update is best-effort — ignore failures
   }
@@ -176,7 +190,9 @@ export async function refreshNotifications(): Promise<void> {
       if (config) {
         promises.push(
           fetchGitHubNotifications(config.token)
-            .then((items) => { results.push(...items); })
+            .then((items) => {
+              results.push(...items);
+            })
             .catch(() => {
               // Silently skip failed service — don't break the other
             })
@@ -189,7 +205,9 @@ export async function refreshNotifications(): Promise<void> {
       if (config) {
         promises.push(
           fetchGitLabTodos(config.token, config.baseUrl)
-            .then((items) => { results.push(...items); })
+            .then((items) => {
+              results.push(...items);
+            })
             .catch(() => {
               // Silently skip failed service
             })
@@ -204,8 +222,10 @@ export async function refreshNotifications(): Promise<void> {
     const gitlabUsername = getGitLabConfig()?.username;
     const filtered = results.filter((n) => {
       if (!n.author) return true;
-      if (n.source === 'github' && githubUsername && n.author.login === githubUsername) return false;
-      if (n.source === 'gitlab' && gitlabUsername && n.author.login === gitlabUsername) return false;
+      if (n.source === 'github' && githubUsername && n.author.login === githubUsername)
+        return false;
+      if (n.source === 'gitlab' && gitlabUsername && n.author.login === gitlabUsername)
+        return false;
       return true;
     });
 
@@ -219,9 +239,7 @@ export async function refreshNotifications(): Promise<void> {
       if (!refreshedIds.has(id)) locallyReadIds.delete(id);
     }
     // Apply local read state
-    notifications = filtered.map((n) =>
-      locallyReadIds.has(n.id) ? { ...n, unread: false } : n
-    );
+    notifications = filtered.map((n) => (locallyReadIds.has(n.id) ? { ...n, unread: false } : n));
     lastRefresh = new Date().toISOString();
 
     // Desktop notifications for newly appeared items
@@ -285,7 +303,11 @@ export function markAllAsRead(): void {
     if (n.source === 'github' && githubConfig) {
       markGitHubThreadRead(githubConfig.token, n.id.replace('github-', '')).catch(() => {});
     } else if (n.source === 'gitlab' && gitlabConfig) {
-      markGitLabTodoDone(gitlabConfig.token, gitlabConfig.baseUrl, Number(n.id.replace('gitlab-', ''))).catch(() => {});
+      markGitLabTodoDone(
+        gitlabConfig.token,
+        gitlabConfig.baseUrl,
+        Number(n.id.replace('gitlab-', ''))
+      ).catch(() => {});
     }
   }
 }

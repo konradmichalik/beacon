@@ -1,8 +1,7 @@
 import type { UnifiedNotification } from '$lib/types';
 
 const now = new Date();
-const ago = (minutes: number): string =>
-  new Date(now.getTime() - minutes * 60_000).toISOString();
+const ago = (minutes: number): string => new Date(now.getTime() - minutes * 60_000).toISOString();
 
 export const demoNotifications: readonly UnifiedNotification[] = [
   {

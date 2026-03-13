@@ -5,7 +5,28 @@
   import { isTauri } from '$lib/utils/storage';
   import GitHubIcon from '$lib/components/icons/GitHubIcon.svelte';
   import GitLabIcon from '$lib/components/icons/GitLabIcon.svelte';
-  import { CircleCheck, GitMerge, CircleDot, AtSign, MessageSquare, Eye, GitPullRequest, UserCheck, ShieldCheck, Tag, Users, Bell, PenLine, AlertTriangle, TrainFront, UserPlus, ExternalLink, CheckCheck, ClipboardCopy, CircleDashed } from '@lucide/svelte';
+  import {
+    CircleCheck,
+    GitMerge,
+    CircleDot,
+    AtSign,
+    MessageSquare,
+    Eye,
+    GitPullRequest,
+    UserCheck,
+    ShieldCheck,
+    Tag,
+    Users,
+    Bell,
+    PenLine,
+    AlertTriangle,
+    TrainFront,
+    UserPlus,
+    ExternalLink,
+    CheckCheck,
+    ClipboardCopy,
+    CircleDashed
+  } from '@lucide/svelte';
 
   let { notification }: { notification: UnifiedNotification } = $props();
 
@@ -13,7 +34,15 @@
   let timeLabel = $derived(timeAgo(notification.updatedAt));
   let repoShort = $derived(notification.repository.split('/').slice(-2).join('/'));
 
-  const avatarColors = ['#bf616a', '#d08770', '#ebcb8b', '#a3be8c', '#88c0d0', '#5e81ac', '#b48ead'];
+  const avatarColors = [
+    '#bf616a',
+    '#d08770',
+    '#ebcb8b',
+    '#a3be8c',
+    '#88c0d0',
+    '#5e81ac',
+    '#b48ead'
+  ];
   let avatarFailed = $state(false);
   let avatarInitial = $derived(notification.author?.login?.charAt(0).toUpperCase() ?? '');
   let avatarColor = $derived.by(() => {
@@ -39,7 +68,9 @@
     other: { short: 'Other', full: 'Other' }
   };
 
-  let typeInfo = $derived(typeConfig[notification.type] ?? { short: notification.type, full: notification.type });
+  let typeInfo = $derived(
+    typeConfig[notification.type] ?? { short: notification.type, full: notification.type }
+  );
 
   const reasonMap: Record<string, { label: string; icon: typeof AtSign }> = {
     mention: { label: 'Mentioned', icon: AtSign },
@@ -103,9 +134,8 @@
   function handleContextMenu(event: MouseEvent): void {
     event.preventDefault();
     const menuHeight = 100; // approximate max height of context menu
-    const y = event.clientY + menuHeight > window.innerHeight
-      ? event.clientY - menuHeight
-      : event.clientY;
+    const y =
+      event.clientY + menuHeight > window.innerHeight ? event.clientY - menuHeight : event.clientY;
     contextMenu = { x: event.clientX, y };
 
     function close() {
@@ -147,92 +177,108 @@
 </script>
 
 <div
-  class="overflow-hidden transition-all duration-300 ease-in-out {dismissing ? 'max-h-0 border-b-0' : 'max-h-40 border-b border-border/60'}"
+  class="overflow-hidden transition-all duration-300 ease-in-out {dismissing
+    ? 'max-h-0 border-b-0'
+    : 'max-h-40 border-b border-border/60'}"
   style={dismissing ? 'margin-top: 0; margin-bottom: 0; padding-top: 0; padding-bottom: 0;' : ''}
 >
-<button
-  type="button"
-  onclick={handleClick}
-  oncontextmenu={handleContextMenu}
-  class="group relative flex w-full items-start gap-3 px-4 py-3 text-left transition-all duration-200 ease-in-out hover:bg-secondary/40 {notification.unread ? '' : 'opacity-45'} {notification.subjectState === 'closed' || notification.subjectState === 'merged' ? 'opacity-60' : ''} {dismissing ? 'translate-x-full opacity-0' : 'translate-x-0 opacity-100'}"
->
-  <!-- New-since-last-open indicator -->
-  {#if isNew}
-    <span class="absolute right-2 top-2 h-1.5 w-1.5 rounded-full bg-primary"></span>
-  {/if}
-
-  <!-- Avatar with username tooltip -->
-  <div class="group/avatar relative mt-0.5 flex-shrink-0">
-    {#if notification.author?.avatarUrl && !avatarFailed}
-      <img
-        src={notification.author.avatarUrl}
-        alt={notification.author.login}
-        class="h-8 w-8 rounded-full"
-        onerror={() => avatarFailed = true}
-      />
-    {:else if notification.author}
-      <div
-        class="flex h-8 w-8 items-center justify-center rounded-full text-[13px] font-semibold text-white"
-        style="background-color: {avatarColor}"
-      >
-        {avatarInitial}
-      </div>
-    {:else}
-      <div class="flex h-8 w-8 items-center justify-center rounded-full bg-secondary text-muted-foreground">
-        {#if notification.source === 'github'}
-          <GitHubIcon size={14} />
-        {:else}
-          <GitLabIcon size={14} />
-        {/if}
-      </div>
+  <button
+    type="button"
+    onclick={handleClick}
+    oncontextmenu={handleContextMenu}
+    class="group relative flex w-full items-start gap-3 px-4 py-3 text-left transition-all duration-200 ease-in-out hover:bg-secondary/40 {notification.unread
+      ? ''
+      : 'opacity-45'} {notification.subjectState === 'closed' ||
+    notification.subjectState === 'merged'
+      ? 'opacity-60'
+      : ''} {dismissing ? 'translate-x-full opacity-0' : 'translate-x-0 opacity-100'}"
+  >
+    <!-- New-since-last-open indicator -->
+    {#if isNew}
+      <span class="absolute right-2 top-2 h-1.5 w-1.5 rounded-full bg-primary"></span>
     {/if}
-    {#if notification.author}
-      <span class="pointer-events-none absolute -bottom-6 left-1/2 z-20 -translate-x-1/2 whitespace-nowrap rounded bg-foreground px-1.5 py-0.5 text-[10px] font-medium text-background opacity-0 shadow-sm transition-opacity group-hover/avatar:opacity-100">
-        {notification.author.login}
-      </span>
-    {/if}
-  </div>
 
-  <!-- Content -->
-  <div class="min-w-0 flex-1">
-    <!-- Row 1: Source icon + repo -->
-    <div class="flex items-center gap-1.5">
-      {#if notification.source === 'github'}
-        <GitHubIcon size={11} class="flex-shrink-0 text-muted-foreground/70" />
+    <!-- Avatar with username tooltip -->
+    <div class="group/avatar relative mt-0.5 flex-shrink-0">
+      {#if notification.author?.avatarUrl && !avatarFailed}
+        <img
+          src={notification.author.avatarUrl}
+          alt={notification.author.login}
+          class="h-8 w-8 rounded-full"
+          onerror={() => (avatarFailed = true)}
+        />
+      {:else if notification.author}
+        <div
+          class="flex h-8 w-8 items-center justify-center rounded-full text-[13px] font-semibold text-white"
+          style="background-color: {avatarColor}"
+        >
+          {avatarInitial}
+        </div>
       {:else}
-        <GitLabIcon size={11} class="flex-shrink-0 text-muted-foreground/70" />
+        <div
+          class="flex h-8 w-8 items-center justify-center rounded-full bg-secondary text-muted-foreground"
+        >
+          {#if notification.source === 'github'}
+            <GitHubIcon size={14} />
+          {:else}
+            <GitLabIcon size={14} />
+          {/if}
+        </div>
       {/if}
-      <span class="truncate text-[11px] text-muted-foreground">{repoShort}</span>
-    </div>
-
-    <!-- Row 2: Title -->
-    <p class="mt-0.5 truncate text-[13px] font-medium leading-snug text-foreground">
-      {notification.title}
-    </p>
-
-    <!-- Row 3: Type badge + state + time (right-aligned) -->
-    <div class="mt-1 flex items-center gap-1.5">
-      <span title={typeInfo.full} class="shrink-0 rounded bg-secondary px-1.5 py-0.5 text-[10px] font-medium text-muted-foreground">
-        {typeInfo.short}
-      </span>
-      {#if stateInfo}
-        {@const StateIcon = stateInfo.icon}
-        <span class="flex shrink-0 items-center gap-0.5 text-[10px] font-medium {stateInfo.class}">
-          <StateIcon size={10} />
-          {stateInfo.label}
+      {#if notification.author}
+        <span
+          class="pointer-events-none absolute -bottom-6 left-1/2 z-20 -translate-x-1/2 whitespace-nowrap rounded bg-foreground px-1.5 py-0.5 text-[10px] font-medium text-background opacity-0 shadow-sm transition-opacity group-hover/avatar:opacity-100"
+        >
+          {notification.author.login}
         </span>
       {/if}
-      {#if reasonInfo}
-        {@const ReasonIcon = reasonInfo.icon}
-        <span class="flex shrink-0 items-center gap-0.5 text-[10px] text-muted-foreground">
-          <ReasonIcon size={9} />
-          {reasonInfo.label}
-        </span>
-      {/if}
-      <span class="ml-auto shrink-0 text-[11px] text-muted-foreground">{timeLabel}</span>
     </div>
-  </div>
-</button>
+
+    <!-- Content -->
+    <div class="min-w-0 flex-1">
+      <!-- Row 1: Source icon + repo -->
+      <div class="flex items-center gap-1.5">
+        {#if notification.source === 'github'}
+          <GitHubIcon size={11} class="flex-shrink-0 text-muted-foreground/70" />
+        {:else}
+          <GitLabIcon size={11} class="flex-shrink-0 text-muted-foreground/70" />
+        {/if}
+        <span class="truncate text-[11px] text-muted-foreground">{repoShort}</span>
+      </div>
+
+      <!-- Row 2: Title -->
+      <p class="mt-0.5 truncate text-[13px] font-medium leading-snug text-foreground">
+        {notification.title}
+      </p>
+
+      <!-- Row 3: Type badge + state + time (right-aligned) -->
+      <div class="mt-1 flex items-center gap-1.5">
+        <span
+          title={typeInfo.full}
+          class="shrink-0 rounded bg-secondary px-1.5 py-0.5 text-[10px] font-medium text-muted-foreground"
+        >
+          {typeInfo.short}
+        </span>
+        {#if stateInfo}
+          {@const StateIcon = stateInfo.icon}
+          <span
+            class="flex shrink-0 items-center gap-0.5 text-[10px] font-medium {stateInfo.class}"
+          >
+            <StateIcon size={10} />
+            {stateInfo.label}
+          </span>
+        {/if}
+        {#if reasonInfo}
+          {@const ReasonIcon = reasonInfo.icon}
+          <span class="flex shrink-0 items-center gap-0.5 text-[10px] text-muted-foreground">
+            <ReasonIcon size={9} />
+            {reasonInfo.label}
+          </span>
+        {/if}
+        <span class="ml-auto shrink-0 text-[11px] text-muted-foreground">{timeLabel}</span>
+      </div>
+    </div>
+  </button>
 </div>
 
 {#if contextMenu}

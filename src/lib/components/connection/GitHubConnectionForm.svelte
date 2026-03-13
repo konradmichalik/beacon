@@ -25,7 +25,8 @@
   }
 
   async function openTokenPage(): Promise<void> {
-    const url = 'https://github.com/settings/tokens/new?description=Beacon&scopes=notifications,read:user';
+    const url =
+      'https://github.com/settings/tokens/new?description=Beacon&scopes=notifications,read:user';
     if (isTauri()) {
       const { open } = await import('@tauri-apps/plugin-shell');
       await open(url);

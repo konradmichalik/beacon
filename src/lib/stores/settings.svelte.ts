@@ -53,8 +53,9 @@ export async function initializeSettings(): Promise<void> {
 }
 
 export async function updateSettings(updates: Partial<Settings>): Promise<void> {
-  const pollingChanged = updates.pollingInterval !== undefined
-    && updates.pollingInterval !== settingsState.pollingInterval;
+  const pollingChanged =
+    updates.pollingInterval !== undefined &&
+    updates.pollingInterval !== settingsState.pollingInterval;
 
   Object.assign(settingsState, updates);
   await setStorageItem(STORAGE_KEY, { ...settingsState });
@@ -68,7 +69,10 @@ export async function updateSettings(updates: Partial<Settings>): Promise<void> 
   if ((updates.badgeMode !== undefined || updates.dotColor !== undefined) && onBadgeModeChange) {
     onBadgeModeChange();
   }
-  if ((updates.notifyMode !== undefined || updates.notifySummaryMinutes !== undefined) && onNotifyChange) {
+  if (
+    (updates.notifyMode !== undefined || updates.notifySummaryMinutes !== undefined) &&
+    onNotifyChange
+  ) {
     onNotifyChange();
   }
 }

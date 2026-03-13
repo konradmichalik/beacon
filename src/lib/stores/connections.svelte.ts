@@ -33,7 +33,9 @@ export function getGitLabConfig(): GitLabConnectionConfig | null {
 }
 
 export function hasAnyServiceConfigured(): boolean {
-  return connectionsState.github.status === 'connected' || connectionsState.gitlab.status === 'connected';
+  return (
+    connectionsState.github.status === 'connected' || connectionsState.gitlab.status === 'connected'
+  );
 }
 
 export function isServiceConnected(service: ServiceId): boolean {
@@ -50,7 +52,7 @@ export async function connectGitHubWithPAT(token: string): Promise<void> {
     });
     if (!response.ok) throw new Error(`GitHub auth failed: ${response.status}`);
 
-    const user = await response.json() as { login: string };
+    const user = (await response.json()) as { login: string };
     const config: GitHubConnectionConfig = { type: 'pat', token, username: user.login };
     githubConfig = config;
     await setStorageItem(STORAGE_KEYS.GITHUB_CONFIG, config);
@@ -79,7 +81,7 @@ export async function connectGitLabWithPAT(token: string, baseUrl: string): Prom
     });
     if (!response.ok) throw new Error(`GitLab auth failed: ${response.status}`);
 
-    const user = await response.json() as { username: string };
+    const user = (await response.json()) as { username: string };
     const config: GitLabConnectionConfig = { type: 'pat', token, baseUrl, username: user.username };
     gitlabConfig = config;
     await setStorageItem(STORAGE_KEYS.GITLAB_CONFIG, config);

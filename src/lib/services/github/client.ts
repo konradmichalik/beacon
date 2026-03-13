@@ -1,4 +1,10 @@
-import type { GitHubNotification, UnifiedNotification, NotificationType, SubjectState, NotificationAuthor } from '$lib/types';
+import type {
+  GitHubNotification,
+  UnifiedNotification,
+  NotificationType,
+  SubjectState,
+  NotificationAuthor
+} from '$lib/types';
 
 const GITHUB_API = 'https://api.github.com';
 
@@ -48,7 +54,7 @@ async function fetchSubjectDetails(subjectUrl: string, token: string): Promise<S
 
     if (!response.ok) return { state: null, author: null };
 
-    const data = await response.json() as Record<string, unknown>;
+    const data = (await response.json()) as Record<string, unknown>;
 
     let state: SubjectState = null;
     if (data.state === 'closed' && data.merged === true) {

@@ -1,6 +1,11 @@
 <script lang="ts">
   import { clickOutside } from '$lib/actions/clickOutside';
-  import { filterState, setSourceFilter, setSortMode, hasActiveFilters } from '$lib/stores/filters.svelte';
+  import {
+    filterState,
+    setSourceFilter,
+    setSortMode,
+    hasActiveFilters
+  } from '$lib/stores/filters.svelte';
   import type { SortMode } from '$lib/stores/filters.svelte';
   import { getUnreadCount, getCountBySource } from '$lib/stores/notifications.svelte';
   import { isServiceConnected } from '$lib/stores/connections.svelte';
@@ -49,7 +54,9 @@
   const badgeInactive = 'bg-secondary text-muted-foreground';
 </script>
 
-<div class="flex items-center gap-1.5 overflow-x-auto border-b border-border px-4 py-2.5 scrollbar-none">
+<div
+  class="flex items-center gap-1.5 overflow-x-auto border-b border-border px-4 py-2.5 scrollbar-none"
+>
   {#if bothConnected}
     <div class="flex shrink-0 overflow-hidden rounded-md border border-border" role="group">
       <button
@@ -59,7 +66,9 @@
       >
         All
         {#if totalCount > 0}
-          <span class="{badgeBase} {isActive('all') ? badgeActive : badgeInactive}">{totalCount}</span>
+          <span class="{badgeBase} {isActive('all') ? badgeActive : badgeInactive}"
+            >{totalCount}</span
+          >
         {/if}
       </button>
 
@@ -71,7 +80,9 @@
       >
         <GitHubIcon size={12} />
         {#if githubCount > 0}
-          <span class="{badgeBase} {isActive('github') ? badgeActive : badgeInactive}">{githubCount}</span>
+          <span class="{badgeBase} {isActive('github') ? badgeActive : badgeInactive}"
+            >{githubCount}</span
+          >
         {/if}
       </button>
 
@@ -79,11 +90,15 @@
         type="button"
         onclick={() => setSourceFilter('gitlab')}
         title="GitLab"
-        class="{btnBase} rounded-r-md border-l border-border {isActive('gitlab') ? btnActive : btnInactive}"
+        class="{btnBase} rounded-r-md border-l border-border {isActive('gitlab')
+          ? btnActive
+          : btnInactive}"
       >
         <GitLabIcon size={12} />
         {#if gitlabCount > 0}
-          <span class="{badgeBase} {isActive('gitlab') ? badgeActive : badgeInactive}">{gitlabCount}</span>
+          <span class="{badgeBase} {isActive('gitlab') ? badgeActive : badgeInactive}"
+            >{gitlabCount}</span
+          >
         {/if}
       </button>
     </div>
@@ -132,8 +147,8 @@
             onclick={() => pickSort(opt.value)}
             class="flex w-full items-center px-3 py-1.5 text-[11px] font-medium transition-colors
               {filterState.sort === opt.value
-                ? 'text-primary'
-                : 'text-muted-foreground hover:bg-secondary hover:text-foreground'}"
+              ? 'text-primary'
+              : 'text-muted-foreground hover:bg-secondary hover:text-foreground'}"
           >
             {opt.label}
           </button>

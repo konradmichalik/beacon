@@ -1,6 +1,14 @@
 export type NotificationSource = 'github' | 'gitlab';
 
-export type NotificationType = 'issue' | 'pull_request' | 'merge_request' | 'review' | 'pipeline' | 'release' | 'discussion' | 'other';
+export type NotificationType =
+  | 'issue'
+  | 'pull_request'
+  | 'merge_request'
+  | 'review'
+  | 'pipeline'
+  | 'release'
+  | 'discussion'
+  | 'other';
 
 export const NOTIFICATION_TYPE_LABELS: Record<NotificationType, string> = {
   issue: 'Issue',

@@ -1,5 +1,19 @@
 <script lang="ts">
-  import { Sun, Moon, Monitor, Hash, Circle, Link, SlidersHorizontal, BellOff, Bell, BellDot, Info, ExternalLink, BookOpen } from '@lucide/svelte';
+  import {
+    Sun,
+    Moon,
+    Monitor,
+    Hash,
+    Circle,
+    Link,
+    SlidersHorizontal,
+    BellOff,
+    Bell,
+    BellDot,
+    Info,
+    ExternalLink,
+    BookOpen
+  } from '@lucide/svelte';
   import { settingsState, updateSettings } from '$lib/stores/settings.svelte';
   import type { BadgeMode, NotifyMode, DotColor } from '$lib/stores/settings.svelte';
   import GitHubConnectionForm from '../connection/GitHubConnectionForm.svelte';
@@ -75,7 +89,8 @@
     <button
       type="button"
       onclick={() => (activeTab = tab.value)}
-      class="flex flex-1 items-center justify-center gap-1.5 px-3 py-2 text-[11px] font-medium transition-colors {activeTab === tab.value
+      class="flex flex-1 items-center justify-center gap-1.5 px-3 py-2 text-[11px] font-medium transition-colors {activeTab ===
+      tab.value
         ? 'border-b-2 border-primary text-foreground'
         : 'text-muted-foreground hover:text-foreground'}"
     >
@@ -103,7 +118,8 @@
           <button
             type="button"
             onclick={() => setNotifyMode(option.value)}
-            class="flex items-center gap-1.5 rounded-md px-3 py-1.5 text-xs font-medium transition-colors {settingsState.notifyMode === option.value
+            class="flex items-center gap-1.5 rounded-md px-3 py-1.5 text-xs font-medium transition-colors {settingsState.notifyMode ===
+            option.value
               ? 'bg-primary text-primary-foreground'
               : 'bg-secondary text-secondary-foreground hover:bg-secondary/80'}"
           >
@@ -134,7 +150,8 @@
             <button
               type="button"
               onclick={() => updateSettings({ notifySummaryMinutes: option.value })}
-              class="rounded-md px-3 py-1.5 text-xs font-medium transition-colors {settingsState.notifySummaryMinutes === option.value
+              class="rounded-md px-3 py-1.5 text-xs font-medium transition-colors {settingsState.notifySummaryMinutes ===
+              option.value
                 ? 'bg-primary text-primary-foreground'
                 : 'bg-secondary text-secondary-foreground hover:bg-secondary/80'}"
             >
@@ -155,7 +172,8 @@
           <button
             type="button"
             onclick={() => updateSettings({ pollingInterval: option.value })}
-            class="rounded-md px-3 py-1.5 text-xs font-medium transition-colors {settingsState.pollingInterval === option.value
+            class="rounded-md px-3 py-1.5 text-xs font-medium transition-colors {settingsState.pollingInterval ===
+            option.value
               ? 'bg-primary text-primary-foreground'
               : 'bg-secondary text-secondary-foreground hover:bg-secondary/80'}"
           >
@@ -176,7 +194,8 @@
           <button
             type="button"
             onclick={() => updateSettings({ badgeMode: option.value })}
-            class="flex items-center gap-1.5 rounded-md px-3 py-1.5 text-xs font-medium transition-colors {settingsState.badgeMode === option.value
+            class="flex items-center gap-1.5 rounded-md px-3 py-1.5 text-xs font-medium transition-colors {settingsState.badgeMode ===
+            option.value
               ? 'bg-primary text-primary-foreground'
               : 'bg-secondary text-secondary-foreground hover:bg-secondary/80'}"
           >
@@ -186,7 +205,9 @@
         {/each}
       </div>
       <p class="mt-1.5 text-[10px] text-muted-foreground">
-        {settingsState.badgeMode === 'count' ? 'Shows the number of notifications next to the icon.' : 'Shows a dot indicator when notifications are pending.'}
+        {settingsState.badgeMode === 'count'
+          ? 'Shows the number of notifications next to the icon.'
+          : 'Shows a dot indicator when notifications are pending.'}
       </p>
 
       {#if settingsState.badgeMode === 'dot'}
@@ -197,11 +218,15 @@
               <button
                 type="button"
                 onclick={() => updateSettings({ dotColor: option.value })}
-                class="flex items-center gap-1.5 rounded-md px-3 py-1.5 text-xs font-medium transition-colors {settingsState.dotColor === option.value
+                class="flex items-center gap-1.5 rounded-md px-3 py-1.5 text-xs font-medium transition-colors {settingsState.dotColor ===
+                option.value
                   ? 'bg-primary text-primary-foreground'
                   : 'bg-secondary text-secondary-foreground hover:bg-secondary/80'}"
               >
-                <span class="inline-block h-2.5 w-2.5 rounded-full" style="background-color: {option.color}"></span>
+                <span
+                  class="inline-block h-2.5 w-2.5 rounded-full"
+                  style="background-color: {option.color}"
+                ></span>
                 {option.label}
               </button>
             {/each}
@@ -218,16 +243,24 @@
       <label class="flex cursor-pointer items-center justify-between gap-3">
         <div>
           <span class="text-xs font-medium text-foreground">Hide closed &amp; merged</span>
-          <p class="text-[10px] text-muted-foreground">Don't show notifications for closed or merged items.</p>
+          <p class="text-[10px] text-muted-foreground">
+            Don't show notifications for closed or merged items.
+          </p>
         </div>
         <button
           type="button"
           role="switch"
           aria-checked={settingsState.hideClosed}
           onclick={() => updateSettings({ hideClosed: !settingsState.hideClosed })}
-          class="relative inline-flex h-5 w-9 shrink-0 items-center rounded-full transition-colors {settingsState.hideClosed ? 'bg-primary' : 'bg-secondary'}"
+          class="relative inline-flex h-5 w-9 shrink-0 items-center rounded-full transition-colors {settingsState.hideClosed
+            ? 'bg-primary'
+            : 'bg-secondary'}"
         >
-          <span class="inline-block h-3.5 w-3.5 rounded-full bg-white shadow-sm transition-transform {settingsState.hideClosed ? 'translate-x-4' : 'translate-x-0.5'}" />
+          <span
+            class="inline-block h-3.5 w-3.5 rounded-full bg-white shadow-sm transition-transform {settingsState.hideClosed
+              ? 'translate-x-4'
+              : 'translate-x-0.5'}"
+          />
         </button>
       </label>
     </section>
@@ -243,7 +276,8 @@
           <button
             type="button"
             onclick={() => updateSettings({ theme: option.value })}
-            class="flex items-center gap-1.5 rounded-md px-3 py-1.5 text-xs font-medium transition-colors {settingsState.theme === option.value
+            class="flex items-center gap-1.5 rounded-md px-3 py-1.5 text-xs font-medium transition-colors {settingsState.theme ===
+            option.value
               ? 'bg-primary text-primary-foreground'
               : 'bg-secondary text-secondary-foreground hover:bg-secondary/80'}"
           >
@@ -253,7 +287,6 @@
         {/each}
       </div>
     </section>
-
   {:else if activeTab === 'about'}
     <div class="flex flex-col items-center gap-5 py-4">
       <BeaconLogo height={30} class="text-foreground" />
@@ -291,7 +324,9 @@
         </a>
       </div>
 
-      <p class="text-[10px] text-muted-foreground">&copy; {new Date().getFullYear()} Konrad Michalik</p>
+      <p class="text-[10px] text-muted-foreground">
+        &copy; {new Date().getFullYear()} Konrad Michalik
+      </p>
     </div>
   {/if}
 </div>

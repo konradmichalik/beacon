@@ -8,7 +8,8 @@
   import { ArrowLeft, ArrowUp } from '@lucide/svelte';
   import { onMount } from 'svelte';
 
-  let { initialTab = 'notifications' as const }: { initialTab?: 'notifications' | 'settings' } = $props();
+  let { initialTab = 'notifications' as const }: { initialTab?: 'notifications' | 'settings' } =
+    $props();
   let showSettings = $state(initialTab === 'settings');
   let scrollEl: HTMLDivElement | undefined = $state();
   let showScrollTop = $state(false);
@@ -67,7 +68,9 @@
         type="button"
         onclick={scrollToTop}
         aria-label="Scroll to top"
-        class="absolute right-3 z-20 flex h-8 w-8 items-center justify-center rounded-full bg-primary text-primary-foreground shadow-md transition-all duration-200 ease-out hover:opacity-90 {showScrollTop ? 'bottom-3 opacity-100' : '-bottom-10 opacity-0'}"
+        class="absolute right-3 z-20 flex h-8 w-8 items-center justify-center rounded-full bg-primary text-primary-foreground shadow-md transition-all duration-200 ease-out hover:opacity-90 {showScrollTop
+          ? 'bottom-3 opacity-100'
+          : '-bottom-10 opacity-0'}"
       >
         <ArrowUp size={14} />
       </button>

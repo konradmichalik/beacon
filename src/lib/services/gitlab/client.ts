@@ -32,7 +32,8 @@ function mapActionToReason(action: string, body: string): string {
     case 'review_submitted': {
       if (!body.trim()) return 'approved';
       const lower = body.toLowerCase();
-      if (lower.includes('requested changes') || lower.includes('change')) return 'change_requested';
+      if (lower.includes('requested changes') || lower.includes('change'))
+        return 'change_requested';
       return 'review_submitted';
     }
     case 'change_requested':
@@ -67,9 +68,7 @@ function mapToUnified(todo: GitLabTodo): UnifiedNotification {
     unread: todo.state === 'pending',
     updatedAt: todo.updated_at,
     createdAt: todo.created_at,
-    author: todo.author
-      ? { login: todo.author.username, avatarUrl: todo.author.avatar_url }
-      : null,
+    author: todo.author ? { login: todo.author.username, avatarUrl: todo.author.avatar_url } : null,
     subjectState: mapTargetState(todo.target.state)
   };
 }

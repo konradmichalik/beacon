@@ -34,10 +34,7 @@ function notifyInstant(newItems: readonly UnifiedNotification[]): void {
     const n = newItems[0];
     sendNotification(n.repository, n.title);
   } else if (newItems.length > 1) {
-    sendNotification(
-      'Beacon',
-      `${newItems.length} new notifications`
-    );
+    sendNotification('Beacon', `${newItems.length} new notifications`);
   }
 }
 
@@ -47,9 +44,10 @@ function flushSummary(): void {
   const count = summaryBuffer.length;
   const repos = [...new Set(summaryBuffer.map((n) => n.repository))];
 
-  const body = repos.length <= 3
-    ? `${count} new in ${repos.join(', ')}`
-    : `${count} new across ${repos.length} projects`;
+  const body =
+    repos.length <= 3
+      ? `${count} new in ${repos.join(', ')}`
+      : `${count} new across ${repos.length} projects`;
 
   sendNotification('Beacon', body);
   summaryBuffer = [];
@@ -100,4 +98,3 @@ export function processNewNotifications(all: readonly UnifiedNotification[]): vo
     summaryBuffer.push(...newItems);
   }
 }
-

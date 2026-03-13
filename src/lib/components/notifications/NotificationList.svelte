@@ -9,7 +9,16 @@
   import { Inbox, ChevronRight, PartyPopper } from '@lucide/svelte';
   import type { UnifiedNotification } from '$lib/types';
 
-  let items = $derived(getFilteredNotifications(filterState.source, filterState.project, filterState.sort, filterState.types, filterState.projects, filterState.statuses));
+  let items = $derived(
+    getFilteredNotifications(
+      filterState.source,
+      filterState.project,
+      filterState.sort,
+      filterState.types,
+      filterState.projects,
+      filterState.statuses
+    )
+  );
   let isLoading = $derived(getIsLoading());
   let isConfigured = $derived(hasAnyServiceConfigured());
 
@@ -50,21 +59,21 @@
   />
 {:else if isLoading && items.length === 0}
   <div class="flex items-center justify-center py-12">
-    <div class="h-5 w-5 animate-spin rounded-full border-2 border-primary border-t-transparent"></div>
+    <div
+      class="h-5 w-5 animate-spin rounded-full border-2 border-primary border-t-transparent"
+    ></div>
   </div>
 {:else if items.length === 0}
-  <EmptyState
-    icon={Inbox}
-    title="All clear"
-    description="No notifications right now."
-  />
+  <EmptyState icon={Inbox} title="All clear" description="No notifications right now." />
 {:else}
   <div class="flex min-h-full flex-col">
     <!-- Unread -->
     {#if filterState.sort === 'project' && projectGroups.length > 0}
       <div>
         {#each projectGroups as group (group.source + ':' + group.repository)}
-          <div class="sticky top-0 z-10 flex items-center gap-1.5 border-b border-border bg-card/95 px-4 py-1.5 backdrop-blur-sm">
+          <div
+            class="sticky top-0 z-10 flex items-center gap-1.5 border-b border-border bg-card/95 px-4 py-1.5 backdrop-blur-sm"
+          >
             {#if group.source === 'github'}
               <GitHubIcon size={12} class="text-muted-foreground" />
             {:else}
@@ -92,7 +101,9 @@
 
     <!-- Spacer pushes read section to bottom when unread list is short -->
     {#if unreadItems.length === 0}
-      <div class="flex flex-1 flex-col items-center justify-center gap-2 py-12 text-muted-foreground">
+      <div
+        class="flex flex-1 flex-col items-center justify-center gap-2 py-12 text-muted-foreground"
+      >
         <PartyPopper size={72} strokeWidth={1} class="opacity-20" />
         <span class="text-[11px]">No unread notifications</span>
       </div>
@@ -109,7 +120,9 @@
       >
         <ChevronRight size={12} class="transition-transform {showRead ? 'rotate-90' : ''}" />
         Read
-        <span class="rounded-full bg-secondary px-1.5 py-px text-[9px] font-semibold">{readItems.length}</span>
+        <span class="rounded-full bg-secondary px-1.5 py-px text-[9px] font-semibold"
+          >{readItems.length}</span
+        >
       </button>
       {#if showRead}
         <div>
