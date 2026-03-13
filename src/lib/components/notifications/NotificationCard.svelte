@@ -9,6 +9,7 @@
 
   let { notification }: { notification: UnifiedNotification } = $props();
 
+  let dismissing = $state(false);
   let timeLabel = $derived(timeAgo(notification.updatedAt));
   let repoShort = $derived(notification.repository.split('/').slice(-2).join('/'));
 
@@ -63,9 +64,7 @@
     return null;
   });
 
-  async function handleClick(): Promise<void> {
-    markAsRead(notification.id);
-
+  async function openUrl(): Promise<void> {
     if (isTauri()) {
       const { open } = await import('@tauri-apps/plugin-shell');
       await open(notification.url);
@@ -73,12 +72,24 @@
       window.open(notification.url, '_blank');
     }
   }
+
+  function handleClick(): void {
+    if (dismissing) return;
+    dismissing = true;
+    openUrl();
+    // Delay markAsRead so the card stays in the DOM during animation
+    setTimeout(() => markAsRead(notification.id), 350);
+  }
 </script>
 
+<div
+  class="overflow-hidden transition-all duration-300 ease-in-out {dismissing ? 'max-h-0 border-b-0' : 'max-h-40 border-b border-border/60'}"
+  style={dismissing ? 'margin-top: 0; margin-bottom: 0; padding-top: 0; padding-bottom: 0;' : ''}
+>
 <button
   type="button"
   onclick={handleClick}
-  class="group flex w-full items-start gap-3 border-b border-border/60 px-4 py-3 text-left transition-colors hover:bg-secondary/40 {notification.unread ? '' : 'opacity-45'} {notification.subjectState === 'closed' || notification.subjectState === 'merged' ? 'opacity-60' : ''}"
+  class="group flex w-full items-start gap-3 px-4 py-3 text-left transition-all duration-200 ease-in-out hover:bg-secondary/40 {notification.unread ? '' : 'opacity-45'} {notification.subjectState === 'closed' || notification.subjectState === 'merged' ? 'opacity-60' : ''} {dismissing ? 'translate-x-full opacity-0' : 'translate-x-0 opacity-100'}"
 >
   <!-- Avatar with username tooltip -->
   <div class="group/avatar relative mt-0.5 flex-shrink-0">
@@ -144,3 +155,4 @@
     </div>
   </div>
 </button>
+</div>
