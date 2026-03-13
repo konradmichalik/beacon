@@ -1,5 +1,6 @@
 <script lang="ts">
-  import { GitBranch, Check, X, Loader2, ExternalLink } from '@lucide/svelte';
+  import { Check, X, Loader2, ExternalLink } from '@lucide/svelte';
+  import GitHubIcon from '$lib/components/icons/GitHubIcon.svelte';
   import {
     connectionsState,
     connectGitHubWithPAT,
@@ -41,7 +42,7 @@
 <div class="rounded-lg border border-border bg-card p-3">
   <div class="flex items-center justify-between">
     <div class="flex items-center gap-2">
-      <GitBranch size={14} class="text-source-github-text" />
+      <GitHubIcon size={14} class="text-source-github-text" />
       <span class="text-xs font-medium">GitHub</span>
     </div>
     {#if status === 'connected'}
