@@ -22,7 +22,7 @@ pub fn create_tray(app: &App) -> Result<(), Box<dyn std::error::Error>> {
 
     let _tray = TrayIconBuilder::with_id(TRAY_ID)
         .icon(icon)
-        .icon_as_template(false)
+        .icon_as_template(cfg!(target_os = "macos"))
         .menu(&menu)
         .show_menu_on_left_click(false)
         .tooltip("Beacon")
