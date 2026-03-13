@@ -1,15 +1,16 @@
 <script lang="ts">
-  import { Sun, Moon, Monitor, Hash, Circle, Link, SlidersHorizontal } from '@lucide/svelte';
+  import { Sun, Moon, Monitor, Hash, Circle, Link, SlidersHorizontal, BellOff, Bell, BellDot } from '@lucide/svelte';
   import { settingsState, updateSettings } from '$lib/stores/settings.svelte';
-  import type { BadgeMode } from '$lib/stores/settings.svelte';
+  import type { BadgeMode, NotifyMode } from '$lib/stores/settings.svelte';
   import GitHubConnectionForm from '../connection/GitHubConnectionForm.svelte';
   import GitLabConnectionForm from '../connection/GitLabConnectionForm.svelte';
 
-  type SettingsTab = 'connections' | 'preferences';
+  type SettingsTab = 'connections' | 'notifications' | 'preferences';
   let activeTab: SettingsTab = $state('connections');
 
   const tabs: { value: SettingsTab; label: string; icon: typeof Link }[] = [
     { value: 'connections', label: 'Connections', icon: Link },
+    { value: 'notifications', label: 'Notifications', icon: Bell },
     { value: 'preferences', label: 'Preferences', icon: SlidersHorizontal }
   ];
 
@@ -29,6 +30,19 @@
   const badgeOptions: { value: BadgeMode; label: string; icon: typeof Hash }[] = [
     { value: 'count', label: 'Count', icon: Hash },
     { value: 'dot', label: 'Dot', icon: Circle }
+  ];
+
+  const notifyOptions: { value: NotifyMode; label: string; icon: typeof Bell }[] = [
+    { value: 'disabled', label: 'Off', icon: BellOff },
+    { value: 'instant', label: 'Instant', icon: Bell },
+    { value: 'summary', label: 'Summary', icon: BellDot }
+  ];
+
+  const summaryIntervalOptions = [
+    { value: 5, label: '5 min' },
+    { value: 15, label: '15 min' },
+    { value: 30, label: '30 min' },
+    { value: 60, label: '60 min' }
   ];
 </script>
 
@@ -55,6 +69,59 @@
       <GitHubConnectionForm />
       <GitLabConnectionForm />
     </div>
+  {:else if activeTab === 'notifications'}
+    <!-- Notification Mode -->
+    <section>
+      <h3 class="mb-3 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+        Desktop Notifications
+      </h3>
+      <div class="flex gap-1.5">
+        {#each notifyOptions as option}
+          {@const Icon = option.icon}
+          <button
+            type="button"
+            onclick={() => updateSettings({ notifyMode: option.value })}
+            class="flex items-center gap-1.5 rounded-md px-3 py-1.5 text-xs font-medium transition-colors {settingsState.notifyMode === option.value
+              ? 'bg-primary text-primary-foreground'
+              : 'bg-secondary text-secondary-foreground hover:bg-secondary/80'}"
+          >
+            <Icon size={12} />
+            {option.label}
+          </button>
+        {/each}
+      </div>
+      <p class="mt-1.5 text-[10px] text-muted-foreground">
+        {#if settingsState.notifyMode === 'disabled'}
+          Desktop notifications are turned off.
+        {:else if settingsState.notifyMode === 'instant'}
+          Get notified immediately when new notifications arrive.
+        {:else}
+          Receive a summary of new notifications at a regular interval.
+        {/if}
+      </p>
+    </section>
+
+    {#if settingsState.notifyMode === 'summary'}
+      <!-- Summary Interval -->
+      <section>
+        <h3 class="mb-3 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+          Summary Interval
+        </h3>
+        <div class="flex gap-1.5">
+          {#each summaryIntervalOptions as option}
+            <button
+              type="button"
+              onclick={() => updateSettings({ notifySummaryMinutes: option.value })}
+              class="rounded-md px-3 py-1.5 text-xs font-medium transition-colors {settingsState.notifySummaryMinutes === option.value
+                ? 'bg-primary text-primary-foreground'
+                : 'bg-secondary text-secondary-foreground hover:bg-secondary/80'}"
+            >
+              {option.label}
+            </button>
+          {/each}
+        </div>
+      </section>
+    {/if}
   {:else}
     <!-- Refresh Interval -->
     <section>
