@@ -4,8 +4,9 @@
   import FilterBar from '../notifications/FilterBar.svelte';
   import SettingsView from '../settings/SettingsView.svelte';
   import { hasAnyServiceConfigured } from '$lib/stores/connections.svelte';
-  import { startPolling } from '$lib/stores/notifications.svelte';
+  import { startPolling, markAllSeen } from '$lib/stores/notifications.svelte';
   import { ArrowLeft, ArrowUp } from '@lucide/svelte';
+  import { onMount } from 'svelte';
 
   let { initialTab = 'notifications' as const }: { initialTab?: 'notifications' | 'settings' } = $props();
   let showSettings = $state(initialTab === 'settings');
@@ -28,6 +29,16 @@
   function scrollToTop(): void {
     scrollEl?.scrollTo({ top: 0, behavior: 'smooth' });
   }
+
+  onMount(() => {
+    function handleVisibility(): void {
+      if (document.hidden) {
+        markAllSeen();
+      }
+    }
+    document.addEventListener('visibilitychange', handleVisibility);
+    return () => document.removeEventListener('visibilitychange', handleVisibility);
+  });
 </script>
 
 <div class="flex h-screen flex-col bg-background">

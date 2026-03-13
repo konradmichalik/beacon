@@ -13,6 +13,8 @@ let lastRefresh: string | null = $state(null);
 let pollingTimer: ReturnType<typeof setInterval> | null = null;
 // Track IDs marked as read locally so refreshes don't revert them
 const locallyReadIds = new Set<string>();
+// Timestamp of the last time the user opened the popup
+let lastSeenAt: string | null = $state(null);
 
 export function getNotifications(): readonly UnifiedNotification[] {
   return notifications;
@@ -36,6 +38,14 @@ export function getIsLoading(): boolean {
 
 export function getLastRefresh(): string | null {
   return lastRefresh;
+}
+
+export function getLastSeenAt(): string | null {
+  return lastSeenAt;
+}
+
+export function markAllSeen(): void {
+  lastSeenAt = new Date().toISOString();
 }
 
 export function getFilteredNotifications(
