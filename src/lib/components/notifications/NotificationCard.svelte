@@ -12,6 +12,15 @@
   let dismissing = $state(false);
   let timeLabel = $derived(timeAgo(notification.updatedAt));
   let repoShort = $derived(notification.repository.split('/').slice(-2).join('/'));
+
+  const avatarColors = ['#bf616a', '#d08770', '#ebcb8b', '#a3be8c', '#88c0d0', '#5e81ac', '#b48ead'];
+  let avatarInitial = $derived(notification.author?.login?.charAt(0).toUpperCase() ?? '');
+  let avatarColor = $derived.by(() => {
+    const name = notification.author?.login ?? '';
+    let hash = 0;
+    for (let i = 0; i < name.length; i++) hash = name.charCodeAt(i) + ((hash << 5) - hash);
+    return avatarColors[Math.abs(hash) % avatarColors.length];
+  });
   let isNew = $derived.by(() => {
     const seen = getLastSeenAt();
     if (!seen) return false;
@@ -110,6 +119,13 @@
         alt={notification.author.login}
         class="h-8 w-8 rounded-full"
       />
+    {:else if notification.author}
+      <div
+        class="flex h-8 w-8 items-center justify-center rounded-full text-[13px] font-semibold text-white"
+        style="background-color: {avatarColor}"
+      >
+        {avatarInitial}
+      </div>
     {:else}
       <div class="flex h-8 w-8 items-center justify-center rounded-full bg-secondary text-muted-foreground">
         {#if notification.source === 'github'}
