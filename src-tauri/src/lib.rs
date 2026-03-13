@@ -3,35 +3,22 @@ mod tray;
 
 const TRAY_ICON_BYTES: &[u8] = include_bytes!("../icons/beacon-tray.png");
 
-/// Detect whether macOS is using dark mode (dark menu bar).
-#[cfg(target_os = "macos")]
-fn is_dark_mode() -> bool {
-    use objc2_foundation::{NSString, NSUserDefaults};
-    let defaults = NSUserDefaults::standardUserDefaults();
-    let key = NSString::from_str("AppleInterfaceStyle");
-    defaults
-        .stringForKey(&key)
-        .map(|v| v.to_string().eq_ignore_ascii_case("dark"))
-        .unwrap_or(false)
-}
 
-/// Create a tray icon colored for the current theme, with an optional red dot overlay.
+/// Create a white tray icon with an optional red dot overlay.
 #[cfg(target_os = "macos")]
-fn create_tray_icon(dark: bool, with_dot: bool) -> (Vec<u8>, u32, u32) {
+fn create_tray_icon(with_dot: bool) -> (Vec<u8>, u32, u32) {
     use image::{GenericImageView, RgbaImage};
 
     let base = image::load_from_memory(TRAY_ICON_BYTES).expect("failed to decode tray icon");
     let (w, h) = base.dimensions();
     let mut canvas = RgbaImage::from(base.to_rgba8());
 
-    // Color the icon for the current theme (since we don't use template rendering)
-    if dark {
-        for pixel in canvas.pixels_mut() {
-            if pixel.0[3] > 0 {
-                pixel.0[0] = 255;
-                pixel.0[1] = 255;
-                pixel.0[2] = 255;
-            }
+    // macOS menu bar always has a dark background, so the icon must always be white
+    for pixel in canvas.pixels_mut() {
+        if pixel.0[3] > 0 {
+            pixel.0[0] = 255;
+            pixel.0[1] = 255;
+            pixel.0[2] = 255;
         }
     }
 
@@ -39,7 +26,7 @@ fn create_tray_icon(dark: bool, with_dot: bool) -> (Vec<u8>, u32, u32) {
         let radius: f32 = (w as f32 * 0.22).max(3.0);
         let cx = w as f32 - radius - 1.0;
         let cy = h as f32 - radius - 1.0;
-        let dot_color = [255u8, 69, 58, 255];
+        let dot_color = [255u8, 120, 110, 255];
 
         let r2 = radius * radius;
         let search = (radius + 1.5) as i32;
@@ -93,25 +80,23 @@ async fn update_badge(app: tauri::AppHandle, count: u32, mode: String) -> Result
 
         #[cfg(target_os = "macos")]
         {
-            let dark = is_dark_mode();
-
             match mode.as_str() {
                 "dot" if count > 0 => {
-                    let (rgba, w, h) = create_tray_icon(dark, true);
+                    let (rgba, w, h) = create_tray_icon(true);
                     let icon = tauri::image::Image::new_owned(rgba, w, h);
                     tray.set_icon(Some(icon)).map_err(|e| e.to_string())?;
                     tray.set_icon_as_template(false).map_err(|e| e.to_string())?;
                     tray.set_title(Some("")).map_err(|e| e.to_string())?;
                 }
                 "count" if count > 0 => {
-                    let (rgba, w, h) = create_tray_icon(dark, false);
+                    let (rgba, w, h) = create_tray_icon(false);
                     let icon = tauri::image::Image::new_owned(rgba, w, h);
                     tray.set_icon(Some(icon)).map_err(|e| e.to_string())?;
                     tray.set_icon_as_template(false).map_err(|e| e.to_string())?;
                     tray.set_title(Some(&count.to_string())).map_err(|e| e.to_string())?;
                 }
                 _ => {
-                    let (rgba, w, h) = create_tray_icon(dark, false);
+                    let (rgba, w, h) = create_tray_icon(false);
                     let icon = tauri::image::Image::new_owned(rgba, w, h);
                     tray.set_icon(Some(icon)).map_err(|e| e.to_string())?;
                     tray.set_icon_as_template(false).map_err(|e| e.to_string())?;
