@@ -1,5 +1,6 @@
 <script lang="ts">
-  import { Settings, RefreshCw, CheckCheck } from '@lucide/svelte';
+  import { Settings, RefreshCw, CheckCheck, Power } from '@lucide/svelte';
+  import { invoke } from '@tauri-apps/api/core';
   import BeaconIcon from '$lib/components/icons/BeaconIcon.svelte';
   import { getIsLoading, getUnreadCount, refreshNotifications, markAllAsRead } from '$lib/stores/notifications.svelte';
 
@@ -40,6 +41,14 @@
       title="Settings"
     >
       <Settings size={15} />
+    </button>
+    <button
+      type="button"
+      onclick={() => invoke('quit_app')}
+      class="rounded-md p-1.5 text-muted-foreground transition-colors hover:bg-destructive/80 hover:text-white"
+      title="Quit Beacon"
+    >
+      <Power size={14} />
     </button>
   </div>
 </header>

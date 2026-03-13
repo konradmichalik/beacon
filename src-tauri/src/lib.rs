@@ -6,10 +6,12 @@ const TRAY_ICON_BYTES: &[u8] = include_bytes!("../icons/beacon-tray.png");
 /// Detect whether macOS is using dark mode (dark menu bar).
 #[cfg(target_os = "macos")]
 fn is_dark_mode() -> bool {
-    std::process::Command::new("defaults")
-        .args(["read", "-g", "AppleInterfaceStyle"])
-        .output()
-        .map(|o| String::from_utf8_lossy(&o.stdout).trim().eq_ignore_ascii_case("dark"))
+    use objc2_foundation::{NSString, NSUserDefaults};
+    let defaults = NSUserDefaults::standardUserDefaults();
+    let key = NSString::from_str("AppleInterfaceStyle");
+    defaults
+        .stringForKey(&key)
+        .map(|v| v.to_string().eq_ignore_ascii_case("dark"))
         .unwrap_or(false)
 }
 
@@ -99,7 +101,7 @@ async fn update_badge(app: tauri::AppHandle, count: u32, mode: String) -> Result
                     let icon = tauri::image::Image::new_owned(rgba, w, h);
                     tray.set_icon(Some(icon)).map_err(|e| e.to_string())?;
                     tray.set_icon_as_template(false).map_err(|e| e.to_string())?;
-                    tray.set_title(None::<&str>).map_err(|e| e.to_string())?;
+                    tray.set_title(Some("")).map_err(|e| e.to_string())?;
                 }
                 "count" if count > 0 => {
                     let (rgba, w, h) = create_tray_icon(dark, false);
@@ -113,12 +115,17 @@ async fn update_badge(app: tauri::AppHandle, count: u32, mode: String) -> Result
                     let icon = tauri::image::Image::new_owned(rgba, w, h);
                     tray.set_icon(Some(icon)).map_err(|e| e.to_string())?;
                     tray.set_icon_as_template(false).map_err(|e| e.to_string())?;
-                    tray.set_title(None::<&str>).map_err(|e| e.to_string())?;
+                    tray.set_title(Some("")).map_err(|e| e.to_string())?;
                 }
             }
         }
     }
     Ok(())
+}
+
+#[tauri::command]
+fn quit_app(app: tauri::AppHandle) {
+    app.exit(0);
 }
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
@@ -157,7 +164,7 @@ pub fn run() {
 
             Ok(())
         })
-        .invoke_handler(tauri::generate_handler![update_badge])
+        .invoke_handler(tauri::generate_handler![update_badge, quit_app])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
 }
