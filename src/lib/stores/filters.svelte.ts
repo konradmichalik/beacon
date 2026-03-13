@@ -1,4 +1,4 @@
-import type { NotificationSource, NotificationType, SubjectState } from '$lib/types';
+import type { NotificationSource, NotificationType } from '$lib/types';
 
 export type SortMode = 'date' | 'project';
 export type StatusFilter = 'open' | 'closed';
@@ -83,7 +83,9 @@ export function clearAllFilters(): void {
 }
 
 export function hasActiveFilters(): boolean {
-  return filterState.types.size > 0 || filterState.projects.size > 0 || filterState.statuses.size > 0;
+  return (
+    filterState.types.size > 0 || filterState.projects.size > 0 || filterState.statuses.size > 0
+  );
 }
 
 export function resetFilters(): void {
