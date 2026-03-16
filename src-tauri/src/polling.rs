@@ -138,6 +138,7 @@ struct GLProject {
 struct GLTarget {
     title: String,
     state: Option<String>,
+    updated_at: Option<String>,
 }
 
 #[derive(Deserialize)]
@@ -405,22 +406,33 @@ async fn fetch_gitlab(client: &reqwest::Client, config: &GitLabConfig) -> Vec<Un
     items
         .into_iter()
         .filter(|t| t.author.username != config.username)
-        .map(|t| UnifiedNotification {
-            id: format!("gitlab-{}", t.id),
-            source: "gitlab".into(),
-            kind: gl_type(&t.target_type).into(),
-            title: t.target.title,
-            repository: t.project.path_with_namespace,
-            url: t.target_url,
-            reason: gl_reason(&t.action_name, &t.body),
-            unread: t.state == "pending",
-            updated_at: t.updated_at,
-            created_at: t.created_at,
-            author: Some(Author {
-                login: t.author.username,
-                avatar_url: t.author.avatar_url,
-            }),
-            subject_state: gl_state(t.target.state.as_deref()),
+        .map(|t| {
+            // Use the latest of todo.updated_at and target.updated_at so the
+            // displayed time reflects the most recent MR activity, not just
+            // when the todo was originally created.
+            let effective_updated = match &t.target.updated_at {
+                Some(target_ts) if target_ts.as_str() > t.updated_at.as_str() => {
+                    target_ts.clone()
+                }
+                _ => t.updated_at,
+            };
+            UnifiedNotification {
+                id: format!("gitlab-{}", t.id),
+                source: "gitlab".into(),
+                kind: gl_type(&t.target_type).into(),
+                title: t.target.title,
+                repository: t.project.path_with_namespace,
+                url: t.target_url,
+                reason: gl_reason(&t.action_name, &t.body),
+                unread: t.state == "pending",
+                updated_at: effective_updated,
+                created_at: t.created_at,
+                author: Some(Author {
+                    login: t.author.username,
+                    avatar_url: t.author.avatar_url,
+                }),
+                subject_state: gl_state(t.target.state.as_deref()),
+            }
         })
         .collect()
 }
@@ -525,6 +537,7 @@ async fn do_poll(app: &AppHandle) {
     let mut results = Vec::with_capacity(gh.len() + gl.len());
     results.extend(gh);
     results.extend(gl);
+
     results.sort_by(|a, b| b.updated_at.cmp(&a.updated_at));
 
     {

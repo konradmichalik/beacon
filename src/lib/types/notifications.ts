@@ -81,6 +81,7 @@ export interface GitLabTodo {
     readonly title: string;
     readonly iid: number;
     readonly state?: string;
+    readonly updated_at?: string;
   };
   readonly author: {
     readonly username: string;
