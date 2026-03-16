@@ -10,6 +10,7 @@
   import {
     getUnreadCount,
     getCountBySource,
+    getFilteredNotifications,
     markAllAsRead
   } from '$lib/stores/notifications.svelte';
   import { isServiceConnected } from '$lib/stores/connections.svelte';
@@ -28,6 +29,19 @@
   let githubConnected = $derived(isServiceConnected('github'));
   let gitlabConnected = $derived(isServiceConnected('gitlab'));
   let bothConnected = $derived(githubConnected && gitlabConnected);
+
+  let filteredIds = $derived(
+    new Set(
+      getFilteredNotifications(
+        filterState.source,
+        filterState.project,
+        filterState.sort,
+        filterState.types,
+        filterState.projects,
+        filterState.statuses
+      ).map((n) => n.id)
+    )
+  );
 
   let filtersActive = $derived(hasActiveFilters());
   let popoverOpen = $state(false);
@@ -112,7 +126,7 @@
     <!-- Mark all as read -->
     <button
       type="button"
-      onclick={() => markAllAsRead()}
+      onclick={() => markAllAsRead(filteredIds)}
       disabled={totalCount === 0}
       title="Mark all as read"
       class="rounded-full border border-border bg-card p-1.5 text-muted-foreground transition-colors hover:border-foreground/20 hover:text-foreground disabled:opacity-30"
