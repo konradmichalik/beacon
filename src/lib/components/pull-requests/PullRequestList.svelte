@@ -4,7 +4,8 @@
   import { hasAnyServiceConfigured } from '$lib/stores/connections.svelte';
   import PullRequestCard from './PullRequestCard.svelte';
   import EmptyState from '../notifications/EmptyState.svelte';
-  import { Inbox, PartyPopper } from '@lucide/svelte';
+  import PartyPopperIcon from '$lib/components/icons/PartyPopperIcon.svelte';
+  import { Inbox } from '@lucide/svelte';
   import type { NotificationSource, PRRoleFilter } from '$lib/types';
 
   let {
@@ -51,7 +52,7 @@
     ></div>
   </div>
 {:else if items.length === 0}
-  <EmptyState icon={PartyPopper} title="All clear" description="No open pull requests." />
+  <EmptyState icon={PartyPopperIcon} title="All clear" description="No open pull requests." iconSize={48} />
 {:else}
   <div class="flex min-h-full flex-col">
     {#if roleFilter === 'all' && authored.length > 0}
