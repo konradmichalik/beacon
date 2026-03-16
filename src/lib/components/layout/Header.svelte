@@ -1,13 +1,8 @@
 <script lang="ts">
-  import { Settings, RefreshCw, CheckCheck, Power } from '@lucide/svelte';
+  import { Settings, RefreshCw, Power } from '@lucide/svelte';
   import { invoke } from '@tauri-apps/api/core';
   import BeaconLogo from '$lib/components/icons/BeaconLogo.svelte';
-  import {
-    getIsLoading,
-    getUnreadCount,
-    refreshNotifications,
-    markAllAsRead
-  } from '$lib/stores/notifications.svelte';
+  import { getIsLoading, refreshNotifications } from '$lib/stores/notifications.svelte';
   import { getIsPRLoading, refreshPullRequests } from '$lib/stores/pull-requests.svelte';
   import type { ViewTab } from './ViewTabs.svelte';
 
@@ -17,8 +12,6 @@
   }: { onSettingsToggle: () => void; activeView?: ViewTab } = $props();
 
   let isLoading = $derived(activeView === 'notifications' ? getIsLoading() : getIsPRLoading());
-  let unreadCount = $derived(getUnreadCount());
-  let showMarkAllRead = $derived(activeView === 'notifications');
 
   function handleRefresh(): void {
     if (activeView === 'notifications') {
@@ -29,22 +22,11 @@
   }
 </script>
 
-<header class="flex items-center justify-between px-4 py-2">
+<header class="flex items-center justify-between px-4 pt-2">
   <div class="flex items-center">
     <BeaconLogo height={18} class="text-foreground" />
   </div>
   <div class="flex items-center gap-0.5">
-    {#if showMarkAllRead}
-      <button
-        type="button"
-        onclick={() => markAllAsRead()}
-        disabled={unreadCount === 0}
-        class="rounded-md p-1.5 text-muted-foreground transition-colors hover:bg-secondary hover:text-foreground disabled:opacity-30"
-        title="Mark all as read"
-      >
-        <CheckCheck size={14} />
-      </button>
-    {/if}
     <button
       type="button"
       onclick={handleRefresh}

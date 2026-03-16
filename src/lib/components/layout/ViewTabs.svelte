@@ -22,7 +22,7 @@
   ];
 </script>
 
-<div class="flex gap-1 border-b border-border px-4 pt-0.5 pb-0">
+<div class="flex justify-center gap-1 border-b border-border px-4 pt-0.5 pb-0">
   {#each tabs as tab (tab.id)}
     {@const TabIcon = tab.icon}
     {@const count = tab.getCount()}
