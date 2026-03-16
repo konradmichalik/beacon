@@ -1,18 +1,28 @@
 <script lang="ts">
   import Header from './Header.svelte';
+  import ViewTabs from './ViewTabs.svelte';
+  import type { ViewTab } from './ViewTabs.svelte';
   import NotificationList from '../notifications/NotificationList.svelte';
   import FilterBar from '../notifications/FilterBar.svelte';
+  import PullRequestList from '../pull-requests/PullRequestList.svelte';
+  import PRFilterBar from '../pull-requests/PRFilterBar.svelte';
   import SettingsView from '../settings/SettingsView.svelte';
   import { hasAnyServiceConfigured } from '$lib/stores/connections.svelte';
   import { startPolling, markAllSeen } from '$lib/stores/notifications.svelte';
   import { ArrowLeft, ArrowUp } from '@lucide/svelte';
   import { onMount } from 'svelte';
+  import type { NotificationSource, PRRoleFilter } from '$lib/types';
+  import type { PRSortMode } from '$lib/stores/pull-requests.svelte';
 
   let { initialTab = 'notifications' as const }: { initialTab?: 'notifications' | 'settings' } =
     $props();
   let showSettings = $state(initialTab === 'settings');
   let scrollEl: HTMLDivElement | undefined = $state();
   let showScrollTop = $state(false);
+  let activeView: ViewTab = $state('notifications');
+  let prSourceFilter: NotificationSource | 'all' = $state('all');
+  let prRoleFilter: PRRoleFilter = $state('all');
+  let prSort: PRSortMode = $state('updated');
 
   function toggleSettings(): void {
     showSettings = !showSettings;
@@ -58,11 +68,27 @@
       <SettingsView />
     </div>
   {:else}
-    <Header onSettingsToggle={toggleSettings} />
-    <FilterBar />
+    <Header onSettingsToggle={toggleSettings} {activeView} />
+    <ViewTabs activeTab={activeView} onTabChange={(tab) => (activeView = tab)} />
+    {#if activeView === 'notifications'}
+      <FilterBar />
+    {:else}
+      <PRFilterBar
+        sourceFilter={prSourceFilter}
+        roleFilter={prRoleFilter}
+        sort={prSort}
+        onSourceChange={(s) => (prSourceFilter = s)}
+        onRoleChange={(r) => (prRoleFilter = r)}
+        onSortChange={(s) => (prSort = s)}
+      />
+    {/if}
     <div class="relative flex-1 overflow-hidden">
       <div class="h-full overflow-y-auto bg-card" bind:this={scrollEl} onscroll={handleScroll}>
-        <NotificationList />
+        {#if activeView === 'notifications'}
+          <NotificationList />
+        {:else}
+          <PullRequestList sourceFilter={prSourceFilter} roleFilter={prRoleFilter} sort={prSort} />
+        {/if}
       </div>
       <button
         type="button"

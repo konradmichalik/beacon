@@ -16,6 +16,12 @@
     isDemoMode,
     loadDemoData
   } from './lib/stores/notifications.svelte';
+  import {
+    startPRPolling,
+    stopPRPolling,
+    restartPRPolling,
+    loadDemoPRs
+  } from './lib/stores/pull-requests.svelte';
   import { startSummaryTimer, stopSummaryTimer } from './lib/services/desktop-notifications';
   import { onMount } from 'svelte';
 
@@ -26,15 +32,20 @@
     async function initialize(): Promise<void> {
       try {
         await initializeSettings();
-        setPollingChangeCallback(restartPolling);
+        setPollingChangeCallback(() => {
+          restartPolling();
+          restartPRPolling();
+        });
         setBadgeModeChangeCallback(refreshBadge);
         setNotifyChangeCallback(startSummaryTimer);
         await initializeConnections();
 
         if (isDemoMode()) {
           loadDemoData();
+          loadDemoPRs();
         } else if (hasAnyServiceConfigured()) {
           startPolling();
+          startPRPolling();
           startSummaryTimer();
         } else {
           initialTab = 'settings';
@@ -48,6 +59,7 @@
 
     return () => {
       stopPolling();
+      stopPRPolling();
       stopSummaryTimer();
     };
   });

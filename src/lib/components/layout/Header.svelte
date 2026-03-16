@@ -8,30 +8,46 @@
     refreshNotifications,
     markAllAsRead
   } from '$lib/stores/notifications.svelte';
+  import { getIsPRLoading, refreshPullRequests } from '$lib/stores/pull-requests.svelte';
+  import type { ViewTab } from './ViewTabs.svelte';
 
-  let { onSettingsToggle }: { onSettingsToggle: () => void } = $props();
+  let {
+    onSettingsToggle,
+    activeView = 'notifications'
+  }: { onSettingsToggle: () => void; activeView?: ViewTab } = $props();
 
-  let isLoading = $derived(getIsLoading());
+  let isLoading = $derived(activeView === 'notifications' ? getIsLoading() : getIsPRLoading());
   let unreadCount = $derived(getUnreadCount());
+  let showMarkAllRead = $derived(activeView === 'notifications');
+
+  function handleRefresh(): void {
+    if (activeView === 'notifications') {
+      refreshNotifications();
+    } else {
+      refreshPullRequests();
+    }
+  }
 </script>
 
-<header class="flex items-center justify-between border-b border-border px-4 py-2.5">
+<header class="flex items-center justify-between px-4 py-2">
   <div class="flex items-center">
     <BeaconLogo height={18} class="text-foreground" />
   </div>
   <div class="flex items-center gap-0.5">
+    {#if showMarkAllRead}
+      <button
+        type="button"
+        onclick={() => markAllAsRead()}
+        disabled={unreadCount === 0}
+        class="rounded-md p-1.5 text-muted-foreground transition-colors hover:bg-secondary hover:text-foreground disabled:opacity-30"
+        title="Mark all as read"
+      >
+        <CheckCheck size={14} />
+      </button>
+    {/if}
     <button
       type="button"
-      onclick={() => markAllAsRead()}
-      disabled={unreadCount === 0}
-      class="rounded-md p-1.5 text-muted-foreground transition-colors hover:bg-secondary hover:text-foreground disabled:opacity-30"
-      title="Mark all as read"
-    >
-      <CheckCheck size={14} />
-    </button>
-    <button
-      type="button"
-      onclick={() => refreshNotifications()}
+      onclick={handleRefresh}
       disabled={isLoading}
       class="rounded-md p-1.5 text-muted-foreground transition-colors hover:bg-secondary hover:text-foreground disabled:opacity-50"
       title="Refresh"
