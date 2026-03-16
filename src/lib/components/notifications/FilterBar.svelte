@@ -154,7 +154,7 @@
       <div
         use:clickOutside={() => (sortOpen = false)}
         style="position:fixed;top:{rect.bottom + 4}px;right:{window.innerWidth - rect.right}px;"
-        class="z-50 min-w-[100px] rounded-lg border border-border bg-card py-1 shadow-lg"
+        class="z-50 min-w-[120px] rounded-lg border border-border bg-card py-1 shadow-lg"
       >
         {#each sortOptions as opt (opt.value)}
           <button

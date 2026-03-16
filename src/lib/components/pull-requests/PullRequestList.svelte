@@ -4,7 +4,7 @@
   import { hasAnyServiceConfigured } from '$lib/stores/connections.svelte';
   import PullRequestCard from './PullRequestCard.svelte';
   import EmptyState from '../notifications/EmptyState.svelte';
-  import { Inbox, GitPullRequest } from '@lucide/svelte';
+  import { Inbox, PartyPopper } from '@lucide/svelte';
   import type { NotificationSource, PRRoleFilter } from '$lib/types';
 
   let {
@@ -51,7 +51,7 @@
     ></div>
   </div>
 {:else if items.length === 0}
-  <EmptyState icon={GitPullRequest} title="No open PRs" description="Nothing to review or merge." />
+  <EmptyState icon={PartyPopper} title="All clear" description="No open pull requests." />
 {:else}
   <div class="flex min-h-full flex-col">
     {#if roleFilter === 'all' && authored.length > 0}

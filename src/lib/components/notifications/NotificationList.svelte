@@ -64,7 +64,7 @@
     ></div>
   </div>
 {:else if items.length === 0}
-  <EmptyState icon={Inbox} title="All clear" description="No notifications right now." />
+  <EmptyState icon={PartyPopper} title="All clear" description="No unread notifications." />
 {:else}
   <div class="flex min-h-full flex-col">
     <!-- Unread -->
@@ -82,7 +82,9 @@
             <span class="truncate text-[11px] font-semibold text-muted-foreground">
               {group.repository}
             </span>
-            <span class="ml-auto shrink-0 text-[10px] text-muted-foreground">
+            <span
+              class="ml-auto shrink-0 rounded-full bg-secondary px-1.5 py-px text-[9px] font-semibold leading-tight text-muted-foreground"
+            >
               {group.notifications.length}
             </span>
           </div>
@@ -101,11 +103,8 @@
 
     <!-- Spacer pushes read section to bottom when unread list is short -->
     {#if unreadItems.length === 0}
-      <div
-        class="flex flex-1 flex-col items-center justify-center gap-2 py-12 text-muted-foreground"
-      >
-        <PartyPopper size={72} strokeWidth={1} class="opacity-20" />
-        <span class="text-[11px]">No unread notifications</span>
+      <div class="flex-1">
+        <EmptyState icon={PartyPopper} title="All clear" description="No unread notifications." />
       </div>
     {:else}
       <div class="flex-1"></div>
@@ -120,7 +119,7 @@
       >
         <ChevronRight size={12} class="transition-transform {showRead ? 'rotate-90' : ''}" />
         Read
-        <span class="rounded-full bg-secondary px-1.5 py-px text-[9px] font-semibold"
+        <span class="rounded-full bg-secondary px-1.5 py-px text-[9px] font-semibold leading-tight"
           >{readItems.length}</span
         >
       </button>
