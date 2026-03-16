@@ -161,6 +161,36 @@
         </div>
       </section>
     {/if}
+
+    <!-- Filtering -->
+    <section>
+      <h3 class="mb-3 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+        Filtering
+      </h3>
+      <label class="flex cursor-pointer items-center justify-between gap-3">
+        <div>
+          <span class="text-xs font-medium text-foreground">Hide closed &amp; merged</span>
+          <p class="text-[10px] text-muted-foreground">
+            Don't show notifications for closed or merged items.
+          </p>
+        </div>
+        <button
+          type="button"
+          role="switch"
+          aria-checked={settingsState.hideClosed}
+          onclick={() => updateSettings({ hideClosed: !settingsState.hideClosed })}
+          class="relative inline-flex h-5 w-9 shrink-0 items-center rounded-full transition-colors {settingsState.hideClosed
+            ? 'bg-primary'
+            : 'bg-secondary'}"
+        >
+          <span
+            class="inline-block h-3.5 w-3.5 rounded-full bg-white shadow-sm transition-transform {settingsState.hideClosed
+              ? 'translate-x-4'
+              : 'translate-x-0.5'}"
+          />
+        </button>
+      </label>
+    </section>
   {:else if activeTab === 'preferences'}
     <!-- Refresh Interval -->
     <section>
@@ -206,8 +236,8 @@
       </div>
       <p class="mt-1.5 text-[10px] text-muted-foreground">
         {settingsState.badgeMode === 'count'
-          ? 'Shows the number of notifications next to the icon.'
-          : 'Shows a dot indicator when notifications are pending.'}
+          ? 'Shows unread notification count next to the menubar icon.'
+          : 'Shows a colored dot when unread notifications are pending.'}
       </p>
 
       {#if settingsState.badgeMode === 'dot'}
@@ -233,36 +263,6 @@
           </div>
         </div>
       {/if}
-    </section>
-
-    <!-- Filtering -->
-    <section>
-      <h3 class="mb-3 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-        Filtering
-      </h3>
-      <label class="flex cursor-pointer items-center justify-between gap-3">
-        <div>
-          <span class="text-xs font-medium text-foreground">Hide closed &amp; merged</span>
-          <p class="text-[10px] text-muted-foreground">
-            Don't show notifications for closed or merged items.
-          </p>
-        </div>
-        <button
-          type="button"
-          role="switch"
-          aria-checked={settingsState.hideClosed}
-          onclick={() => updateSettings({ hideClosed: !settingsState.hideClosed })}
-          class="relative inline-flex h-5 w-9 shrink-0 items-center rounded-full transition-colors {settingsState.hideClosed
-            ? 'bg-primary'
-            : 'bg-secondary'}"
-        >
-          <span
-            class="inline-block h-3.5 w-3.5 rounded-full bg-white shadow-sm transition-transform {settingsState.hideClosed
-              ? 'translate-x-4'
-              : 'translate-x-0.5'}"
-          />
-        </button>
-      </label>
     </section>
 
     <!-- Theme -->
