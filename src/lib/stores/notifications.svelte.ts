@@ -253,15 +253,18 @@ export function loadDemoData(): void {
 
 // ── Mark as read/unread ─────────────────────────────────────────
 
-export function markAllAsRead(): void {
-  const unread = notifications.filter((n) => n.unread);
+export function markAllAsRead(ids?: ReadonlySet<string>): void {
+  const unread = notifications.filter((n) => n.unread && (!ids || ids.has(n.id)));
   if (unread.length === 0) return;
 
   for (const n of unread) {
     locallyReadIds.add(n.id);
   }
-  notifications = notifications.map((n) => (n.unread ? { ...n, unread: false } : n));
-  updateTrayBadge(0);
+  notifications = notifications.map((n) =>
+    n.unread && (!ids || ids.has(n.id)) ? { ...n, unread: false } : n
+  );
+  const unreadCount = notifications.filter((n) => n.unread).length;
+  updateTrayBadge(unreadCount);
 
   // Mark on servers (best-effort)
   markOnServers(unread).catch(() => {});
