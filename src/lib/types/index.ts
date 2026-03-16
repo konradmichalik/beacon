@@ -20,3 +20,10 @@ export type {
   ServiceState,
   AllConnectionsState
 } from './connections';
+
+export type {
+  CIStatus,
+  ReviewDecision,
+  PRRoleFilter,
+  UnifiedPullRequest
+} from './pull-requests';
