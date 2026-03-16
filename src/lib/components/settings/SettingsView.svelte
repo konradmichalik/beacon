@@ -220,7 +220,9 @@
                 playNotificationSound(settingsState.notifySound);
                 setTimeout(() => (isPlayingPreview = false), 400);
               }}
-              class="flex h-[30px] w-[30px] items-center justify-center rounded-md bg-secondary text-secondary-foreground transition-all hover:bg-secondary/80 {isPlayingPreview ? 'scale-90 bg-primary/20 text-primary' : ''}"
+              class="flex h-[30px] w-[30px] items-center justify-center rounded-md bg-secondary text-secondary-foreground transition-all hover:bg-secondary/80 {isPlayingPreview
+                ? 'scale-90 bg-primary/20 text-primary'
+                : ''}"
               aria-label="Preview sound"
             >
               <Play size={12} />
