@@ -57,6 +57,12 @@ function mapTargetState(state?: string): SubjectState {
 }
 
 function mapToUnified(todo: GitLabTodo): UnifiedNotification {
+  // Use the later of todo.updated_at and target.updated_at so the displayed
+  // time reflects the most recent MR activity, not just when the todo was created.
+  const targetUpdated = todo.target.updated_at;
+  const effectiveUpdated =
+    targetUpdated && targetUpdated > todo.updated_at ? targetUpdated : todo.updated_at;
+
   return {
     id: `gitlab-${todo.id}`,
     source: 'gitlab',
@@ -66,7 +72,7 @@ function mapToUnified(todo: GitLabTodo): UnifiedNotification {
     url: todo.target_url,
     reason: mapActionToReason(todo.action_name, todo.body),
     unread: todo.state === 'pending',
-    updatedAt: todo.updated_at,
+    updatedAt: effectiveUpdated,
     createdAt: todo.created_at,
     author: todo.author ? { login: todo.author.username, avatarUrl: todo.author.avatar_url } : null,
     subjectState: mapTargetState(todo.target.state)

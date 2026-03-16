@@ -54,23 +54,6 @@
   <EmptyState icon={GitPullRequest} title="No open PRs" description="Nothing to review or merge." />
 {:else}
   <div class="flex min-h-full flex-col">
-    {#if roleFilter === 'all' && reviewRequested.length > 0}
-      <!-- Review Requested Section -->
-      <div
-        class="sticky top-0 z-10 flex items-center gap-1.5 border-b border-border bg-card/95 px-4 py-1.5 backdrop-blur-sm"
-      >
-        <span class="text-[11px] font-semibold text-muted-foreground">To review</span>
-        <span
-          class="ml-auto shrink-0 rounded-full bg-secondary px-1.5 py-px text-[9px] font-semibold text-muted-foreground"
-        >
-          {reviewRequested.length}
-        </span>
-      </div>
-      {#each reviewRequested as pr (pr.id)}
-        <PullRequestCard pullRequest={pr} />
-      {/each}
-    {/if}
-
     {#if roleFilter === 'all' && authored.length > 0}
       <!-- Authored Section -->
       <div
@@ -84,6 +67,23 @@
         </span>
       </div>
       {#each authored as pr (pr.id)}
+        <PullRequestCard pullRequest={pr} />
+      {/each}
+    {/if}
+
+    {#if roleFilter === 'all' && reviewRequested.length > 0}
+      <!-- Review Requested Section -->
+      <div
+        class="sticky top-0 z-10 flex items-center gap-1.5 border-b border-border bg-card/95 px-4 py-1.5 backdrop-blur-sm"
+      >
+        <span class="text-[11px] font-semibold text-muted-foreground">To review</span>
+        <span
+          class="ml-auto shrink-0 rounded-full bg-secondary px-1.5 py-px text-[9px] font-semibold text-muted-foreground"
+        >
+          {reviewRequested.length}
+        </span>
+      </div>
+      {#each reviewRequested as pr (pr.id)}
         <PullRequestCard pullRequest={pr} />
       {/each}
     {/if}
