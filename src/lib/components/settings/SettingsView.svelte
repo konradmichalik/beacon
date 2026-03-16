@@ -84,7 +84,7 @@
 
 <!-- Tab bar -->
 <div class="flex border-b border-border">
-  {#each tabs as tab}
+  {#each tabs as tab (tab.value)}
     {@const Icon = tab.icon}
     <button
       type="button"
@@ -113,7 +113,7 @@
         Desktop Notifications
       </h3>
       <div class="flex gap-1.5">
-        {#each notifyOptions as option}
+        {#each notifyOptions as option (option.value)}
           {@const Icon = option.icon}
           <button
             type="button"
@@ -146,7 +146,7 @@
           Summary Interval
         </h3>
         <div class="flex gap-1.5">
-          {#each summaryIntervalOptions as option}
+          {#each summaryIntervalOptions as option (option.value)}
             <button
               type="button"
               onclick={() => updateSettings({ notifySummaryMinutes: option.value })}
@@ -177,6 +177,7 @@
         <button
           type="button"
           role="switch"
+          aria-label="Toggle hide closed and merged"
           aria-checked={settingsState.hideClosed}
           onclick={() => updateSettings({ hideClosed: !settingsState.hideClosed })}
           class="relative inline-flex h-5 w-9 shrink-0 items-center rounded-full transition-colors {settingsState.hideClosed
@@ -187,7 +188,7 @@
             class="inline-block h-3.5 w-3.5 rounded-full bg-white shadow-sm transition-transform {settingsState.hideClosed
               ? 'translate-x-4'
               : 'translate-x-0.5'}"
-          />
+          ></span>
         </button>
       </label>
     </section>
@@ -198,7 +199,7 @@
         Refresh Interval
       </h3>
       <div class="flex gap-1.5">
-        {#each intervalOptions as option}
+        {#each intervalOptions as option (option.value)}
           <button
             type="button"
             onclick={() => updateSettings({ pollingInterval: option.value })}
@@ -219,7 +220,7 @@
         Menubar Icon
       </h3>
       <div class="flex gap-1.5">
-        {#each badgeOptions as option}
+        {#each badgeOptions as option (option.value)}
           {@const Icon = option.icon}
           <button
             type="button"
@@ -244,7 +245,7 @@
         <div class="mt-3">
           <h4 class="mb-2 text-[11px] font-medium text-muted-foreground">Dot Color</h4>
           <div class="flex gap-1.5">
-            {#each dotColorOptions as option}
+            {#each dotColorOptions as option (option.value)}
               <button
                 type="button"
                 onclick={() => updateSettings({ dotColor: option.value })}
@@ -271,7 +272,7 @@
         Theme
       </h3>
       <div class="flex gap-1.5">
-        {#each themeOptions as option}
+        {#each themeOptions as option (option.value)}
           {@const Icon = option.icon}
           <button
             type="button"

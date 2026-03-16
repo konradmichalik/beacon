@@ -13,6 +13,7 @@ let notifications: UnifiedNotification[] = $state([]);
 let isLoading = $state(false);
 let lastRefresh: string | null = $state(null);
 // Track IDs marked as read locally so refreshes don't revert them
+// eslint-disable-next-line svelte/prefer-svelte-reactivity -- not reactive state, internal bookkeeping
 const locallyReadIds = new Set<string>();
 // Timestamp of the last time the user opened the popup
 let lastSeenAt: string | null = $state(null);
@@ -46,6 +47,7 @@ export function getLastSeenAt(): string | null {
 }
 
 export function markAllSeen(): void {
+  // eslint-disable-next-line svelte/prefer-svelte-reactivity -- timestamp string, not reactive Date
   lastSeenAt = new Date().toISOString();
 }
 
@@ -53,8 +55,11 @@ export function getFilteredNotifications(
   sourceFilter: NotificationSource | 'all',
   projectFilter: string | null,
   sort: SortMode = 'date',
+  // eslint-disable-next-line svelte/prefer-svelte-reactivity -- default param, not state
   typeFilter: ReadonlySet<NotificationType> = new Set(),
+  // eslint-disable-next-line svelte/prefer-svelte-reactivity -- default param, not state
   projectsFilter: ReadonlySet<string> = new Set(),
+  // eslint-disable-next-line svelte/prefer-svelte-reactivity -- default param, not state
   statusFilter: ReadonlySet<StatusFilter> = new Set()
 ): readonly UnifiedNotification[] {
   let filtered: UnifiedNotification[] = [...notifications];
@@ -91,6 +96,7 @@ export function getFilteredNotifications(
     filtered.sort((a, b) => {
       const repoCmp = a.repository.localeCompare(b.repository);
       if (repoCmp !== 0) return repoCmp;
+      // eslint-disable-next-line svelte/prefer-svelte-reactivity -- date parsing for sort comparison
       return new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime();
     });
   }
@@ -99,6 +105,7 @@ export function getFilteredNotifications(
 }
 
 export function getUniqueTypes(): readonly NotificationType[] {
+  // eslint-disable-next-line svelte/prefer-svelte-reactivity -- ephemeral dedup, not state
   return [...new Set(notifications.map((n) => n.type))].sort();
 }
 
@@ -115,6 +122,7 @@ export function getGroupedNotifications(
     filtered = filtered.filter((n) => n.repository === projectFilter);
   }
 
+  // eslint-disable-next-line svelte/prefer-svelte-reactivity -- local grouping map, not state
   const grouped = new Map<string, { source: NotificationSource; items: UnifiedNotification[] }>();
 
   for (const notification of filtered) {
@@ -140,10 +148,12 @@ export interface ProjectInfo {
 }
 
 export function getUniqueProjects(): readonly string[] {
+  // eslint-disable-next-line svelte/prefer-svelte-reactivity -- ephemeral dedup, not state
   return [...new Set(notifications.map((n) => n.repository))].sort();
 }
 
 export function getUniqueProjectsWithSource(): readonly ProjectInfo[] {
+  // eslint-disable-next-line svelte/prefer-svelte-reactivity -- local lookup map, not state
   const seen = new Map<string, NotificationSource>();
   for (const n of notifications) {
     if (!seen.has(n.repository)) {
@@ -243,11 +253,13 @@ export function refreshBadge(): void {
 declare const __DEMO_MODE__: boolean;
 
 export function isDemoMode(): boolean {
+  // eslint-disable-next-line svelte/prefer-svelte-reactivity -- one-time URL check, not state
   return __DEMO_MODE__ || new URLSearchParams(window.location.search).has('demo');
 }
 
 export function loadDemoData(): void {
   notifications = [...demoNotifications];
+  // eslint-disable-next-line svelte/prefer-svelte-reactivity -- timestamp string, not reactive Date
   lastRefresh = new Date().toISOString();
 }
 

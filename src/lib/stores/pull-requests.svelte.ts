@@ -41,6 +41,7 @@ export function getFilteredPRs(
   }
 
   const dateKey = sort === 'created' ? 'createdAt' : 'updatedAt';
+  // eslint-disable-next-line svelte/prefer-svelte-reactivity -- date parsing for sort comparison
   filtered.sort((a, b) => new Date(b[dateKey]).getTime() - new Date(a[dateKey]).getTime());
 
   return filtered;
@@ -87,6 +88,7 @@ export async function refreshPullRequests(): Promise<void> {
     await Promise.all(promises);
 
     // Sort by updatedAt descending
+    // eslint-disable-next-line svelte/prefer-svelte-reactivity -- date parsing for sort comparison
     results.sort((a, b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime());
 
     pullRequests = results;
