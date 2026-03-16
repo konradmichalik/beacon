@@ -30,7 +30,7 @@ brew install konradmichalik/tap/beacon
 ### Update
 
 ```bash
-brew upgrade beacon
+brew update && brew upgrade beacon
 ```
 
 ## ⚙️ Configuration
