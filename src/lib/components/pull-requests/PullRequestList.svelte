@@ -52,7 +52,12 @@
     ></div>
   </div>
 {:else if items.length === 0}
-  <EmptyState icon={PartyPopperIcon} title="All clear" description="No open pull requests." iconSize={48} />
+  <EmptyState
+    icon={PartyPopperIcon}
+    title="All clear"
+    description="No open pull requests."
+    iconSize={48}
+  />
 {:else}
   <div class="flex min-h-full flex-col">
     {#if roleFilter === 'all' && authored.length > 0}

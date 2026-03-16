@@ -65,7 +65,12 @@
     ></div>
   </div>
 {:else if items.length === 0}
-  <EmptyState icon={PartyPopperIcon} title="All clear" description="No unread notifications." iconSize={48} />
+  <EmptyState
+    icon={PartyPopperIcon}
+    title="All clear"
+    description="No unread notifications."
+    iconSize={48}
+  />
 {:else}
   <div class="flex min-h-full flex-col">
     <!-- Unread -->
@@ -105,7 +110,12 @@
     <!-- Spacer pushes read section to bottom when unread list is short -->
     {#if unreadItems.length === 0}
       <div class="flex min-h-0 flex-1 items-center justify-center">
-        <EmptyState icon={PartyPopperIcon} title="All clear" description="No unread notifications." iconSize={48} />
+        <EmptyState
+          icon={PartyPopperIcon}
+          title="All clear"
+          description="No unread notifications."
+          iconSize={48}
+        />
       </div>
     {:else}
       <div class="flex-1"></div>
