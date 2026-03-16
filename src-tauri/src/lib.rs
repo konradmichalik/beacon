@@ -147,7 +147,6 @@ pub fn run() {
                     use objc2::runtime::{AnyClass, AnyObject};
                     use objc2_app_kit::{
                         NSPanel, NSPopUpMenuWindowLevel, NSWindowCollectionBehavior,
-                        NSWindowStyleMask,
                     };
 
                     if let Ok(ns_window) = window.ns_window() {
@@ -160,13 +159,13 @@ pub fn run() {
 
                             let panel = &*(ns_window as *const NSPanel);
 
-                            // NonactivatingPanel: clicking the panel doesn't steal
-                            // focus from fullscreen apps or cause space switches
-                            let mut mask = panel.styleMask();
-                            mask |= NSWindowStyleMask::NonactivatingPanel;
-                            panel.setStyleMask(mask);
-
                             panel.setFloatingPanel(true);
+
+                            // Let the panel become key on click so the WebView
+                            // receives mouse-tracking events (CSS :hover).
+                            // The app uses ActivationPolicy::Accessory, so becoming
+                            // key won't show a dock icon or steal the menu bar.
+                            panel.setBecomesKeyOnlyIfNeeded(false);
 
                             panel.setCollectionBehavior(
                                 NSWindowCollectionBehavior::CanJoinAllSpaces
