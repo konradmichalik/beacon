@@ -189,12 +189,16 @@
     {#if settingsState.notifyMode !== 'disabled'}
       <!-- Notification Sound -->
       <section>
-        <h3 class="mb-3 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+        <h3
+          id="notification-sound-heading"
+          class="mb-3 text-xs font-semibold uppercase tracking-wider text-muted-foreground"
+        >
           Notification Sound
         </h3>
         <div class="inline-flex items-center gap-1.5">
           <div class="relative">
             <select
+              aria-labelledby="notification-sound-heading"
               value={settingsState.notifySound}
               onchange={(e) => {
                 const value = e.currentTarget.value as NotifySound;
@@ -203,7 +207,7 @@
               }}
               class="w-28 cursor-pointer appearance-none rounded-md border border-border bg-secondary py-1.5 pl-2.5 pr-7 text-xs font-medium text-foreground outline-none transition-colors focus:border-primary"
             >
-              {#each soundOptions as option}
+              {#each soundOptions as option (option.value)}
                 <option value={option.value}>{option.label}</option>
               {/each}
             </select>

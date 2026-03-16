@@ -14,6 +14,7 @@ export function playNotificationSound(sound: NotifySound): void {
     return;
   }
 
+  cachedAudio?.pause();
   cachedAudio = new Audio(src);
   cachedSound = sound;
   cachedAudio.play().catch(() => {});

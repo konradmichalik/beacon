@@ -186,8 +186,13 @@ function updateFromBackend(items: UnifiedNotification[]): void {
     if (!ids.has(id)) locallyReadIds.delete(id);
   }
 
+  // Apply local read state overlay
+  const effectiveItems = items.map((n) =>
+    locallyReadIds.has(n.id) ? { ...n, unread: false } : n
+  );
+
   // Detect genuinely new unread notifications for sound playback
-  const currentUnreadIds = new Set(items.filter((n) => n.unread).map((n) => n.id));
+  const currentUnreadIds = new Set(effectiveItems.filter((n) => n.unread).map((n) => n.id));
   if (!isFirstLoad && settingsState.notifyMode !== 'disabled') {
     const hasNew = [...currentUnreadIds].some((id) => !knownUnreadIds.has(id));
     if (hasNew) {
@@ -197,8 +202,7 @@ function updateFromBackend(items: UnifiedNotification[]): void {
   knownUnreadIds = currentUnreadIds;
   isFirstLoad = false;
 
-  // Apply local read state overlay
-  notifications = items.map((n) => (locallyReadIds.has(n.id) ? { ...n, unread: false } : n));
+  notifications = effectiveItems;
   lastRefresh = new Date().toISOString();
 
   // Update badge accounting for locally-read items
