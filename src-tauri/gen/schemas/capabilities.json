@@ -1,1 +1,23 @@
-{"default":{"identifier":"default","description":"Default capabilities for the Beacon app","local":true,"windows":["main"],"permissions":["core:default","store:default","shell:allow-open","notification:default",{"identifier":"http:default","allow":[{"url":"https://api.github.com/**"},{"url":"https://github.com/**"},{"url":"https://*.gitlab.com/**"},{"url":"https://**"}]}]}}
+{
+  "default": {
+    "identifier": "default",
+    "description": "Default capabilities for the Beacon app",
+    "local": true,
+    "windows": ["main"],
+    "permissions": [
+      "core:default",
+      "store:default",
+      "shell:allow-open",
+      "notification:default",
+      {
+        "identifier": "http:default",
+        "allow": [
+          { "url": "https://api.github.com/**" },
+          { "url": "https://github.com/**" },
+          { "url": "https://*.gitlab.com/**" },
+          { "url": "https://**" }
+        ]
+      }
+    ]
+  }
+}

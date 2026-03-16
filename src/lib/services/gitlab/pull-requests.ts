@@ -96,9 +96,7 @@ async function mapToUnified(
     url: mr.web_url,
     number: mr.iid,
     draft: mr.draft,
-    author: mr.author
-      ? { login: mr.author.username, avatarUrl: mr.author.avatar_url }
-      : null,
+    author: mr.author ? { login: mr.author.username, avatarUrl: mr.author.avatar_url } : null,
     createdAt: mr.created_at,
     updatedAt: mr.updated_at,
     ciStatus: mapCIStatus(mr.head_pipeline?.status ?? null),
@@ -126,10 +124,8 @@ export async function fetchGitLabMergeRequests(
     ).catch(() => null)
   ]);
 
-  const authored: GitLabMergeRequest[] =
-    authoredRes?.ok ? await authoredRes.json() : [];
-  const reviewRequested: GitLabMergeRequest[] =
-    reviewRes?.ok ? await reviewRes.json() : [];
+  const authored: GitLabMergeRequest[] = authoredRes?.ok ? await authoredRes.json() : [];
+  const reviewRequested: GitLabMergeRequest[] = reviewRes?.ok ? await reviewRes.json() : [];
 
   // Deduplicate: review-requested wins
   const reviewIds = new Set(reviewRequested.map((mr) => mr.id));

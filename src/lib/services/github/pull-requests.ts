@@ -63,11 +63,7 @@ function mapReviewDecision(reviews: readonly GitHubReview[]): ReviewDecision | n
   return 'review_required';
 }
 
-async function fetchCheckStatus(
-  token: string,
-  repo: string,
-  ref: string
-): Promise<CIStatus> {
+async function fetchCheckStatus(token: string, repo: string, ref: string): Promise<CIStatus> {
   try {
     const response = await fetch(
       `${GITHUB_API}/repos/${repo}/commits/${ref}/check-runs?per_page=100`,
@@ -99,11 +95,7 @@ async function fetchReviewStatus(
   }
 }
 
-async function fetchHeadSha(
-  token: string,
-  repo: string,
-  number: number
-): Promise<string | null> {
+async function fetchHeadSha(token: string, repo: string, number: number): Promise<string | null> {
   try {
     const response = await fetch(`${GITHUB_API}/repos/${repo}/pulls/${number}`, {
       headers: HEADERS(token)
@@ -141,9 +133,7 @@ async function enrichPR(
     url: item.pull_request?.html_url ?? item.html_url,
     number: item.number,
     draft: item.draft ?? false,
-    author: item.user
-      ? { login: item.user.login, avatarUrl: item.user.avatar_url }
-      : null,
+    author: item.user ? { login: item.user.login, avatarUrl: item.user.avatar_url } : null,
     createdAt: item.created_at,
     updatedAt: item.updated_at,
     ciStatus,
