@@ -7,12 +7,16 @@
     hasActiveFilters
   } from '$lib/stores/filters.svelte';
   import type { SortMode } from '$lib/stores/filters.svelte';
-  import { getUnreadCount, getCountBySource } from '$lib/stores/notifications.svelte';
+  import {
+    getUnreadCount,
+    getCountBySource,
+    markAllAsRead
+  } from '$lib/stores/notifications.svelte';
   import { isServiceConnected } from '$lib/stores/connections.svelte';
   import GitHubIcon from '$lib/components/icons/GitHubIcon.svelte';
   import GitLabIcon from '$lib/components/icons/GitLabIcon.svelte';
   import FilterPopover from './FilterPopover.svelte';
-  import { ArrowDownUp, Filter } from '@lucide/svelte';
+  import { ArrowDownUp, CheckCheck, Filter } from '@lucide/svelte';
   import type { NotificationSource } from '$lib/types';
 
   type FilterOption = NotificationSource | 'all';
@@ -55,7 +59,7 @@
 </script>
 
 <div
-  class="flex items-center gap-1.5 overflow-x-auto border-b border-border px-4 py-1.5 scrollbar-none"
+  class="flex items-center gap-1.5 overflow-x-auto border-b border-border bg-secondary/40 px-4 py-1.5 scrollbar-none"
 >
   {#if bothConnected}
     <div class="flex shrink-0 overflow-hidden rounded-md border border-border" role="group">
@@ -105,6 +109,17 @@
   {/if}
 
   <div class="ml-auto flex items-center gap-1.5">
+    <!-- Mark all as read -->
+    <button
+      type="button"
+      onclick={() => markAllAsRead()}
+      disabled={totalCount === 0}
+      title="Mark all as read"
+      class="rounded-full border border-border p-1.5 text-muted-foreground transition-colors hover:border-foreground/20 hover:text-foreground disabled:opacity-30"
+    >
+      <CheckCheck size={11} />
+    </button>
+
     <!-- Filter button -->
     <button
       type="button"
