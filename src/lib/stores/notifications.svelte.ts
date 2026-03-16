@@ -5,18 +5,13 @@ import type {
   NotificationGroup
 } from '$lib/types';
 import type { SortMode, StatusFilter } from './filters.svelte';
-import { isServiceConnected, getGitHubConfig, getGitLabConfig } from './connections.svelte';
-import { fetchGitHubNotifications, markGitHubThreadRead } from '$lib/services/github/client';
-import { fetchGitLabTodos, markGitLabTodoDone } from '$lib/services/gitlab/client';
 import { settingsState } from './settings.svelte';
 import { isTauri } from '$lib/utils/storage';
-import { processNewNotifications } from '$lib/services/desktop-notifications';
 import { demoNotifications } from '$lib/utils/demo-data';
 
 let notifications: UnifiedNotification[] = $state([]);
 let isLoading = $state(false);
 let lastRefresh: string | null = $state(null);
-let pollingTimer: ReturnType<typeof setInterval> | null = null;
 // Track IDs marked as read locally so refreshes don't revert them
 const locallyReadIds = new Set<string>();
 // Timestamp of the last time the user opened the popup
@@ -160,115 +155,90 @@ export function getUniqueProjectsWithSource(): readonly ProjectInfo[] {
     .sort((a, b) => a.repository.localeCompare(b.repository));
 }
 
-async function updateTrayBadge(count: number): Promise<void> {
+async function tauriInvoke(cmd: string, args?: Record<string, unknown>): Promise<void> {
   if (!isTauri()) return;
+  const { invoke } = await import('@tauri-apps/api/core');
+  await invoke(cmd, args);
+}
 
+async function updateTrayBadge(count: number): Promise<void> {
   try {
-    const { invoke } = await import('@tauri-apps/api/core');
-    await invoke('update_badge', {
+    await tauriInvoke('update_badge', {
       count,
       mode: settingsState.badgeMode,
       dotColor: settingsState.dotColor
     });
   } catch {
-    // Badge update is best-effort — ignore failures
+    // Badge update is best-effort
   }
 }
 
-export async function refreshNotifications(): Promise<void> {
-  if (isLoading) return;
-  isLoading = true;
+// ── Backend event listener ──────────────────────────────────────
 
+function updateFromBackend(items: UnifiedNotification[]): void {
+  // Clean up locally-read IDs no longer in the list
+  const ids = new Set(items.map((n) => n.id));
+  for (const id of locallyReadIds) {
+    if (!ids.has(id)) locallyReadIds.delete(id);
+  }
+
+  // Apply local read state overlay
+  notifications = items.map((n) => (locallyReadIds.has(n.id) ? { ...n, unread: false } : n));
+  lastRefresh = new Date().toISOString();
+
+  // Update badge accounting for locally-read items
+  const unreadCount = notifications.filter((n) => n.unread).length;
+  updateTrayBadge(unreadCount);
+}
+
+export async function setupNotificationListener(): Promise<() => void> {
+  if (!isTauri()) return () => {};
+
+  const { listen } = await import('@tauri-apps/api/event');
+  const unlisten = await listen<UnifiedNotification[]>('notifications-updated', (event) => {
+    updateFromBackend(event.payload);
+  });
+  return unlisten;
+}
+
+// ── Polling (delegates to Rust backend) ─────────────────────────
+
+export async function startPolling(): Promise<void> {
   try {
-    const results: UnifiedNotification[] = [];
-
-    // Fetch from both services in parallel
-    const promises: Promise<void>[] = [];
-
-    if (isServiceConnected('github')) {
-      const config = getGitHubConfig();
-      if (config) {
-        promises.push(
-          fetchGitHubNotifications(config.token)
-            .then((items) => {
-              results.push(...items);
-            })
-            .catch(() => {
-              // Silently skip failed service — don't break the other
-            })
-        );
-      }
-    }
-
-    if (isServiceConnected('gitlab')) {
-      const config = getGitLabConfig();
-      if (config) {
-        promises.push(
-          fetchGitLabTodos(config.token, config.baseUrl)
-            .then((items) => {
-              results.push(...items);
-            })
-            .catch(() => {
-              // Silently skip failed service
-            })
-        );
-      }
-    }
-
-    await Promise.all(promises);
-
-    // Filter out own notifications
-    const githubUsername = getGitHubConfig()?.username;
-    const gitlabUsername = getGitLabConfig()?.username;
-    const filtered = results.filter((n) => {
-      if (!n.author) return true;
-      if (n.source === 'github' && githubUsername && n.author.login === githubUsername)
-        return false;
-      if (n.source === 'gitlab' && gitlabUsername && n.author.login === gitlabUsername)
-        return false;
-      return true;
-    });
-
-    // Sort by updatedAt descending
-    filtered.sort((a, b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime());
-
-    // Preserve locally-read state across refreshes
-    const refreshedIds = new Set(filtered.map((n) => n.id));
-    // Clean up IDs no longer in the list (server confirmed read or notification gone)
-    for (const id of locallyReadIds) {
-      if (!refreshedIds.has(id)) locallyReadIds.delete(id);
-    }
-    // Apply local read state
-    notifications = filtered.map((n) => (locallyReadIds.has(n.id) ? { ...n, unread: false } : n));
-    lastRefresh = new Date().toISOString();
-
-    // Desktop notifications for newly appeared items
-    processNewNotifications(notifications);
-
-    // Update tray badge based on the final (locally-adjusted) list
-    const unreadCount = notifications.filter((n) => n.unread).length;
-    await updateTrayBadge(unreadCount);
-  } finally {
-    isLoading = false;
+    await tauriInvoke('start_polling');
+  } catch {
+    // best-effort
   }
 }
 
-export function startPolling(): void {
-  stopPolling();
-  refreshNotifications();
-  pollingTimer = setInterval(refreshNotifications, settingsState.pollingInterval * 1000);
-}
-
-export function stopPolling(): void {
-  if (pollingTimer) {
-    clearInterval(pollingTimer);
-    pollingTimer = null;
+export async function stopPolling(): Promise<void> {
+  try {
+    await tauriInvoke('stop_polling');
+  } catch {
+    // best-effort
   }
 }
 
 export function restartPolling(): void {
   startPolling();
 }
+
+export async function refreshNotifications(): Promise<void> {
+  if (isLoading) return;
+  isLoading = true;
+  try {
+    await tauriInvoke('trigger_poll');
+  } finally {
+    isLoading = false;
+  }
+}
+
+export function refreshBadge(): void {
+  const unreadCount = notifications.filter((n) => n.unread).length;
+  updateTrayBadge(unreadCount);
+}
+
+// ── Demo mode ───────────────────────────────────────────────────
 
 declare const __DEMO_MODE__: boolean;
 
@@ -281,10 +251,7 @@ export function loadDemoData(): void {
   lastRefresh = new Date().toISOString();
 }
 
-export function refreshBadge(): void {
-  const unreadCount = notifications.filter((n) => n.unread).length;
-  updateTrayBadge(unreadCount);
-}
+// ── Mark as read/unread ─────────────────────────────────────────
 
 export function markAllAsRead(): void {
   const unread = notifications.filter((n) => n.unread);
@@ -297,19 +264,7 @@ export function markAllAsRead(): void {
   updateTrayBadge(0);
 
   // Mark on servers (best-effort)
-  const githubConfig = getGitHubConfig();
-  const gitlabConfig = getGitLabConfig();
-  for (const n of unread) {
-    if (n.source === 'github' && githubConfig) {
-      markGitHubThreadRead(githubConfig.token, n.id.replace('github-', '')).catch(() => {});
-    } else if (n.source === 'gitlab' && gitlabConfig) {
-      markGitLabTodoDone(
-        gitlabConfig.token,
-        gitlabConfig.baseUrl,
-        Number(n.id.replace('gitlab-', ''))
-      ).catch(() => {});
-    }
-  }
+  markOnServers(unread).catch(() => {});
 }
 
 export function markAsUnread(id: string): void {
@@ -326,24 +281,33 @@ export function markAsRead(id: string): void {
   const notification = notifications.find((n) => n.id === id);
   if (!notification || !notification.unread) return;
 
-  // Mark as read locally and remember across refreshes
   locallyReadIds.add(id);
   notifications = notifications.map((n) => (n.id === id ? { ...n, unread: false } : n));
   const unreadCount = notifications.filter((n) => n.unread).length;
   updateTrayBadge(unreadCount);
 
-  // Mark as read on the server (best-effort, don't block UI)
-  if (notification.source === 'github') {
-    const config = getGitHubConfig();
-    const threadId = id.replace('github-', '');
-    if (config) {
-      markGitHubThreadRead(config.token, threadId).catch(() => {});
-    }
-  } else if (notification.source === 'gitlab') {
-    const config = getGitLabConfig();
-    const todoId = Number(id.replace('gitlab-', ''));
-    if (config) {
-      markGitLabTodoDone(config.token, config.baseUrl, todoId).catch(() => {});
+  markOnServers([notification]).catch(() => {});
+}
+
+// ── Server-side mark helper ─────────────────────────────────────
+
+async function markOnServers(items: UnifiedNotification[]): Promise<void> {
+  const { getGitHubConfig, getGitLabConfig } = await import('./connections.svelte');
+  const { markGitHubThreadRead } = await import('$lib/services/github/client');
+  const { markGitLabTodoDone } = await import('$lib/services/gitlab/client');
+
+  const ghConfig = getGitHubConfig();
+  const glConfig = getGitLabConfig();
+
+  for (const n of items) {
+    if (n.source === 'github' && ghConfig) {
+      markGitHubThreadRead(ghConfig.token, n.id.replace('github-', '')).catch(() => {});
+    } else if (n.source === 'gitlab' && glConfig) {
+      markGitLabTodoDone(
+        glConfig.token,
+        glConfig.baseUrl,
+        Number(n.id.replace('gitlab-', ''))
+      ).catch(() => {});
     }
   }
 }
