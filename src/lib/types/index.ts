@@ -21,9 +21,4 @@ export type {
   AllConnectionsState
 } from './connections';
 
-export type {
-  CIStatus,
-  ReviewDecision,
-  PRRoleFilter,
-  UnifiedPullRequest
-} from './pull-requests';
+export type { CIStatus, ReviewDecision, PRRoleFilter, UnifiedPullRequest } from './pull-requests';

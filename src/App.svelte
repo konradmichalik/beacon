@@ -5,8 +5,7 @@
   import {
     initializeSettings,
     setPollingChangeCallback,
-    setBadgeModeChangeCallback,
-    setNotifyChangeCallback
+    setBadgeModeChangeCallback
   } from './lib/stores/settings.svelte';
   import {
     startPolling,
@@ -14,7 +13,8 @@
     restartPolling,
     refreshBadge,
     isDemoMode,
-    loadDemoData
+    loadDemoData,
+    setupNotificationListener
   } from './lib/stores/notifications.svelte';
   import {
     startPRPolling,
@@ -22,13 +22,14 @@
     restartPRPolling,
     loadDemoPRs
   } from './lib/stores/pull-requests.svelte';
-  import { startSummaryTimer, stopSummaryTimer } from './lib/services/desktop-notifications';
   import { onMount } from 'svelte';
 
   let isInitializing = $state(true);
   let initialTab: 'notifications' | 'settings' = $state('notifications');
 
   onMount(() => {
+    let unlistenNotifications: (() => void) | undefined;
+
     async function initialize(): Promise<void> {
       try {
         await initializeSettings();
@@ -37,8 +38,10 @@
           restartPRPolling();
         });
         setBadgeModeChangeCallback(refreshBadge);
-        setNotifyChangeCallback(startSummaryTimer);
         await initializeConnections();
+
+        // Listen for notification updates from Rust backend
+        unlistenNotifications = await setupNotificationListener();
 
         if (isDemoMode()) {
           loadDemoData();
@@ -46,7 +49,6 @@
         } else if (hasAnyServiceConfigured()) {
           startPolling();
           startPRPolling();
-          startSummaryTimer();
         } else {
           initialTab = 'settings';
         }
@@ -60,7 +62,7 @@
     return () => {
       stopPolling();
       stopPRPolling();
-      stopSummaryTimer();
+      unlistenNotifications?.();
     };
   });
 </script>

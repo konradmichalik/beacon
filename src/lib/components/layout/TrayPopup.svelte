@@ -9,6 +9,7 @@
   import SettingsView from '../settings/SettingsView.svelte';
   import { hasAnyServiceConfigured } from '$lib/stores/connections.svelte';
   import { startPolling, markAllSeen } from '$lib/stores/notifications.svelte';
+  import { refreshPullRequests } from '$lib/stores/pull-requests.svelte';
   import { ArrowLeft, ArrowUp } from '@lucide/svelte';
   import { onMount } from 'svelte';
   import type { NotificationSource, PRRoleFilter } from '$lib/types';
@@ -45,6 +46,10 @@
     function handleVisibility(): void {
       if (document.hidden) {
         markAllSeen();
+      } else {
+        // Refresh PRs when popup becomes visible (PR polling runs in frontend
+        // and may be throttled while the webview is hidden)
+        refreshPullRequests();
       }
     }
     document.addEventListener('visibilitychange', handleVisibility);

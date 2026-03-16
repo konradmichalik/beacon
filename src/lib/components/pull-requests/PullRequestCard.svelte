@@ -8,7 +8,6 @@
     CircleCheck,
     CircleX,
     Loader,
-    CircleDashed,
     ShieldCheck,
     PenLine,
     Eye,
