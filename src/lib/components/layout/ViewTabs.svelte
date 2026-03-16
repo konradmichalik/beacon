@@ -32,7 +32,7 @@
       class="flex items-center gap-1.5 rounded-t-md px-3 py-1.5 text-[11px] font-medium transition-colors
         {activeTab === tab.id
         ? 'bg-card text-foreground shadow-sm'
-        : 'text-muted-foreground hover:text-foreground'}"
+        : 'text-muted-foreground hover:bg-card/50 hover:text-foreground'}"
     >
       <TabIcon size={11} />
       {tab.label}

@@ -43,7 +43,7 @@
 
   const btnBase = 'flex items-center gap-1 px-2.5 py-1 text-[11px] font-medium transition-colors';
   const btnActive = 'bg-foreground text-background';
-  const btnInactive = 'text-muted-foreground hover:text-foreground';
+  const btnInactive = 'text-muted-foreground hover:bg-secondary/60 hover:text-foreground';
 
   const badgeBase = 'ml-0.5 rounded-full px-1 py-px text-[9px] font-semibold leading-tight';
   const badgeActive = 'bg-background/20 text-background';
@@ -69,7 +69,7 @@
   class="flex items-center gap-1.5 overflow-x-auto border-b border-border bg-secondary/40 px-4 py-1.5 scrollbar-none"
 >
   {#if bothConnected}
-    <div class="flex shrink-0 overflow-hidden rounded-md border border-border" role="group">
+    <div class="flex shrink-0 overflow-hidden rounded-md border border-border bg-card" role="group">
       <button
         type="button"
         onclick={() => onSourceChange('all')}
@@ -124,7 +124,7 @@
       bind:this={filterBtnEl}
       onclick={() => (filterOpen = !filterOpen)}
       title="Filter"
-      class="relative rounded-full border border-border p-1.5 text-muted-foreground transition-colors hover:border-foreground/20 hover:text-foreground"
+      class="relative rounded-full border border-border bg-card p-1.5 text-muted-foreground transition-colors hover:border-foreground/20 hover:text-foreground"
     >
       <Filter size={11} />
       {#if hasRoleFilter}
@@ -185,7 +185,7 @@
       bind:this={sortBtnEl}
       onclick={() => (sortOpen = !sortOpen)}
       title="Sort"
-      class="rounded-full border border-border p-1.5 text-muted-foreground transition-colors hover:border-foreground/20 hover:text-foreground"
+      class="rounded-full border border-border bg-card p-1.5 text-muted-foreground transition-colors hover:border-foreground/20 hover:text-foreground"
     >
       <ArrowDownUp size={11} />
     </button>
