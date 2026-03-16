@@ -411,9 +411,7 @@ async fn fetch_gitlab(client: &reqwest::Client, config: &GitLabConfig) -> Vec<Un
             // displayed time reflects the most recent MR activity, not just
             // when the todo was originally created.
             let effective_updated = match &t.target.updated_at {
-                Some(target_ts) if target_ts.as_str() > t.updated_at.as_str() => {
-                    target_ts.clone()
-                }
+                Some(target_ts) if target_ts.as_str() > t.updated_at.as_str() => target_ts.clone(),
                 _ => t.updated_at,
             };
             UnifiedNotification {
