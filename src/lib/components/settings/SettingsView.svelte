@@ -12,22 +12,27 @@
     BellDot,
     Info,
     ExternalLink,
-    BookOpen
+    BookOpen,
+    Play,
+    ChevronDown
   } from '@lucide/svelte';
   import { settingsState, updateSettings } from '$lib/stores/settings.svelte';
-  import type { BadgeMode, NotifyMode, DotColor } from '$lib/stores/settings.svelte';
+  import type { BadgeMode, NotifyMode, DotColor, NotifySound } from '$lib/stores/settings.svelte';
   import GitHubConnectionForm from '../connection/GitHubConnectionForm.svelte';
   import GitLabConnectionForm from '../connection/GitLabConnectionForm.svelte';
   import BeaconLogo from '../icons/BeaconLogo.svelte';
   import { sendNotification } from '$lib/services/desktop-notifications';
+  import { playNotificationSound } from '$lib/services/notification-sound';
 
   type SettingsTab = 'connections' | 'notifications' | 'preferences' | 'about';
   let activeTab: SettingsTab = $state('connections');
+  let isPlayingPreview = $state(false);
 
   async function setNotifyMode(mode: NotifyMode): Promise<void> {
     await updateSettings({ notifyMode: mode });
     if (mode !== 'disabled') {
       sendNotification('Beacon', `Notifications set to ${mode} mode.`);
+      playNotificationSound(settingsState.notifySound);
     }
   }
 
@@ -79,6 +84,25 @@
     { value: 15, label: '15 min' },
     { value: 30, label: '30 min' },
     { value: 60, label: '60 min' }
+  ];
+
+  const soundOptions: { value: NotifySound; label: string }[] = [
+    { value: 'none', label: 'Off' },
+    { value: 'bell', label: 'Bell' },
+    { value: 'breeze', label: 'Breeze' },
+    { value: 'bubble', label: 'Bubble' },
+    { value: 'chime', label: 'Chime' },
+    { value: 'drop', label: 'Drop' },
+    { value: 'echo', label: 'Echo' },
+    { value: 'glow', label: 'Glow' },
+    { value: 'harp', label: 'Harp' },
+    { value: 'ping', label: 'Ping' },
+    { value: 'pluck', label: 'Pluck' },
+    { value: 'pop', label: 'Pop' },
+    { value: 'ripple', label: 'Ripple' },
+    { value: 'shimmer', label: 'Shimmer' },
+    { value: 'sonar', label: 'Sonar' },
+    { value: 'spark', label: 'Spark' }
   ];
 </script>
 
@@ -158,6 +182,50 @@
               {option.label}
             </button>
           {/each}
+        </div>
+      </section>
+    {/if}
+
+    {#if settingsState.notifyMode !== 'disabled'}
+      <!-- Notification Sound -->
+      <section>
+        <h3 class="mb-3 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+          Notification Sound
+        </h3>
+        <div class="inline-flex items-center gap-1.5">
+          <div class="relative">
+            <select
+              value={settingsState.notifySound}
+              onchange={(e) => {
+                const value = e.currentTarget.value as NotifySound;
+                updateSettings({ notifySound: value });
+                if (value !== 'none') playNotificationSound(value);
+              }}
+              class="w-28 cursor-pointer appearance-none rounded-md border border-border bg-secondary py-1.5 pl-2.5 pr-7 text-xs font-medium text-foreground outline-none transition-colors focus:border-primary"
+            >
+              {#each soundOptions as option}
+                <option value={option.value}>{option.label}</option>
+              {/each}
+            </select>
+            <ChevronDown
+              size={12}
+              class="pointer-events-none absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground"
+            />
+          </div>
+          {#if settingsState.notifySound !== 'none'}
+            <button
+              type="button"
+              onclick={() => {
+                isPlayingPreview = true;
+                playNotificationSound(settingsState.notifySound);
+                setTimeout(() => (isPlayingPreview = false), 400);
+              }}
+              class="flex h-[30px] w-[30px] items-center justify-center rounded-md bg-secondary text-secondary-foreground transition-all hover:bg-secondary/80 {isPlayingPreview ? 'scale-90 bg-primary/20 text-primary' : ''}"
+              aria-label="Preview sound"
+            >
+              <Play size={12} />
+            </button>
+          {/if}
         </div>
       </section>
     {/if}

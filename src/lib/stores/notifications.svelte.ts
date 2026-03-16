@@ -8,6 +8,7 @@ import type { SortMode, StatusFilter } from './filters.svelte';
 import { settingsState } from './settings.svelte';
 import { isTauri } from '$lib/utils/storage';
 import { demoNotifications } from '$lib/utils/demo-data';
+import { playNotificationSound } from '$lib/services/notification-sound';
 
 let notifications: UnifiedNotification[] = $state([]);
 let isLoading = $state(false);
@@ -175,12 +176,26 @@ async function updateTrayBadge(count: number): Promise<void> {
 
 // ── Backend event listener ──────────────────────────────────────
 
+let knownUnreadIds = new Set<string>();
+let isFirstLoad = true;
+
 function updateFromBackend(items: UnifiedNotification[]): void {
   // Clean up locally-read IDs no longer in the list
   const ids = new Set(items.map((n) => n.id));
   for (const id of locallyReadIds) {
     if (!ids.has(id)) locallyReadIds.delete(id);
   }
+
+  // Detect genuinely new unread notifications for sound playback
+  const currentUnreadIds = new Set(items.filter((n) => n.unread).map((n) => n.id));
+  if (!isFirstLoad && settingsState.notifyMode !== 'disabled') {
+    const hasNew = [...currentUnreadIds].some((id) => !knownUnreadIds.has(id));
+    if (hasNew) {
+      playNotificationSound(settingsState.notifySound);
+    }
+  }
+  knownUnreadIds = currentUnreadIds;
+  isFirstLoad = false;
 
   // Apply local read state overlay
   notifications = items.map((n) => (locallyReadIds.has(n.id) ? { ...n, unread: false } : n));
