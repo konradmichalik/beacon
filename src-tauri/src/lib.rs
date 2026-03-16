@@ -133,7 +133,7 @@ pub fn run() {
                 // Convert NSWindow → NSPanel so the popover appears above fullscreen apps.
                 // NSPanel has special macOS treatment for auxiliary/floating windows.
                 if let Some(window) = app.get_webview_window("main") {
-                    use objc2::runtime::AnyObject;
+                    use objc2::runtime::{AnyClass, AnyObject};
                     use objc2_app_kit::{
                         NSPanel, NSPopUpMenuWindowLevel, NSWindowCollectionBehavior,
                         NSWindowStyleMask,
@@ -143,20 +143,18 @@ pub fn run() {
                         unsafe {
                             // Swap the ObjC class from NSWindow to NSPanel at runtime
                             let obj = &*(ns_window as *const AnyObject);
-                            let panel_class = objc2::runtime::AnyClass::get(c"NSPanel")
-                                .expect("NSPanel class not found");
+                            let panel_class =
+                                AnyClass::get(c"NSPanel").expect("NSPanel class not found");
                             AnyObject::set_class(obj, panel_class);
 
-                            // Now treat it as NSPanel
                             let panel = &*(ns_window as *const NSPanel);
 
-                            // Add NonactivatingPanel so clicking the panel
-                            // doesn't steal focus from the fullscreen app
+                            // NonactivatingPanel: clicking the panel doesn't steal
+                            // focus from fullscreen apps or cause space switches
                             let mut mask = panel.styleMask();
                             mask |= NSWindowStyleMask::NonactivatingPanel;
                             panel.setStyleMask(mask);
 
-                            // Floating panel appears above other windows
                             panel.setFloatingPanel(true);
 
                             panel.setCollectionBehavior(
@@ -168,6 +166,51 @@ pub fn run() {
 
                             panel.setLevel(NSPopUpMenuWindowLevel);
                         }
+                    }
+
+                    // Shared hide-if-visible logic for both monitors
+                    let make_hide_block = |app_handle: tauri::AppHandle| {
+                        block2::RcBlock::new(move |_: std::ptr::NonNull<AnyObject>| {
+                            if let Some(w) = app_handle.get_webview_window("main") {
+                                if w.is_visible().unwrap_or(false) {
+                                    let _ = w.hide();
+                                }
+                            }
+                        })
+                    };
+
+                    // Auto-hide: global event monitor for clicks outside the panel
+                    let click_block = make_hide_block(app.handle().clone());
+                    unsafe {
+                        // NSEventMask: LeftMouseDown (1<<1) | RightMouseDown (1<<3)
+                        let mask: u64 = (1 << 1) | (1 << 3);
+                        let _: *const AnyObject = objc2::msg_send![
+                            AnyClass::get(c"NSEvent").unwrap(),
+                            addGlobalMonitorForEventsMatchingMask: mask,
+                            handler: &*click_block
+                        ];
+                    }
+
+                    // Auto-hide: workspace notification for space/desktop changes
+                    let space_block = make_hide_block(app.handle().clone());
+                    unsafe {
+                        let workspace: *const AnyObject = objc2::msg_send![
+                            AnyClass::get(c"NSWorkspace").unwrap(),
+                            sharedWorkspace
+                        ];
+                        let center: *const AnyObject =
+                            objc2::msg_send![workspace, notificationCenter];
+                        let name = objc2_foundation::NSString::from_str(
+                            "NSWorkspaceActiveSpaceDidChangeNotification",
+                        );
+                        let null: *const AnyObject = std::ptr::null();
+                        let _: *const AnyObject = objc2::msg_send![
+                            center,
+                            addObserverForName: &*name,
+                            object: null,
+                            queue: null,
+                            usingBlock: &*space_block
+                        ];
                     }
                 }
             }

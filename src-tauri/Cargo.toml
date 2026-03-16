@@ -26,6 +26,7 @@ image = "0.25"
 objc2 = "0.6.4"
 objc2-app-kit = { version = "0.3", features = ["NSWindow", "NSPanel"] }
 objc2-foundation = { version = "0.3", features = ["NSUserDefaults", "NSString"] }
+block2 = "0.6"
 
 [profile.release]
 panic = "abort"
