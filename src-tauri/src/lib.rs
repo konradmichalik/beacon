@@ -1,3 +1,4 @@
+mod polling;
 mod tray;
 
 const TRAY_ICON_BYTES: &[u8] = include_bytes!("../icons/beacon-tray.png");
@@ -69,12 +70,11 @@ fn blend_pixel(base: image::Rgba<u8>, overlay: image::Rgba<u8>) -> image::Rgba<u
     image::Rgba([r as u8, g as u8, b as u8, (out_a * 255.0) as u8])
 }
 
-#[tauri::command]
-async fn update_badge(
-    app: tauri::AppHandle,
+pub(crate) fn update_tray_icon(
+    app: &tauri::AppHandle,
     count: u32,
-    mode: String,
-    dot_color: String,
+    mode: &str,
+    dot_color: &str,
 ) -> Result<(), String> {
     if let Some(tray) = app.tray_by_id(tray::TRAY_ID) {
         let tooltip = if count > 0 {
@@ -87,7 +87,7 @@ async fn update_badge(
 
         #[cfg(target_os = "macos")]
         {
-            let rgb = match dot_color.as_str() {
+            let rgb = match dot_color {
                 "red" => [255u8, 120, 110],
                 _ => [94u8, 129, 172], // blue (default)
             };
@@ -111,6 +111,16 @@ async fn update_badge(
 }
 
 #[tauri::command]
+fn update_badge(
+    app: tauri::AppHandle,
+    count: u32,
+    mode: String,
+    dot_color: String,
+) -> Result<(), String> {
+    update_tray_icon(&app, count, &mode, &dot_color)
+}
+
+#[tauri::command]
 fn quit_app(app: tauri::AppHandle) {
     app.exit(0);
 }
@@ -123,11 +133,12 @@ pub fn run() {
         .plugin(tauri_plugin_http::init())
         .plugin(tauri_plugin_notification::init())
         .setup(|app| {
+            use tauri::Manager;
+            app.manage(std::sync::Arc::new(polling::Poller::new()));
             tray::create_tray(app)?;
 
             #[cfg(target_os = "macos")]
             {
-                use tauri::Manager;
                 app.set_activation_policy(tauri::ActivationPolicy::Accessory);
 
                 // Convert NSWindow → NSPanel so the popover appears above fullscreen apps.
@@ -217,7 +228,13 @@ pub fn run() {
 
             Ok(())
         })
-        .invoke_handler(tauri::generate_handler![update_badge, quit_app])
+        .invoke_handler(tauri::generate_handler![
+            update_badge,
+            quit_app,
+            polling::start_polling,
+            polling::stop_polling,
+            polling::trigger_poll,
+        ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
 }
