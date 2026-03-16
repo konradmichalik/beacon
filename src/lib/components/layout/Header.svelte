@@ -2,10 +2,7 @@
   import { Settings, RefreshCw, Power } from '@lucide/svelte';
   import { invoke } from '@tauri-apps/api/core';
   import BeaconLogo from '$lib/components/icons/BeaconLogo.svelte';
-  import {
-    getIsLoading,
-    refreshNotifications
-  } from '$lib/stores/notifications.svelte';
+  import { getIsLoading, refreshNotifications } from '$lib/stores/notifications.svelte';
   import { getIsPRLoading, refreshPullRequests } from '$lib/stores/pull-requests.svelte';
   import type { ViewTab } from './ViewTabs.svelte';
 
