@@ -272,10 +272,7 @@ async fn gh_detail(client: &reqwest::Client, url: &str, token: &str) -> GHDetail
     }
 }
 
-async fn fetch_github(
-    client: &reqwest::Client,
-    config: &GitHubConfig,
-) -> Vec<UnifiedNotification> {
+async fn fetch_github(client: &reqwest::Client, config: &GitHubConfig) -> Vec<UnifiedNotification> {
     let resp = client
         .get("https://api.github.com/notifications?participating=false&all=false")
         .header("Authorization", format!("Bearer {}", config.token))
@@ -300,12 +297,10 @@ async fn fetch_github(
                 None => GHDetail::default(),
             };
 
-            let author = detail
-                .user
-                .map(|u| Author {
-                    login: u.login,
-                    avatar_url: u.avatar_url,
-                });
+            let author = detail.user.map(|u| Author {
+                login: u.login,
+                avatar_url: u.avatar_url,
+            });
 
             // Filter out own notifications
             if author.as_ref().is_some_and(|a| a.login == username) {
@@ -394,10 +389,7 @@ fn gl_state(s: Option<&str>) -> Option<String> {
     }
 }
 
-async fn fetch_gitlab(
-    client: &reqwest::Client,
-    config: &GitLabConfig,
-) -> Vec<UnifiedNotification> {
+async fn fetch_gitlab(client: &reqwest::Client, config: &GitLabConfig) -> Vec<UnifiedNotification> {
     let base = config.base_url.trim_end_matches('/');
     let resp = client
         .get(format!("{base}/api/v4/todos?state=pending&per_page=50"))
@@ -436,12 +428,7 @@ async fn fetch_gitlab(
 // ── Desktop notifications ───────────────────────────────────────
 
 fn send_native(app: &AppHandle, title: &str, body: &str) {
-    let _ = app
-        .notification()
-        .builder()
-        .title(title)
-        .body(body)
-        .show();
+    let _ = app.notification().builder().title(title).body(body).show();
 }
 
 fn process_new(
@@ -491,11 +478,8 @@ fn process_new(
                 .summary_buffer
                 .extend(new_items.iter().map(|n| (*n).clone()));
 
-            let interval =
-                std::time::Duration::from_secs(settings.notify_summary_minutes * 60);
-            if inner.last_summary_flush.elapsed() >= interval
-                && !inner.summary_buffer.is_empty()
-            {
+            let interval = std::time::Duration::from_secs(settings.notify_summary_minutes * 60);
+            if inner.last_summary_flush.elapsed() >= interval && !inner.summary_buffer.is_empty() {
                 let count = inner.summary_buffer.len();
                 let repos: HashSet<&str> = inner
                     .summary_buffer
