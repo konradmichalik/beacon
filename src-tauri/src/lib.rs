@@ -143,8 +143,8 @@ pub fn run() {
                         unsafe {
                             // Swap the ObjC class from NSWindow to NSPanel at runtime
                             let obj = &*(ns_window as *const AnyObject);
-                            let panel_class = AnyClass::get(c"NSPanel")
-                                .expect("NSPanel class not found");
+                            let panel_class =
+                                AnyClass::get(c"NSPanel").expect("NSPanel class not found");
                             AnyObject::set_class(obj, panel_class);
 
                             let panel = &*(ns_window as *const NSPanel);
