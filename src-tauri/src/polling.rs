@@ -244,14 +244,21 @@ fn gh_url(n: &GHNotification) -> String {
         if let Some((prefix, num)) = api_url.rsplit_once('/') {
             if num.chars().all(|c| c.is_ascii_digit()) {
                 if let Some((_, seg)) = prefix.rsplit_once('/') {
+                    let base = &n.repository.html_url;
                     match seg {
-                        "issues" => {
-                            return format!("{}/issues/{num}", n.repository.html_url);
-                        }
-                        "pulls" => {
-                            return format!("{}/pull/{num}", n.repository.html_url);
-                        }
+                        "pulls" => return format!("{base}/pull/{num}"),
+                        "issues" => return format!("{base}/issues/{num}"),
+                        "releases" => return format!("{base}/releases/tag/{num}"),
+                        "discussions" => return format!("{base}/discussions/{num}"),
                         _ => {}
+                    }
+                }
+            }
+            // Commits use a SHA (hex), not a numeric ID
+            if num.chars().all(|c| c.is_ascii_hexdigit()) && num.len() >= 7 {
+                if let Some((_, seg)) = prefix.rsplit_once('/') {
+                    if seg == "commits" {
+                        return format!("{}/commit/{num}", n.repository.html_url);
                     }
                 }
             }
@@ -269,8 +276,21 @@ async fn gh_detail(client: &reqwest::Client, url: &str, token: &str) -> GHDetail
         .send()
         .await;
     match resp {
-        Ok(r) if r.status().is_success() => r.json().await.unwrap_or_default(),
-        _ => GHDetail::default(),
+        Ok(r) if r.status().is_success() => match r.json::<GHDetail>().await {
+            Ok(d) => d,
+            Err(e) => {
+                eprintln!("[beacon] detail JSON parse failed for {url}: {e}");
+                GHDetail::default()
+            }
+        },
+        Ok(r) => {
+            eprintln!("[beacon] detail fetch {} returned {}", url, r.status());
+            GHDetail::default()
+        }
+        Err(e) => {
+            eprintln!("[beacon] detail fetch failed for {url}: {e}");
+            GHDetail::default()
+        }
     }
 }
 
@@ -317,6 +337,10 @@ async fn fetch_github(client: &reqwest::Client, config: &GitHubConfig) -> Vec<Un
             };
 
             let url = detail.html_url.clone().unwrap_or_else(|| gh_url(&n));
+            eprintln!(
+                "[beacon] notification id={} type={} subject_url={:?} detail_html_url={:?} resolved_url={}",
+                n.id, n.subject.subject_type, n.subject.url, detail.html_url, url
+            );
             Some(UnifiedNotification {
                 id: format!("github-{}", n.id),
                 source: "github".into(),
@@ -654,11 +678,29 @@ mod tests {
     }
 
     #[test]
+    fn gh_url_converts_releases_api_to_html() {
+        let n = make_gh_notification(Some("https://api.github.com/repos/owner/repo/releases/99"));
+        assert_eq!(gh_url(&n), "https://github.com/owner/repo/releases/tag/99");
+    }
+
+    #[test]
+    fn gh_url_converts_discussions_api_to_html() {
+        let n = make_gh_notification(Some("https://api.github.com/repos/owner/repo/discussions/15"));
+        assert_eq!(gh_url(&n), "https://github.com/owner/repo/discussions/15");
+    }
+
+    #[test]
+    fn gh_url_converts_commits_api_to_html() {
+        let n = make_gh_notification(Some("https://api.github.com/repos/owner/repo/commits/abc123def456"));
+        assert_eq!(gh_url(&n), "https://github.com/owner/repo/commit/abc123def456");
+    }
+
+    #[test]
     fn gh_url_falls_back_to_repo_url() {
         let n = make_gh_notification(None);
         assert_eq!(gh_url(&n), "https://github.com/owner/repo");
 
-        let n2 = make_gh_notification(Some("https://api.github.com/repos/owner/repo/releases/99"));
+        let n2 = make_gh_notification(Some("https://api.github.com/repos/owner/repo/check-suites/99"));
         assert_eq!(gh_url(&n2), "https://github.com/owner/repo");
     }
 
