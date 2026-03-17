@@ -1,6 +1,7 @@
 <script lang="ts">
   import './app.css';
   import TrayPopup from './lib/components/layout/TrayPopup.svelte';
+  import SettingsView from './lib/components/settings/SettingsView.svelte';
   import { initializeConnections, hasAnyServiceConfigured } from './lib/stores/connections.svelte';
   import {
     initializeSettings,
@@ -24,6 +25,8 @@
   } from './lib/stores/pull-requests.svelte';
   import { onMount } from 'svelte';
 
+  const isSettingsWindow = new URLSearchParams(window.location.search).get('window') === 'settings';
+
   let isInitializing = $state(true);
   let initialTab: 'notifications' | 'settings' = $state('notifications');
 
@@ -33,6 +36,12 @@
     async function initialize(): Promise<void> {
       try {
         await initializeSettings();
+
+        if (isSettingsWindow) {
+          await initializeConnections();
+          return;
+        }
+
         setPollingChangeCallback(() => {
           restartPolling();
           restartPRPolling();
@@ -72,6 +81,10 @@
     <div
       class="h-5 w-5 animate-spin rounded-full border-2 border-primary border-t-transparent"
     ></div>
+  </div>
+{:else if isSettingsWindow}
+  <div class="h-screen overflow-y-auto bg-background">
+    <SettingsView />
   </div>
 {:else}
   <div class="animate-fade-in">
