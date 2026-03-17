@@ -643,17 +643,13 @@ mod tests {
 
     #[test]
     fn gh_url_converts_pulls_api_to_html() {
-        let n = make_gh_notification(Some(
-            "https://api.github.com/repos/owner/repo/pulls/42",
-        ));
+        let n = make_gh_notification(Some("https://api.github.com/repos/owner/repo/pulls/42"));
         assert_eq!(gh_url(&n), "https://github.com/owner/repo/pull/42");
     }
 
     #[test]
     fn gh_url_converts_issues_api_to_html() {
-        let n = make_gh_notification(Some(
-            "https://api.github.com/repos/owner/repo/issues/7",
-        ));
+        let n = make_gh_notification(Some("https://api.github.com/repos/owner/repo/issues/7"));
         assert_eq!(gh_url(&n), "https://github.com/owner/repo/issues/7");
     }
 
@@ -662,9 +658,7 @@ mod tests {
         let n = make_gh_notification(None);
         assert_eq!(gh_url(&n), "https://github.com/owner/repo");
 
-        let n2 = make_gh_notification(Some(
-            "https://api.github.com/repos/owner/repo/releases/99",
-        ));
+        let n2 = make_gh_notification(Some("https://api.github.com/repos/owner/repo/releases/99"));
         assert_eq!(gh_url(&n2), "https://github.com/owner/repo");
     }
 
