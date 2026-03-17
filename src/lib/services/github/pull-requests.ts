@@ -32,21 +32,21 @@ interface GitHubSearchResponse {
   readonly items: readonly GitHubSearchItem[];
 }
 
-interface GitHubCheckRun {
+export interface GitHubCheckRun {
   readonly conclusion: string | null;
   readonly status: string;
 }
 
-interface GitHubReview {
+export interface GitHubReview {
   readonly state: string;
 }
 
-function repoFromUrl(repositoryUrl: string): string {
+export function repoFromUrl(repositoryUrl: string): string {
   // https://api.github.com/repos/owner/repo -> owner/repo
   return repositoryUrl.replace(`${GITHUB_API}/repos/`, '');
 }
 
-function mapCIStatus(runs: readonly GitHubCheckRun[]): CIStatus {
+export function mapCIStatus(runs: readonly GitHubCheckRun[]): CIStatus {
   if (runs.length === 0) return 'unknown';
   if (runs.some((r) => r.status !== 'completed')) return 'pending';
   if (runs.every((r) => r.conclusion === 'success' || r.conclusion === 'skipped')) return 'success';
@@ -54,7 +54,7 @@ function mapCIStatus(runs: readonly GitHubCheckRun[]): CIStatus {
   return 'unknown';
 }
 
-function mapReviewDecision(reviews: readonly GitHubReview[]): ReviewDecision | null {
+export function mapReviewDecision(reviews: readonly GitHubReview[]): ReviewDecision | null {
   if (reviews.length === 0) return 'review_required';
 
   const states = reviews.map((r) => r.state);
