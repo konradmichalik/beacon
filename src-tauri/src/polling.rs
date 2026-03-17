@@ -304,9 +304,19 @@ async fn gh_detail(client: &reqwest::Client, url: &str, token: &str) -> GHDetail
     }
 }
 
+fn thirty_days_ago_iso() -> String {
+    let then = time::OffsetDateTime::now_utc() - time::Duration::days(30);
+    then.format(&time::format_description::well_known::Rfc3339)
+        .unwrap_or_default()
+}
+
 async fn fetch_github(client: &reqwest::Client, config: &GitHubConfig) -> Vec<UnifiedNotification> {
+    let since = thirty_days_ago_iso();
+    let url = format!(
+        "https://api.github.com/notifications?participating=false&all=false&since={since}"
+    );
     let resp = client
-        .get("https://api.github.com/notifications?participating=false&all=false")
+        .get(&url)
         .header("Authorization", format!("Bearer {}", config.token))
         .header("Accept", "application/vnd.github+json")
         .header("X-GitHub-Api-Version", "2022-11-28")
