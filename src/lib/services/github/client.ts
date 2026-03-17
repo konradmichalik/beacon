@@ -136,7 +136,8 @@ export async function markAllGitHubNotificationsRead(token: string): Promise<voi
     headers: {
       Authorization: `Bearer ${token}`,
       Accept: 'application/vnd.github+json',
-      'X-GitHub-Api-Version': '2022-11-28'
+      'X-GitHub-Api-Version': '2022-11-28',
+      'Content-Type': 'application/json'
     },
     body: JSON.stringify({ last_read_at: new Date().toISOString() })
   });
