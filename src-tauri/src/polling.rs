@@ -685,14 +685,21 @@ mod tests {
 
     #[test]
     fn gh_url_converts_discussions_api_to_html() {
-        let n = make_gh_notification(Some("https://api.github.com/repos/owner/repo/discussions/15"));
+        let n = make_gh_notification(Some(
+            "https://api.github.com/repos/owner/repo/discussions/15",
+        ));
         assert_eq!(gh_url(&n), "https://github.com/owner/repo/discussions/15");
     }
 
     #[test]
     fn gh_url_converts_commits_api_to_html() {
-        let n = make_gh_notification(Some("https://api.github.com/repos/owner/repo/commits/abc123def456"));
-        assert_eq!(gh_url(&n), "https://github.com/owner/repo/commit/abc123def456");
+        let n = make_gh_notification(Some(
+            "https://api.github.com/repos/owner/repo/commits/abc123def456",
+        ));
+        assert_eq!(
+            gh_url(&n),
+            "https://github.com/owner/repo/commit/abc123def456"
+        );
     }
 
     #[test]
@@ -700,7 +707,9 @@ mod tests {
         let n = make_gh_notification(None);
         assert_eq!(gh_url(&n), "https://github.com/owner/repo");
 
-        let n2 = make_gh_notification(Some("https://api.github.com/repos/owner/repo/check-suites/99"));
+        let n2 = make_gh_notification(Some(
+            "https://api.github.com/repos/owner/repo/check-suites/99",
+        ));
         assert_eq!(gh_url(&n2), "https://github.com/owner/repo");
     }
 

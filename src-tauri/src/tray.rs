@@ -18,7 +18,7 @@ pub static LAST_TRAY_RECT: Mutex<Option<TrayRect>> = Mutex::new(None);
 pub fn position_window_at_tray(window: &tauri::WebviewWindow) {
     let rect = LAST_TRAY_RECT.lock().unwrap();
     if let Some((pos, size)) = *rect {
-        let window_width: i32 = 420;
+        let window_width = window.outer_size().map(|s| s.width as i32).unwrap_or(420);
         let icon_center_x = pos.x + (size.0 as i32 / 2);
         let x = icon_center_x - (window_width / 2);
         let y = pos.y + size.1 as i32 + 4;
@@ -63,8 +63,7 @@ pub fn create_tray(app: &App) -> Result<(), Box<dyn std::error::Error>> {
                         let size = rect.size.to_physical::<u32>(scale);
 
                         // Store tray rect for reuse (e.g. notification activation)
-                        *LAST_TRAY_RECT.lock().unwrap() =
-                            Some((pos, (size.width, size.height)));
+                        *LAST_TRAY_RECT.lock().unwrap() = Some((pos, (size.width, size.height)));
 
                         position_window_at_tray(&window);
                         let _ = window.show();
