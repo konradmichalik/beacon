@@ -128,13 +128,13 @@ export async function fetchGitLabMergeRequests(
   const authored: GitLabMergeRequest[] = authoredRes?.ok ? await authoredRes.json() : [];
   const reviewRequested: GitLabMergeRequest[] = reviewRes?.ok ? await reviewRes.json() : [];
 
-  // Deduplicate: review-requested wins
-  const reviewIds = new Set(reviewRequested.map((mr) => mr.id));
-  const authoredOnly = authored.filter((mr) => !reviewIds.has(mr.id));
+  // Deduplicate: authored wins over review-requested (own MRs always show as "Created by me")
+  const authoredIds = new Set(authored.map((mr) => mr.id));
+  const reviewOnly = reviewRequested.filter((mr) => !authoredIds.has(mr.id));
 
   const results = await Promise.all([
-    ...reviewRequested.map((mr) => mapToUnified(token, baseUrl, mr, true)),
-    ...authoredOnly.map((mr) => mapToUnified(token, baseUrl, mr, false))
+    ...authored.map((mr) => mapToUnified(token, baseUrl, mr, false)),
+    ...reviewOnly.map((mr) => mapToUnified(token, baseUrl, mr, true))
   ]);
 
   return results;

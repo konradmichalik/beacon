@@ -165,14 +165,14 @@ export async function fetchGitHubPullRequests(
     ? await reviewRes.json()
     : { total_count: 0, items: [] };
 
-  // Deduplicate: review-requested wins over authored
-  const reviewIds = new Set(reviewRequested.items.map((i) => i.id));
-  const authoredOnly = authored.items.filter((i) => !reviewIds.has(i.id));
+  // Deduplicate: authored wins over review-requested (own PRs always show as "Created by me")
+  const authoredIds = new Set(authored.items.map((i) => i.id));
+  const reviewOnly = reviewRequested.items.filter((i) => !authoredIds.has(i.id));
 
   // Enrich in parallel (cap at reasonable limit)
   const enriched = await Promise.all([
-    ...reviewRequested.items.slice(0, 15).map((item) => enrichPR(token, item, true)),
-    ...authoredOnly.slice(0, 15).map((item) => enrichPR(token, item, false))
+    ...authored.items.slice(0, 15).map((item) => enrichPR(token, item, false)),
+    ...reviewOnly.slice(0, 15).map((item) => enrichPR(token, item, true))
   ]);
 
   return enriched;
