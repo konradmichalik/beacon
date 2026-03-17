@@ -13,7 +13,8 @@
     Eye,
     FileEdit,
     ExternalLink,
-    ClipboardCopy
+    ClipboardCopy,
+    CircleCheckBig
   } from '@lucide/svelte';
 
   let { pullRequest }: { pullRequest: UnifiedPullRequest } = $props();
@@ -53,6 +54,12 @@
   });
 
   let reviewInfo = $derived.by(() => {
+    if (pullRequest.reviewRequestedFromMe) {
+      if (pullRequest.reviewedByMe) {
+        return { label: 'Reviewed', class: 'text-success-text', icon: CircleCheckBig };
+      }
+      return { label: 'Pending your review', class: 'text-muted-foreground', icon: Eye };
+    }
     switch (pullRequest.reviewDecision) {
       case 'approved':
         return { label: 'Approved', class: 'text-success-text', icon: ShieldCheck };

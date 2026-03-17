@@ -5,7 +5,7 @@
   import PullRequestCard from './PullRequestCard.svelte';
   import EmptyState from '../notifications/EmptyState.svelte';
   import PartyPopperIcon from '$lib/components/icons/PartyPopperIcon.svelte';
-  import { Inbox } from '@lucide/svelte';
+  import { Inbox, ChevronRight } from '@lucide/svelte';
   import type { NotificationSource, PRRoleFilter } from '$lib/types';
 
   let {
@@ -18,23 +18,36 @@
     sort?: PRSortMode;
   } = $props();
 
+  let collapsed: Record<string, boolean> = $state({ reviewed: true });
+
+  function toggle(section: string): void {
+    collapsed = { ...collapsed, [section]: !collapsed[section] };
+  }
+
   let items = $derived(getFilteredPRs(sourceFilter, roleFilter, sort));
   let isLoading = $derived(getIsPRLoading());
   let isConfigured = $derived(hasAnyServiceConfigured());
 
-  // Section splits only when showing "all" role
-  let reviewRequested = $derived(
-    roleFilter === 'all'
-      ? items.filter((pr) => pr.reviewRequestedFromMe)
-      : roleFilter === 'review_requested'
-        ? items
-        : []
-  );
+  // Section splits
   let authored = $derived(
     roleFilter === 'all'
       ? items.filter((pr) => !pr.reviewRequestedFromMe)
       : roleFilter === 'authored'
         ? items
+        : []
+  );
+  let toReview = $derived(
+    roleFilter === 'all'
+      ? items.filter((pr) => pr.reviewRequestedFromMe && !pr.reviewedByMe)
+      : roleFilter === 'review_requested'
+        ? items.filter((pr) => !pr.reviewedByMe)
+        : []
+  );
+  let reviewed = $derived(
+    roleFilter === 'all'
+      ? items.filter((pr) => pr.reviewRequestedFromMe && pr.reviewedByMe)
+      : roleFilter === 'review_requested'
+        ? items.filter((pr) => pr.reviewedByMe)
         : []
   );
 </script>
@@ -59,45 +72,53 @@
     iconSize={48}
   />
 {:else}
+  {#snippet sectionHeader(label: string, count: number, key: string)}
+    <button
+      type="button"
+      onclick={() => toggle(key)}
+      class="sticky top-0 z-10 flex w-full items-center gap-1.5 border-b border-border bg-card/95 px-4 py-1.5 backdrop-blur-sm transition-colors hover:bg-secondary/40"
+    >
+      <ChevronRight
+        size={12}
+        class="shrink-0 text-muted-foreground transition-transform {collapsed[key]
+          ? ''
+          : 'rotate-90'}"
+      />
+      <span class="text-[11px] font-semibold text-muted-foreground">{label}</span>
+      <span
+        class="ml-auto shrink-0 rounded-full bg-secondary px-1.5 py-px text-[9px] font-semibold text-muted-foreground"
+      >
+        {count}
+      </span>
+    </button>
+  {/snippet}
+
   <div class="flex min-h-full flex-col">
     {#if roleFilter === 'all' && authored.length > 0}
-      <!-- Authored Section -->
-      <div
-        class="sticky top-0 z-10 flex items-center gap-1.5 border-b border-border bg-card/95 px-4 py-1.5 backdrop-blur-sm"
-      >
-        <span class="text-[11px] font-semibold text-muted-foreground">Created by me</span>
-        <span
-          class="ml-auto shrink-0 rounded-full bg-secondary px-1.5 py-px text-[9px] font-semibold text-muted-foreground"
-        >
-          {authored.length}
-        </span>
-      </div>
-      {#each authored as pr (pr.id)}
-        <PullRequestCard pullRequest={pr} />
-      {/each}
+      {@render sectionHeader('Created by me', authored.length, 'authored')}
+      {#if !collapsed.authored}
+        {#each authored as pr (pr.id)}
+          <PullRequestCard pullRequest={pr} />
+        {/each}
+      {/if}
     {/if}
 
-    {#if roleFilter === 'all' && reviewRequested.length > 0}
-      <!-- Review Requested Section -->
-      <div
-        class="sticky top-0 z-10 flex items-center gap-1.5 border-b border-border bg-card/95 px-4 py-1.5 backdrop-blur-sm"
-      >
-        <span class="text-[11px] font-semibold text-muted-foreground">To review</span>
-        <span
-          class="ml-auto shrink-0 rounded-full bg-secondary px-1.5 py-px text-[9px] font-semibold text-muted-foreground"
-        >
-          {reviewRequested.length}
-        </span>
-      </div>
-      {#each reviewRequested as pr (pr.id)}
-        <PullRequestCard pullRequest={pr} />
-      {/each}
+    {#if toReview.length > 0}
+      {@render sectionHeader('To review', toReview.length, 'toReview')}
+      {#if !collapsed.toReview}
+        {#each toReview as pr (pr.id)}
+          <PullRequestCard pullRequest={pr} />
+        {/each}
+      {/if}
     {/if}
 
-    {#if roleFilter !== 'all'}
-      {#each items as pr (pr.id)}
-        <PullRequestCard pullRequest={pr} />
-      {/each}
+    {#if reviewed.length > 0}
+      {@render sectionHeader('Reviewed', reviewed.length, 'reviewed')}
+      {#if !collapsed.reviewed}
+        {#each reviewed as pr (pr.id)}
+          <PullRequestCard pullRequest={pr} />
+        {/each}
+      {/if}
     {/if}
   </div>
 {/if}
