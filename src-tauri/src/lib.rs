@@ -226,6 +226,44 @@ pub fn run() {
                             usingBlock: &*space_block
                         ];
                     }
+
+                    // Show window when app is activated (e.g. native notification click).
+                    // With ActivationPolicy::Accessory + NonactivatingPanel the app is
+                    // only activated through notification clicks, never via tray interaction.
+                    let activation_block = {
+                        let app_handle = app.handle().clone();
+                        block2::RcBlock::new(move |_: std::ptr::NonNull<AnyObject>| {
+                            if let Some(w) = app_handle.get_webview_window("main") {
+                                let _ = w.show();
+                                let _ = w.set_focus();
+
+                                if let Ok(ns_window) = w.ns_window() {
+                                    unsafe {
+                                        let panel = &*(ns_window as *const NSPanel);
+                                        panel.setFloatingPanel(true);
+                                        panel.setLevel(NSPopUpMenuWindowLevel);
+                                    }
+                                }
+                            }
+                        })
+                    };
+                    unsafe {
+                        let center: *const AnyObject = objc2::msg_send![
+                            AnyClass::get(c"NSNotificationCenter").unwrap(),
+                            defaultCenter
+                        ];
+                        let name = objc2_foundation::NSString::from_str(
+                            "NSApplicationDidBecomeActiveNotification",
+                        );
+                        let null: *const AnyObject = std::ptr::null();
+                        let _: *const AnyObject = objc2::msg_send![
+                            center,
+                            addObserverForName: &*name,
+                            object: null,
+                            queue: null,
+                            usingBlock: &*activation_block
+                        ];
+                    }
                 }
             }
 
