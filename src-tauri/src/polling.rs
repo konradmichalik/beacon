@@ -248,7 +248,7 @@ fn gh_url(n: &GHNotification) -> String {
                     match seg {
                         "pulls" => return format!("{base}/pull/{num}"),
                         "issues" => return format!("{base}/issues/{num}"),
-                        "releases" => return format!("{base}/releases/tag/{num}"),
+                        "releases" => return format!("{base}/releases"),
                         "discussions" => return format!("{base}/discussions/{num}"),
                         _ => {}
                     }
@@ -285,17 +285,20 @@ async fn gh_detail(client: &reqwest::Client, url: &str, token: &str) -> GHDetail
     match resp {
         Ok(r) if r.status().is_success() => match r.json::<GHDetail>().await {
             Ok(d) => d,
-            Err(e) => {
-                eprintln!("[beacon] detail JSON parse failed for {url}: {e}");
+            Err(_e) => {
+                #[cfg(debug_assertions)]
+                eprintln!("[beacon] detail JSON parse failed for {url}: {_e}");
                 GHDetail::default()
             }
         },
-        Ok(r) => {
-            eprintln!("[beacon] detail fetch {} returned {}", url, r.status());
+        Ok(_r) => {
+            #[cfg(debug_assertions)]
+            eprintln!("[beacon] detail fetch {} returned {}", url, _r.status());
             GHDetail::default()
         }
-        Err(e) => {
-            eprintln!("[beacon] detail fetch failed for {url}: {e}");
+        Err(_e) => {
+            #[cfg(debug_assertions)]
+            eprintln!("[beacon] detail fetch failed for {url}: {_e}");
             GHDetail::default()
         }
     }
@@ -687,7 +690,7 @@ mod tests {
     #[test]
     fn gh_url_converts_releases_api_to_html() {
         let n = make_gh_notification(Some("https://api.github.com/repos/owner/repo/releases/99"));
-        assert_eq!(gh_url(&n), "https://github.com/owner/repo/releases/tag/99");
+        assert_eq!(gh_url(&n), "https://github.com/owner/repo/releases");
     }
 
     #[test]
