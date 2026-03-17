@@ -8,7 +8,7 @@
   } from '$lib/stores/filters.svelte';
   import type { SortMode } from '$lib/stores/filters.svelte';
   import {
-    getUnreadCount,
+    getFilteredUnreadCount,
     getCountBySource,
     getFilteredNotifications,
     markAllAsRead
@@ -22,7 +22,7 @@
 
   type FilterOption = NotificationSource | 'all';
 
-  let totalCount = $derived(getUnreadCount());
+  let totalCount = $derived(getFilteredUnreadCount());
   let githubCount = $derived(getCountBySource('github'));
   let gitlabCount = $derived(getCountBySource('gitlab'));
 

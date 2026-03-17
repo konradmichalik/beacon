@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { getUnreadCount } from '$lib/stores/notifications.svelte';
+  import { getFilteredUnreadCount } from '$lib/stores/notifications.svelte';
   import { getPRCount } from '$lib/stores/pull-requests.svelte';
   import { Bell, GitPullRequest } from '@lucide/svelte';
 
@@ -13,7 +13,7 @@
     onTabChange: (tab: ViewTab) => void;
   } = $props();
 
-  let unreadCount = $derived(getUnreadCount());
+  let unreadCount = $derived(getFilteredUnreadCount());
   let prCount = $derived(getPRCount());
 
   const tabs: { id: ViewTab; label: string; icon: typeof Bell; getCount: () => number }[] = [
