@@ -100,6 +100,7 @@ struct GHRepo {
 
 #[derive(Deserialize, Default)]
 struct GHDetail {
+    html_url: Option<String>,
     state: Option<String>,
     #[serde(default)]
     merged: bool,
@@ -315,7 +316,7 @@ async fn fetch_github(client: &reqwest::Client, config: &GitHubConfig) -> Vec<Un
                 _ => None,
             };
 
-            let url = gh_url(&n);
+            let url = detail.html_url.clone().unwrap_or_else(|| gh_url(&n));
             Some(UnifiedNotification {
                 id: format!("github-{}", n.id),
                 source: "github".into(),
