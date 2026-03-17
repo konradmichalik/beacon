@@ -6,7 +6,8 @@
   import EmptyState from './EmptyState.svelte';
   import GitHubIcon from '$lib/components/icons/GitHubIcon.svelte';
   import GitLabIcon from '$lib/components/icons/GitLabIcon.svelte';
-  import { Inbox, ChevronRight, PartyPopper } from '@lucide/svelte';
+  import PartyPopperIcon from '$lib/components/icons/PartyPopperIcon.svelte';
+  import { Inbox, ChevronRight } from '@lucide/svelte';
   import type { UnifiedNotification } from '$lib/types';
 
   let items = $derived(
@@ -64,7 +65,12 @@
     ></div>
   </div>
 {:else if items.length === 0}
-  <EmptyState icon={PartyPopper} title="All clear" description="No unread notifications." />
+  <EmptyState
+    icon={PartyPopperIcon}
+    title="All clear"
+    description="No unread notifications."
+    iconSize={48}
+  />
 {:else}
   <div class="flex min-h-full flex-col">
     <!-- Unread -->
@@ -103,8 +109,13 @@
 
     <!-- Spacer pushes read section to bottom when unread list is short -->
     {#if unreadItems.length === 0}
-      <div class="flex-1">
-        <EmptyState icon={PartyPopper} title="All clear" description="No unread notifications." />
+      <div class="flex min-h-0 flex-1 items-center justify-center">
+        <EmptyState
+          icon={PartyPopperIcon}
+          title="All clear"
+          description="No unread notifications."
+          iconSize={48}
+        />
       </div>
     {:else}
       <div class="flex-1"></div>

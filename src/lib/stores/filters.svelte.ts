@@ -1,3 +1,4 @@
+import { SvelteSet } from 'svelte/reactivity';
 import type { NotificationSource, NotificationType } from '$lib/types';
 
 export type SortMode = 'date' | 'project';
@@ -7,18 +8,18 @@ interface FilterState {
   source: NotificationSource | 'all';
   project: string | null;
   sort: SortMode;
-  types: Set<NotificationType>;
-  projects: Set<string>;
-  statuses: Set<StatusFilter>;
+  types: SvelteSet<NotificationType>;
+  projects: SvelteSet<string>;
+  statuses: SvelteSet<StatusFilter>;
 }
 
 export const filterState: FilterState = $state({
   source: 'all',
   project: null,
   sort: 'date',
-  types: new Set(),
-  projects: new Set(),
-  statuses: new Set()
+  types: new SvelteSet(),
+  projects: new SvelteSet(),
+  statuses: new SvelteSet()
 });
 
 export function setSourceFilter(source: NotificationSource | 'all'): void {
@@ -35,51 +36,45 @@ export function setSortMode(sort: SortMode): void {
 }
 
 export function toggleTypeFilter(type: NotificationType): void {
-  const next = new Set(filterState.types);
-  if (next.has(type)) {
-    next.delete(type);
+  if (filterState.types.has(type)) {
+    filterState.types.delete(type);
   } else {
-    next.add(type);
+    filterState.types.add(type);
   }
-  filterState.types = next;
 }
 
 export function clearTypeFilters(): void {
-  filterState.types = new Set();
+  filterState.types.clear();
 }
 
 export function toggleProjectFilter(project: string): void {
-  const next = new Set(filterState.projects);
-  if (next.has(project)) {
-    next.delete(project);
+  if (filterState.projects.has(project)) {
+    filterState.projects.delete(project);
   } else {
-    next.add(project);
+    filterState.projects.add(project);
   }
-  filterState.projects = next;
 }
 
 export function clearProjectFilters(): void {
-  filterState.projects = new Set();
+  filterState.projects.clear();
 }
 
 export function toggleStatusFilter(status: StatusFilter): void {
-  const next = new Set(filterState.statuses);
-  if (next.has(status)) {
-    next.delete(status);
+  if (filterState.statuses.has(status)) {
+    filterState.statuses.delete(status);
   } else {
-    next.add(status);
+    filterState.statuses.add(status);
   }
-  filterState.statuses = next;
 }
 
 export function clearStatusFilters(): void {
-  filterState.statuses = new Set();
+  filterState.statuses.clear();
 }
 
 export function clearAllFilters(): void {
-  filterState.types = new Set();
-  filterState.projects = new Set();
-  filterState.statuses = new Set();
+  filterState.types.clear();
+  filterState.projects.clear();
+  filterState.statuses.clear();
 }
 
 export function hasActiveFilters(): boolean {
@@ -92,7 +87,7 @@ export function resetFilters(): void {
   filterState.source = 'all';
   filterState.project = null;
   filterState.sort = 'date';
-  filterState.types = new Set();
-  filterState.projects = new Set();
-  filterState.statuses = new Set();
+  filterState.types.clear();
+  filterState.projects.clear();
+  filterState.statuses.clear();
 }

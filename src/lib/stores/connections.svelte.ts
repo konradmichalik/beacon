@@ -59,6 +59,7 @@ export async function connectGitHubWithPAT(token: string): Promise<void> {
     connectionsState.github = {
       status: 'connected',
       error: null,
+      // eslint-disable-next-line svelte/prefer-svelte-reactivity -- not reactive state
       lastChecked: new Date().toISOString()
     };
   } catch (error) {
@@ -88,6 +89,7 @@ export async function connectGitLabWithPAT(token: string, baseUrl: string): Prom
     connectionsState.gitlab = {
       status: 'connected',
       error: null,
+      // eslint-disable-next-line svelte/prefer-svelte-reactivity -- not reactive state
       lastChecked: new Date().toISOString()
     };
   } catch (error) {
