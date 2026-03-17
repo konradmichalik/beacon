@@ -286,6 +286,10 @@ export function markAllAsRead(ids?: ReadonlySet<string>): void {
   const unread = notifications.filter((n) => n.unread && (!ids || ids.has(n.id)));
   if (unread.length === 0) return;
 
+  // Snapshot unread counts before mutating state (used by markOnServers)
+  const totalGhUnread = notifications.filter((n) => n.source === 'github' && n.unread).length;
+  const totalGlUnread = notifications.filter((n) => n.source === 'gitlab' && n.unread).length;
+
   for (const n of unread) {
     locallyReadIds.add(n.id);
   }
@@ -296,7 +300,7 @@ export function markAllAsRead(ids?: ReadonlySet<string>): void {
   updateTrayBadge(unreadCount);
 
   // Mark on servers (best-effort)
-  markOnServers(unread).catch(() => {});
+  markOnServers(unread, { totalGhUnread, totalGlUnread }).catch(() => {});
 }
 
 export function markAsUnread(id: string): void {
@@ -313,17 +317,24 @@ export function markAsRead(id: string): void {
   const notification = notifications.find((n) => n.id === id);
   if (!notification || !notification.unread) return;
 
+  // Snapshot unread counts before mutating state
+  const totalGhUnread = notifications.filter((n) => n.source === 'github' && n.unread).length;
+  const totalGlUnread = notifications.filter((n) => n.source === 'gitlab' && n.unread).length;
+
   locallyReadIds.add(id);
   notifications = notifications.map((n) => (n.id === id ? { ...n, unread: false } : n));
   const unreadCount = notifications.filter((n) => n.unread).length;
   updateTrayBadge(unreadCount);
 
-  markOnServers([notification]).catch(() => {});
+  markOnServers([notification], { totalGhUnread, totalGlUnread }).catch(() => {});
 }
 
 // ── Server-side mark helper ─────────────────────────────────────
 
-async function markOnServers(items: UnifiedNotification[]): Promise<void> {
+async function markOnServers(
+  items: UnifiedNotification[],
+  unreadCounts: { totalGhUnread: number; totalGlUnread: number }
+): Promise<void> {
   const { getGitHubConfig, getGitLabConfig } = await import('./connections.svelte');
 
   const ghConfig = getGitHubConfig();
@@ -333,11 +344,8 @@ async function markOnServers(items: UnifiedNotification[]): Promise<void> {
   const glItems = items.filter((n) => n.source === 'gitlab');
 
   // Use bulk endpoint when all unread notifications of a source are included
-  const allGhUnread = notifications.filter((n) => n.source === 'github' && n.unread);
-  const allGlUnread = notifications.filter((n) => n.source === 'gitlab' && n.unread);
-
   if (ghItems.length > 0 && ghConfig) {
-    if (ghItems.length >= allGhUnread.length) {
+    if (ghItems.length >= unreadCounts.totalGhUnread) {
       const { markAllGitHubNotificationsRead } = await import('$lib/services/github/client');
       markAllGitHubNotificationsRead(ghConfig.token).catch(() => {});
     } else {
@@ -349,7 +357,7 @@ async function markOnServers(items: UnifiedNotification[]): Promise<void> {
   }
 
   if (glItems.length > 0 && glConfig) {
-    if (glItems.length >= allGlUnread.length) {
+    if (glItems.length >= unreadCounts.totalGlUnread) {
       const { markAllGitLabTodosDone } = await import('$lib/services/gitlab/client');
       markAllGitLabTodosDone(glConfig.token, glConfig.baseUrl).catch(() => {});
     } else {
