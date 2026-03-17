@@ -5,23 +5,26 @@ const STORAGE_KEY = 'settings';
 export type BadgeMode = 'count' | 'dot';
 export type NotifyMode = 'disabled' | 'instant' | 'summary';
 export type DotColor = 'blue' | 'red';
-export type NotifySound =
-  | 'none'
-  | 'bell'
-  | 'breeze'
-  | 'bubble'
-  | 'chime'
-  | 'drop'
-  | 'echo'
-  | 'glow'
-  | 'harp'
-  | 'ping'
-  | 'pluck'
-  | 'pop'
-  | 'ripple'
-  | 'shimmer'
-  | 'sonar'
-  | 'spark';
+export const NOTIFY_SOUNDS = [
+  'none',
+  'bell',
+  'breeze',
+  'bubble',
+  'chime',
+  'drop',
+  'echo',
+  'glow',
+  'harp',
+  'ping',
+  'pluck',
+  'pop',
+  'ripple',
+  'shimmer',
+  'sonar',
+  'spark'
+] as const;
+
+export type NotifySound = (typeof NOTIFY_SOUNDS)[number];
 
 interface Settings {
   pollingInterval: number; // in seconds

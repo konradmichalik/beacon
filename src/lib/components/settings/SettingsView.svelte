@@ -17,7 +17,13 @@
     ChevronDown
   } from '@lucide/svelte';
   import { settingsState, updateSettings } from '$lib/stores/settings.svelte';
-  import type { BadgeMode, NotifyMode, DotColor, NotifySound } from '$lib/stores/settings.svelte';
+  import {
+    NOTIFY_SOUNDS,
+    type BadgeMode,
+    type NotifyMode,
+    type DotColor,
+    type NotifySound
+  } from '$lib/stores/settings.svelte';
   import GitHubConnectionForm from '../connection/GitHubConnectionForm.svelte';
   import GitLabConnectionForm from '../connection/GitLabConnectionForm.svelte';
   import BeaconLogo from '../icons/BeaconLogo.svelte';
@@ -86,24 +92,10 @@
     { value: 60, label: '60 min' }
   ];
 
-  const soundOptions: { value: NotifySound; label: string }[] = [
-    { value: 'none', label: 'Off' },
-    { value: 'bell', label: 'Bell' },
-    { value: 'breeze', label: 'Breeze' },
-    { value: 'bubble', label: 'Bubble' },
-    { value: 'chime', label: 'Chime' },
-    { value: 'drop', label: 'Drop' },
-    { value: 'echo', label: 'Echo' },
-    { value: 'glow', label: 'Glow' },
-    { value: 'harp', label: 'Harp' },
-    { value: 'ping', label: 'Ping' },
-    { value: 'pluck', label: 'Pluck' },
-    { value: 'pop', label: 'Pop' },
-    { value: 'ripple', label: 'Ripple' },
-    { value: 'shimmer', label: 'Shimmer' },
-    { value: 'sonar', label: 'Sonar' },
-    { value: 'spark', label: 'Spark' }
-  ];
+  const soundOptions = NOTIFY_SOUNDS.map((s) => ({
+    value: s,
+    label: s === 'none' ? 'Off' : s.charAt(0).toUpperCase() + s.slice(1)
+  }));
 </script>
 
 <!-- Tab bar -->
