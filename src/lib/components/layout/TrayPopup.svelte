@@ -25,10 +25,16 @@
   let prRoleFilter: PRRoleFilter = $state('all');
   let prSort: PRSortMode = $state('updated');
 
-  function toggleSettings(): void {
-    showSettings = !showSettings;
-    if (!showSettings && hasAnyServiceConfigured()) {
-      startPolling();
+  async function toggleSettings(): Promise<void> {
+    const { isTauri } = await import('$lib/utils/storage');
+    if (isTauri()) {
+      const { invoke } = await import('@tauri-apps/api/core');
+      await invoke('open_settings_window');
+    } else {
+      showSettings = !showSettings;
+      if (!showSettings && hasAnyServiceConfigured()) {
+        startPolling();
+      }
     }
   }
 

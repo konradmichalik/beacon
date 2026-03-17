@@ -3,7 +3,7 @@ use tauri::{
     image::Image,
     menu::{MenuBuilder, MenuItemBuilder},
     tray::{MouseButton, MouseButtonState, TrayIconBuilder, TrayIconEvent},
-    App, Emitter, Manager, PhysicalPosition,
+    App, Manager, PhysicalPosition,
 };
 
 pub const TRAY_ID: &str = "beacon-tray";
@@ -90,11 +90,10 @@ pub fn create_tray(app: &App) -> Result<(), Box<dyn std::error::Error>> {
                 app.exit(0);
             }
             "settings" => {
-                if let Some(window) = app.get_webview_window("main") {
-                    let _ = window.show();
-                    let _ = window.set_focus();
-                    let _ = window.emit("navigate", "settings");
-                }
+                let app_clone = app.clone();
+                tauri::async_runtime::spawn(async move {
+                    let _ = crate::open_settings_window(app_clone).await;
+                });
             }
             _ => {}
         })

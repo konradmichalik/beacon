@@ -215,6 +215,21 @@ function updateFromBackend(items: UnifiedNotification[]): void {
     if (!ids.has(id)) locallyReadIds.delete(id);
   }
 
+  // Auto-dismiss closed/merged notifications when hideClosed is enabled
+  if (settingsState.hideClosed) {
+    const closedUnread = items.filter(
+      (n) => n.unread && (n.subjectState === 'closed' || n.subjectState === 'merged')
+    );
+    if (closedUnread.length > 0) {
+      for (const n of closedUnread) {
+        locallyReadIds.add(n.id);
+      }
+      const totalGhUnread = items.filter((n) => n.source === 'github' && n.unread).length;
+      const totalGlUnread = items.filter((n) => n.source === 'gitlab' && n.unread).length;
+      markOnServers(closedUnread, { totalGhUnread, totalGlUnread }).catch(() => {});
+    }
+  }
+
   // Apply local read state overlay
   const effectiveItems = items.map((n) => (locallyReadIds.has(n.id) ? { ...n, unread: false } : n));
 
@@ -366,11 +381,15 @@ async function markOnServers(
   if (ghItems.length > 0 && ghConfig) {
     if (ghItems.length >= unreadCounts.totalGhUnread) {
       const { markAllGitHubNotificationsRead } = await import('$lib/services/github/client');
-      markAllGitHubNotificationsRead(ghConfig.token).catch(() => {});
+      markAllGitHubNotificationsRead(ghConfig.token).catch((e) =>
+        console.warn('[beacon] GH mark-all-read failed:', e)
+      );
     } else {
       const { markGitHubThreadRead } = await import('$lib/services/github/client');
       for (const n of ghItems) {
-        markGitHubThreadRead(ghConfig.token, n.id.replace('github-', '')).catch(() => {});
+        markGitHubThreadRead(ghConfig.token, n.id.replace('github-', '')).catch((e) =>
+          console.warn('[beacon] GH mark-read failed:', n.id, e)
+        );
       }
     }
   }
@@ -378,7 +397,9 @@ async function markOnServers(
   if (glItems.length > 0 && glConfig) {
     if (glItems.length >= unreadCounts.totalGlUnread) {
       const { markAllGitLabTodosDone } = await import('$lib/services/gitlab/client');
-      markAllGitLabTodosDone(glConfig.token, glConfig.baseUrl).catch(() => {});
+      markAllGitLabTodosDone(glConfig.token, glConfig.baseUrl).catch((e) =>
+        console.warn('[beacon] GL mark-all-done failed:', e)
+      );
     } else {
       const { markGitLabTodoDone } = await import('$lib/services/gitlab/client');
       for (const n of glItems) {
@@ -386,7 +407,7 @@ async function markOnServers(
           glConfig.token,
           glConfig.baseUrl,
           Number(n.id.replace('gitlab-', ''))
-        ).catch(() => {});
+        ).catch((e) => console.warn('[beacon] GL mark-done failed:', n.id, e));
       }
     }
   }

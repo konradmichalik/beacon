@@ -40,7 +40,7 @@ On first launch, open **Settings** via the gear icon or the tray context menu an
 | Service | Token                                                                              | Required scope  |
 | ------- | ---------------------------------------------------------------------------------- | --------------- |
 | GitHub  | [Personal Access Token](https://github.com/settings/tokens/new)                    | `notifications` |
-| GitLab  | [Personal Access Token](https://gitlab.com/-/user_settings/personal_access_tokens) | `read_api`      |
+| GitLab  | [Personal Access Token](https://gitlab.com/-/user_settings/personal_access_tokens) | `api`           |
 
 > [!TIP]
 > GitLab supports self-hosted instances — set your instance's base URL in the GitLab settings panel.

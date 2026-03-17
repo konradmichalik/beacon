@@ -34,7 +34,7 @@
 
   async function openTokenPage(): Promise<void> {
     const base = baseUrl.trim().replace(/\/$/, '');
-    const url = `${base}/-/user_settings/personal_access_tokens?name=Beacon&scopes=read_api`;
+    const url = `${base}/-/user_settings/personal_access_tokens?name=Beacon&scopes=api`;
     if (isTauri()) {
       const { open } = await import('@tauri-apps/plugin-shell');
       await open(url);
@@ -93,7 +93,7 @@
           Create a token on {tokenHost}
           <ExternalLink size={8} />
         </button>
-        with <code class="rounded bg-secondary px-1">read_api</code> scope.
+        with <code class="rounded bg-secondary px-1">api</code> scope.
       </p>
       <button
         type="button"

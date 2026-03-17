@@ -125,6 +125,30 @@ fn quit_app(app: tauri::AppHandle) {
     app.exit(0);
 }
 
+#[tauri::command]
+async fn open_settings_window(app: tauri::AppHandle) -> Result<(), String> {
+    use tauri::Manager;
+
+    // If settings window already exists, just focus it
+    if let Some(win) = app.get_webview_window("settings") {
+        win.set_focus().map_err(|e| e.to_string())?;
+        return Ok(());
+    }
+
+    tauri::WebviewWindowBuilder::new(
+        &app,
+        "settings",
+        tauri::WebviewUrl::App("?window=settings".into()),
+    )
+    .title("Beacon Settings")
+    .inner_size(420.0, 480.0)
+    .resizable(false)
+    .build()
+    .map_err(|e| e.to_string())?;
+
+    Ok(())
+}
+
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     tauri::Builder::default()
@@ -160,10 +184,6 @@ pub fn run() {
 
                             let panel = &*(ns_window as *const NSPanel);
 
-                            // NonactivatingPanel: the panel can become key
-                            // (for CSS :hover / input) without activating the
-                            // owning app — crucial so macOS doesn't switch away
-                            // from a fullscreen space when the panel is clicked.
                             let mut mask = panel.styleMask();
                             mask |= NSWindowStyleMask::NonactivatingPanel;
                             panel.setStyleMask(mask);
@@ -273,6 +293,7 @@ pub fn run() {
         .invoke_handler(tauri::generate_handler![
             update_badge,
             quit_app,
+            open_settings_window,
             polling::start_polling,
             polling::stop_polling,
             polling::trigger_poll,
