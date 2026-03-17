@@ -18,4 +18,5 @@ export interface UnifiedPullRequest {
   readonly ciStatus: CIStatus;
   readonly reviewDecision: ReviewDecision | null;
   readonly reviewRequestedFromMe: boolean;
+  readonly reviewedByMe: boolean;
 }

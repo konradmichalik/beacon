@@ -40,6 +40,9 @@ export interface GitHubCheckRun {
 
 export interface GitHubReview {
   readonly state: string;
+  readonly user: {
+    readonly login: string;
+  } | null;
 }
 
 export function repoFromUrl(repositoryUrl: string): string {
@@ -64,6 +67,19 @@ export function mapReviewDecision(reviews: readonly GitHubReview[]): ReviewDecis
   return 'review_required';
 }
 
+export function hasUserReviewed(reviews: readonly GitHubReview[], username: string): boolean {
+  return reviews.some(
+    (r) =>
+      r.user?.login === username &&
+      ['APPROVED', 'CHANGES_REQUESTED', 'COMMENTED'].includes(r.state)
+  );
+}
+
+interface ReviewStatusResult {
+  readonly reviewDecision: ReviewDecision | null;
+  readonly reviewedByMe: boolean;
+}
+
 async function fetchCheckStatus(token: string, repo: string, ref: string): Promise<CIStatus> {
   try {
     const response = await safeFetch(
@@ -81,18 +97,22 @@ async function fetchCheckStatus(token: string, repo: string, ref: string): Promi
 async function fetchReviewStatus(
   token: string,
   repo: string,
-  number: number
-): Promise<ReviewDecision | null> {
+  number: number,
+  username: string
+): Promise<ReviewStatusResult> {
   try {
     const response = await safeFetch(
       `${GITHUB_API}/repos/${repo}/pulls/${number}/reviews?per_page=100`,
       { headers: HEADERS(token) }
     );
-    if (!response.ok) return null;
+    if (!response.ok) return { reviewDecision: null, reviewedByMe: false };
     const data = (await response.json()) as GitHubReview[];
-    return mapReviewDecision(data);
+    return {
+      reviewDecision: mapReviewDecision(data),
+      reviewedByMe: hasUserReviewed(data, username)
+    };
   } catch {
-    return null;
+    return { reviewDecision: null, reviewedByMe: false };
   }
 }
 
@@ -112,18 +132,17 @@ async function fetchHeadSha(token: string, repo: string, number: number): Promis
 async function enrichPR(
   token: string,
   item: GitHubSearchItem,
-  reviewRequested: boolean
+  reviewRequested: boolean,
+  username: string
 ): Promise<UnifiedPullRequest> {
   const repo = repoFromUrl(item.repository_url);
 
   // Fetch head SHA, then CI + review status in parallel
   const sha = await fetchHeadSha(token, repo, item.number);
 
-  const [ciStatus, reviewDecision] = await Promise.all([
+  const [ciStatus, reviewStatus] = await Promise.all([
     sha ? fetchCheckStatus(token, repo, sha) : Promise.resolve('unknown' as CIStatus),
-    reviewRequested
-      ? Promise.resolve(null as ReviewDecision | null)
-      : fetchReviewStatus(token, repo, item.number)
+    fetchReviewStatus(token, repo, item.number, username)
   ]);
 
   return {
@@ -138,8 +157,9 @@ async function enrichPR(
     createdAt: item.created_at,
     updatedAt: item.updated_at,
     ciStatus,
-    reviewDecision,
-    reviewRequestedFromMe: reviewRequested
+    reviewDecision: reviewStatus.reviewDecision,
+    reviewRequestedFromMe: reviewRequested,
+    reviewedByMe: reviewStatus.reviewedByMe
   };
 }
 
@@ -171,8 +191,8 @@ export async function fetchGitHubPullRequests(
 
   // Enrich in parallel (cap at reasonable limit)
   const enriched = await Promise.all([
-    ...authored.items.slice(0, 15).map((item) => enrichPR(token, item, false)),
-    ...reviewOnly.slice(0, 15).map((item) => enrichPR(token, item, true))
+    ...authored.items.slice(0, 15).map((item) => enrichPR(token, item, false, username)),
+    ...reviewOnly.slice(0, 15).map((item) => enrichPR(token, item, true, username))
   ]);
 
   return enriched;

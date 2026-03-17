@@ -56,6 +56,41 @@ export function mapReviewDecision(mr: GitLabMergeRequest): ReviewDecision | null
   return null;
 }
 
+export function hasUserApproved(
+  approvals: readonly { user: { username: string } }[],
+  username: string
+): boolean {
+  return approvals.some((a) => a.user.username === username);
+}
+
+interface GitLabApproval {
+  readonly user: { readonly username: string };
+}
+
+interface GitLabApprovalsResponse {
+  readonly approved_by: readonly GitLabApproval[];
+}
+
+async function fetchApprovals(
+  token: string,
+  baseUrl: string,
+  projectId: number,
+  mrIid: number
+): Promise<readonly GitLabApproval[]> {
+  try {
+    const api = baseUrl.replace(/\/$/, '');
+    const response = await safeFetch(
+      `${api}/api/v4/projects/${projectId}/merge_requests/${mrIid}/approvals`,
+      { headers: { Authorization: `Bearer ${token}` } }
+    );
+    if (!response.ok) return [];
+    const data = (await response.json()) as GitLabApprovalsResponse;
+    return data.approved_by ?? [];
+  } catch {
+    return [];
+  }
+}
+
 // Cache project paths to avoid refetching
 const projectPathCache = new Map<number, string>();
 
@@ -85,9 +120,21 @@ async function mapToUnified(
   token: string,
   baseUrl: string,
   mr: GitLabMergeRequest,
-  reviewRequested: boolean
+  reviewRequested: boolean,
+  username: string
 ): Promise<UnifiedPullRequest> {
-  const repository = await fetchProjectPath(token, baseUrl, mr.project_id);
+  const [repository, approvals] = await Promise.all([
+    fetchProjectPath(token, baseUrl, mr.project_id),
+    reviewRequested
+      ? fetchApprovals(token, baseUrl, mr.project_id, mr.iid)
+      : Promise.resolve([] as readonly GitLabApproval[])
+  ]);
+
+  const reviewDecision: ReviewDecision | null = reviewRequested
+    ? approvals.length > 0
+      ? 'approved'
+      : 'review_required'
+    : mapReviewDecision(mr);
 
   return {
     id: `gitlab-mr-${mr.id}`,
@@ -101,8 +148,9 @@ async function mapToUnified(
     createdAt: mr.created_at,
     updatedAt: mr.updated_at,
     ciStatus: mapCIStatus(mr.head_pipeline?.status ?? null),
-    reviewDecision: mapReviewDecision(mr),
-    reviewRequestedFromMe: reviewRequested
+    reviewDecision,
+    reviewRequestedFromMe: reviewRequested,
+    reviewedByMe: hasUserApproved(approvals, username)
   };
 }
 
@@ -133,8 +181,8 @@ export async function fetchGitLabMergeRequests(
   const reviewOnly = reviewRequested.filter((mr) => !authoredIds.has(mr.id));
 
   const results = await Promise.all([
-    ...authored.map((mr) => mapToUnified(token, baseUrl, mr, false)),
-    ...reviewOnly.map((mr) => mapToUnified(token, baseUrl, mr, true))
+    ...authored.map((mr) => mapToUnified(token, baseUrl, mr, false, username)),
+    ...reviewOnly.map((mr) => mapToUnified(token, baseUrl, mr, true, username))
   ]);
 
   return results;
