@@ -36,7 +36,35 @@ cargo fmt --check     # formatting
 cargo clippy          # lint
 ```
 
-Both frontend and Rust linters run automatically on push and PR via GitHub Actions.
+## Testing
+
+```bash
+npm test             # run frontend tests (Vitest)
+npm run test:watch   # watch mode
+```
+
+Rust (in `src-tauri/`):
+
+```bash
+cargo test
+```
+
+### What is tested
+
+| Scope | Coverage |
+| --- | --- |
+| Time formatting (`timeAgo`, `formatRefreshTime`) | Boundary cases: seconds, minutes, hours, days, date fallback, cross-year |
+| API transform pipeline | GitHub & GitLab notification type mapping, URL construction, action→reason mapping, state normalization, CI status, review decisions |
+| Rust polling transforms | Same mapping logic on the backend: `gh_type`, `gh_url`, `gl_type`, `gl_reason`, `gl_state` |
+
+Test files live next to the code they test (`*.test.ts`). Rust tests use `#[cfg(test)]` modules.
+
+## CI
+
+All checks run automatically on push and PR via GitHub Actions (`.github/workflows/ci.yml`):
+
+- **Frontend:** ESLint, Prettier, svelte-check, Vitest
+- **Rust:** rustfmt, Clippy, cargo test
 
 ## Demo Mode
 
