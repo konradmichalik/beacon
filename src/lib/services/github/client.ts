@@ -8,7 +8,7 @@ import type {
 
 const GITHUB_API = 'https://api.github.com';
 
-function mapSubjectType(type: string): NotificationType {
+export function mapSubjectType(type: string): NotificationType {
   switch (type) {
     case 'Issue':
       return 'issue';
@@ -23,7 +23,7 @@ function mapSubjectType(type: string): NotificationType {
   }
 }
 
-function buildHtmlUrl(notification: GitHubNotification): string {
+export function buildHtmlUrl(notification: GitHubNotification): string {
   const { subject, repository } = notification;
 
   if (subject.url) {

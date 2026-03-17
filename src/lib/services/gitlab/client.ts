@@ -1,6 +1,6 @@
 import type { GitLabTodo, UnifiedNotification, NotificationType, SubjectState } from '$lib/types';
 
-function mapTargetType(type: string): NotificationType {
+export function mapTargetType(type: string): NotificationType {
   switch (type) {
     case 'Issue':
       return 'issue';
@@ -13,7 +13,7 @@ function mapTargetType(type: string): NotificationType {
   }
 }
 
-function mapActionToReason(action: string, body: string): string {
+export function mapActionToReason(action: string, body: string): string {
   switch (action) {
     case 'assigned':
       return 'assign';
@@ -49,7 +49,7 @@ function mapActionToReason(action: string, body: string): string {
   }
 }
 
-function mapTargetState(state?: string): SubjectState {
+export function mapTargetState(state?: string): SubjectState {
   if (state === 'merged') return 'merged';
   if (state === 'closed') return 'closed';
   if (state === 'opened') return 'open';

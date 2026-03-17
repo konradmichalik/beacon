@@ -600,3 +600,135 @@ pub async fn trigger_poll(app: AppHandle) -> Result<(), String> {
     do_poll(&app).await;
     Ok(())
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    // ── GitHub type mapping ──────────────────────────────────────
+
+    #[test]
+    fn gh_type_maps_known_types() {
+        assert_eq!(gh_type("Issue"), "issue");
+        assert_eq!(gh_type("PullRequest"), "pull_request");
+        assert_eq!(gh_type("Release"), "release");
+        assert_eq!(gh_type("Discussion"), "discussion");
+    }
+
+    #[test]
+    fn gh_type_defaults_to_other() {
+        assert_eq!(gh_type("CheckSuite"), "other");
+        assert_eq!(gh_type(""), "other");
+    }
+
+    // ── GitHub URL construction ──────────────────────────────────
+
+    fn make_gh_notification(subject_url: Option<&str>) -> GHNotification {
+        GHNotification {
+            id: "1".into(),
+            unread: true,
+            reason: "review_requested".into(),
+            updated_at: "2026-03-17T12:00:00Z".into(),
+            subject: GHSubject {
+                title: "Test".into(),
+                url: subject_url.map(Into::into),
+                subject_type: "PullRequest".into(),
+            },
+            repository: GHRepo {
+                full_name: "owner/repo".into(),
+                html_url: "https://github.com/owner/repo".into(),
+            },
+        }
+    }
+
+    #[test]
+    fn gh_url_converts_pulls_api_to_html() {
+        let n = make_gh_notification(Some("https://api.github.com/repos/owner/repo/pulls/42"));
+        assert_eq!(gh_url(&n), "https://github.com/owner/repo/pull/42");
+    }
+
+    #[test]
+    fn gh_url_converts_issues_api_to_html() {
+        let n = make_gh_notification(Some("https://api.github.com/repos/owner/repo/issues/7"));
+        assert_eq!(gh_url(&n), "https://github.com/owner/repo/issues/7");
+    }
+
+    #[test]
+    fn gh_url_falls_back_to_repo_url() {
+        let n = make_gh_notification(None);
+        assert_eq!(gh_url(&n), "https://github.com/owner/repo");
+
+        let n2 = make_gh_notification(Some("https://api.github.com/repos/owner/repo/releases/99"));
+        assert_eq!(gh_url(&n2), "https://github.com/owner/repo");
+    }
+
+    // ── GitLab type mapping ──────────────────────────────────────
+
+    #[test]
+    fn gl_type_maps_known_types() {
+        assert_eq!(gl_type("Issue"), "issue");
+        assert_eq!(gl_type("MergeRequest"), "merge_request");
+        assert_eq!(gl_type("Pipeline"), "pipeline");
+    }
+
+    #[test]
+    fn gl_type_defaults_to_other() {
+        assert_eq!(gl_type("Epic"), "other");
+    }
+
+    // ── GitLab reason mapping ────────────────────────────────────
+
+    #[test]
+    fn gl_reason_maps_common_actions() {
+        assert_eq!(gl_reason("assigned", ""), "assign");
+        assert_eq!(gl_reason("mentioned", ""), "mention");
+        assert_eq!(gl_reason("directly_addressed", ""), "mention");
+        assert_eq!(gl_reason("build_failed", ""), "ci_activity");
+        assert_eq!(gl_reason("review_requested", ""), "review_requested");
+        assert_eq!(gl_reason("approval_required", ""), "approval_requested");
+        assert_eq!(gl_reason("approved", ""), "approved");
+        assert_eq!(gl_reason("unmergeable", ""), "unmergeable");
+    }
+
+    #[test]
+    fn gl_reason_review_submitted_empty_body() {
+        assert_eq!(gl_reason("review_submitted", ""), "approved");
+        assert_eq!(gl_reason("review_submitted", "  "), "approved");
+    }
+
+    #[test]
+    fn gl_reason_review_submitted_with_changes() {
+        assert_eq!(
+            gl_reason("review_submitted", "Requested changes on line 5"),
+            "change_requested"
+        );
+    }
+
+    #[test]
+    fn gl_reason_review_submitted_with_comment() {
+        assert_eq!(
+            gl_reason("review_submitted", "Looks good overall"),
+            "review_submitted"
+        );
+    }
+
+    #[test]
+    fn gl_reason_passes_through_unknown() {
+        assert_eq!(gl_reason("some_new_action", ""), "some_new_action");
+    }
+
+    // ── GitLab state mapping ─────────────────────────────────────
+
+    #[test]
+    fn gl_state_maps_known_states() {
+        assert_eq!(gl_state(Some("merged")), Some("merged".into()));
+        assert_eq!(gl_state(Some("closed")), Some("closed".into()));
+        assert_eq!(gl_state(Some("opened")), Some("open".into()));
+    }
+
+    #[test]
+    fn gl_state_returns_none_for_unknown() {
+        assert_eq!(gl_state(None), None);
+        assert_eq!(gl_state(Some("locked")), None);
+    }
+}

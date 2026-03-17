@@ -30,7 +30,7 @@ interface GitLabProject {
   readonly path_with_namespace: string;
 }
 
-function mapCIStatus(pipelineStatus: string | null): CIStatus {
+export function mapCIStatus(pipelineStatus: string | null): CIStatus {
   if (!pipelineStatus) return 'unknown';
   switch (pipelineStatus) {
     case 'success':
@@ -49,7 +49,7 @@ function mapCIStatus(pipelineStatus: string | null): CIStatus {
   }
 }
 
-function mapReviewDecision(mr: GitLabMergeRequest): ReviewDecision | null {
+export function mapReviewDecision(mr: GitLabMergeRequest): ReviewDecision | null {
   if (mr.approved_by && mr.approved_by.length > 0) return 'approved';
   if (mr.reviewers && mr.reviewers.length > 0) return 'review_required';
   return null;
