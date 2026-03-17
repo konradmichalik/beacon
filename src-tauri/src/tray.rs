@@ -8,8 +8,11 @@ use tauri::{
 
 pub const TRAY_ID: &str = "beacon-tray";
 
+/// Tray icon position + physical size.
+type TrayRect = (PhysicalPosition<i32>, (u32, u32));
+
 /// Last known tray icon position + size, used to position the window on activation.
-pub static LAST_TRAY_RECT: Mutex<Option<(PhysicalPosition<i32>, (u32, u32))>> = Mutex::new(None);
+pub static LAST_TRAY_RECT: Mutex<Option<TrayRect>> = Mutex::new(None);
 
 /// Position a window centered below the tray icon using the stored tray rect.
 pub fn position_window_at_tray(window: &tauri::WebviewWindow) {
