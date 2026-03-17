@@ -1,4 +1,5 @@
 import type { UnifiedPullRequest, CIStatus, ReviewDecision } from '$lib/types';
+import { safeFetch } from '$lib/utils/fetch';
 
 const GITHUB_API = 'https://api.github.com';
 
@@ -65,7 +66,7 @@ export function mapReviewDecision(reviews: readonly GitHubReview[]): ReviewDecis
 
 async function fetchCheckStatus(token: string, repo: string, ref: string): Promise<CIStatus> {
   try {
-    const response = await fetch(
+    const response = await safeFetch(
       `${GITHUB_API}/repos/${repo}/commits/${ref}/check-runs?per_page=100`,
       { headers: HEADERS(token) }
     );
@@ -83,7 +84,7 @@ async function fetchReviewStatus(
   number: number
 ): Promise<ReviewDecision | null> {
   try {
-    const response = await fetch(
+    const response = await safeFetch(
       `${GITHUB_API}/repos/${repo}/pulls/${number}/reviews?per_page=100`,
       { headers: HEADERS(token) }
     );
@@ -97,7 +98,7 @@ async function fetchReviewStatus(
 
 async function fetchHeadSha(token: string, repo: string, number: number): Promise<string | null> {
   try {
-    const response = await fetch(`${GITHUB_API}/repos/${repo}/pulls/${number}`, {
+    const response = await safeFetch(`${GITHUB_API}/repos/${repo}/pulls/${number}`, {
       headers: HEADERS(token)
     });
     if (!response.ok) return null;

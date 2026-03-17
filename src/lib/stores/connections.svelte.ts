@@ -1,3 +1,4 @@
+import { safeFetch } from '$lib/utils/fetch';
 import type {
   AllConnectionsState,
   ServiceState,
@@ -47,7 +48,7 @@ export function isServiceConnected(service: ServiceId): boolean {
 export async function connectGitHubWithPAT(token: string): Promise<void> {
   connectionsState.github = { status: 'connecting', error: null, lastChecked: null };
   try {
-    const response = await fetch('https://api.github.com/user', {
+    const response = await safeFetch('https://api.github.com/user', {
       headers: { Authorization: `Bearer ${token}` }
     });
     if (!response.ok) throw new Error(`GitHub auth failed: ${response.status}`);
@@ -77,7 +78,7 @@ export async function connectGitLabWithPAT(token: string, baseUrl: string): Prom
   connectionsState.gitlab = { status: 'connecting', error: null, lastChecked: null };
   try {
     const url = `${baseUrl.replace(/\/$/, '')}/api/v4/user`;
-    const response = await fetch(url, {
+    const response = await safeFetch(url, {
       headers: { Authorization: `Bearer ${token}` }
     });
     if (!response.ok) throw new Error(`GitLab auth failed: ${response.status}`);

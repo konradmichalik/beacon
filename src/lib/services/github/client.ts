@@ -5,6 +5,7 @@ import type {
   SubjectState,
   NotificationAuthor
 } from '$lib/types';
+import { safeFetch } from '$lib/utils/fetch';
 
 const GITHUB_API = 'https://api.github.com';
 
@@ -44,7 +45,7 @@ interface SubjectDetails {
 
 async function fetchSubjectDetails(subjectUrl: string, token: string): Promise<SubjectDetails> {
   try {
-    const response = await fetch(subjectUrl, {
+    const response = await safeFetch(subjectUrl, {
       headers: {
         Authorization: `Bearer ${token}`,
         Accept: 'application/vnd.github+json',
@@ -78,7 +79,7 @@ async function fetchSubjectDetails(subjectUrl: string, token: string): Promise<S
 }
 
 export async function fetchGitHubNotifications(token: string): Promise<UnifiedNotification[]> {
-  const response = await fetch(`${GITHUB_API}/notifications?participating=false&all=false`, {
+  const response = await safeFetch(`${GITHUB_API}/notifications?participating=false&all=false`, {
     headers: {
       Authorization: `Bearer ${token}`,
       Accept: 'application/vnd.github+json',
@@ -120,7 +121,7 @@ export async function fetchGitHubNotifications(token: string): Promise<UnifiedNo
 }
 
 export async function markGitHubThreadRead(token: string, threadId: string): Promise<void> {
-  await fetch(`${GITHUB_API}/notifications/threads/${threadId}`, {
+  await safeFetch(`${GITHUB_API}/notifications/threads/${threadId}`, {
     method: 'PATCH',
     headers: {
       Authorization: `Bearer ${token}`,
@@ -131,7 +132,7 @@ export async function markGitHubThreadRead(token: string, threadId: string): Pro
 }
 
 export async function markAllGitHubNotificationsRead(token: string): Promise<void> {
-  await fetch(`${GITHUB_API}/notifications`, {
+  await safeFetch(`${GITHUB_API}/notifications`, {
     method: 'PUT',
     headers: {
       Authorization: `Bearer ${token}`,

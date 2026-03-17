@@ -1,4 +1,5 @@
 import type { UnifiedPullRequest, CIStatus, ReviewDecision } from '$lib/types';
+import { safeFetch } from '$lib/utils/fetch';
 
 interface GitLabMergeRequest {
   readonly id: number;
@@ -67,7 +68,7 @@ async function fetchProjectPath(
   if (cached) return cached;
 
   try {
-    const response = await fetch(
+    const response = await safeFetch(
       `${baseUrl.replace(/\/$/, '')}/api/v4/projects/${projectId}?simple=true`,
       { headers: { Authorization: `Bearer ${token}` } }
     );

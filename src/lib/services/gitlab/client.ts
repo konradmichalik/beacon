@@ -1,4 +1,5 @@
 import type { GitLabTodo, UnifiedNotification, NotificationType, SubjectState } from '$lib/types';
+import { safeFetch } from '$lib/utils/fetch';
 
 export function mapTargetType(type: string): NotificationType {
   switch (type) {
@@ -84,7 +85,7 @@ export async function fetchGitLabTodos(
   baseUrl: string
 ): Promise<UnifiedNotification[]> {
   const url = `${baseUrl.replace(/\/$/, '')}/api/v4/todos?state=pending&per_page=50`;
-  const response = await fetch(url, {
+  const response = await safeFetch(url, {
     headers: {
       Authorization: `Bearer ${token}`
     }
@@ -103,7 +104,7 @@ export async function markGitLabTodoDone(
   baseUrl: string,
   todoId: number
 ): Promise<void> {
-  await fetch(`${baseUrl.replace(/\/$/, '')}/api/v4/todos/${todoId}/mark_as_done`, {
+  await safeFetch(`${baseUrl.replace(/\/$/, '')}/api/v4/todos/${todoId}/mark_as_done`, {
     method: 'POST',
     headers: {
       Authorization: `Bearer ${token}`
@@ -112,7 +113,7 @@ export async function markGitLabTodoDone(
 }
 
 export async function markAllGitLabTodosDone(token: string, baseUrl: string): Promise<void> {
-  await fetch(`${baseUrl.replace(/\/$/, '')}/api/v4/todos/mark_as_done`, {
+  await safeFetch(`${baseUrl.replace(/\/$/, '')}/api/v4/todos/mark_as_done`, {
     method: 'POST',
     headers: {
       Authorization: `Bearer ${token}`
