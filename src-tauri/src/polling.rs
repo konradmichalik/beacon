@@ -506,7 +506,10 @@ fn process_new(
         .copied()
         .collect();
 
-    inner.known_ids = unread.iter().map(|n| n.id.clone()).collect();
+    // Accumulate known IDs — only remove IDs no longer present in the full item list
+    let current_ids: HashSet<String> = items.iter().map(|n| n.id.clone()).collect();
+    inner.known_ids.retain(|id| current_ids.contains(id));
+    inner.known_ids.extend(unread.iter().map(|n| n.id.clone()));
 
     if new_items.is_empty() {
         return;
