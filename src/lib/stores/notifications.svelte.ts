@@ -30,7 +30,7 @@ export function getUnreadCount(): number {
 
 export function getFilteredUnreadCount(): number {
   return getFilteredNotifications(
-    filterState.source,
+    'all',
     filterState.project,
     'date',
     filterState.types,
@@ -44,7 +44,14 @@ export function getTotalCount(): number {
 }
 
 export function getCountBySource(source: NotificationSource): number {
-  return notifications.filter((n) => n.source === source && n.unread).length;
+  return getFilteredNotifications(
+    source,
+    filterState.project,
+    'date',
+    filterState.types,
+    filterState.projects,
+    filterState.statuses
+  ).filter((n) => n.unread).length;
 }
 
 export function getIsLoading(): boolean {
