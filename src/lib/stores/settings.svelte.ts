@@ -5,6 +5,26 @@ const STORAGE_KEY = 'settings';
 export type BadgeMode = 'count' | 'dot';
 export type NotifyMode = 'disabled' | 'instant' | 'summary';
 export type DotColor = 'blue' | 'red';
+export const NOTIFY_SOUNDS = [
+  'none',
+  'bell',
+  'breeze',
+  'bubble',
+  'chime',
+  'drop',
+  'echo',
+  'glow',
+  'harp',
+  'ping',
+  'pluck',
+  'pop',
+  'ripple',
+  'shimmer',
+  'sonar',
+  'spark'
+] as const;
+
+export type NotifySound = (typeof NOTIFY_SOUNDS)[number];
 
 interface Settings {
   pollingInterval: number; // in seconds
@@ -14,6 +34,7 @@ interface Settings {
   hideClosed: boolean;
   notifyMode: NotifyMode;
   notifySummaryMinutes: number; // summary interval in minutes
+  notifySound: NotifySound;
 }
 
 const defaultSettings: Settings = {
@@ -23,7 +44,8 @@ const defaultSettings: Settings = {
   dotColor: 'blue',
   hideClosed: false,
   notifyMode: 'disabled',
-  notifySummaryMinutes: 15
+  notifySummaryMinutes: 15,
+  notifySound: 'none'
 };
 
 export const settingsState: Settings = $state({ ...defaultSettings });

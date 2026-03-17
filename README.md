@@ -52,6 +52,10 @@ On first launch, open **Settings** via the gear icon or the tray context menu an
 
 See [DEVELOPMENT.md](DEVELOPMENT.md) for build instructions, demo mode, and project structure.
 
+## 💎 Credits
+
+Notification sounds from [Pixabay](https://pixabay.com).
+
 ## 📜 License
 
 [MIT](LICENSE)
