@@ -5,6 +5,7 @@ import type {
   NotificationGroup
 } from '$lib/types';
 import type { SortMode, StatusFilter } from './filters.svelte';
+import { filterState } from './filters.svelte';
 import { settingsState } from './settings.svelte';
 import { isTauri } from '$lib/utils/storage';
 import { demoNotifications } from '$lib/utils/demo-data';
@@ -25,6 +26,17 @@ export function getNotifications(): readonly UnifiedNotification[] {
 
 export function getUnreadCount(): number {
   return notifications.filter((n) => n.unread).length;
+}
+
+export function getFilteredUnreadCount(): number {
+  return getFilteredNotifications(
+    filterState.source,
+    filterState.project,
+    'date',
+    filterState.types,
+    filterState.projects,
+    filterState.statuses
+  ).filter((n) => n.unread).length;
 }
 
 export function getTotalCount(): number {
