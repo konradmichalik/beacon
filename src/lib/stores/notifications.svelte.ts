@@ -325,21 +325,42 @@ export function markAsRead(id: string): void {
 
 async function markOnServers(items: UnifiedNotification[]): Promise<void> {
   const { getGitHubConfig, getGitLabConfig } = await import('./connections.svelte');
-  const { markGitHubThreadRead } = await import('$lib/services/github/client');
-  const { markGitLabTodoDone } = await import('$lib/services/gitlab/client');
 
   const ghConfig = getGitHubConfig();
   const glConfig = getGitLabConfig();
 
-  for (const n of items) {
-    if (n.source === 'github' && ghConfig) {
-      markGitHubThreadRead(ghConfig.token, n.id.replace('github-', '')).catch(() => {});
-    } else if (n.source === 'gitlab' && glConfig) {
-      markGitLabTodoDone(
-        glConfig.token,
-        glConfig.baseUrl,
-        Number(n.id.replace('gitlab-', ''))
-      ).catch(() => {});
+  const ghItems = items.filter((n) => n.source === 'github');
+  const glItems = items.filter((n) => n.source === 'gitlab');
+
+  // Use bulk endpoint when all unread notifications of a source are included
+  const allGhUnread = notifications.filter((n) => n.source === 'github' && n.unread);
+  const allGlUnread = notifications.filter((n) => n.source === 'gitlab' && n.unread);
+
+  if (ghItems.length > 0 && ghConfig) {
+    if (ghItems.length >= allGhUnread.length) {
+      const { markAllGitHubNotificationsRead } = await import('$lib/services/github/client');
+      markAllGitHubNotificationsRead(ghConfig.token).catch(() => {});
+    } else {
+      const { markGitHubThreadRead } = await import('$lib/services/github/client');
+      for (const n of ghItems) {
+        markGitHubThreadRead(ghConfig.token, n.id.replace('github-', '')).catch(() => {});
+      }
+    }
+  }
+
+  if (glItems.length > 0 && glConfig) {
+    if (glItems.length >= allGlUnread.length) {
+      const { markAllGitLabTodosDone } = await import('$lib/services/gitlab/client');
+      markAllGitLabTodosDone(glConfig.token, glConfig.baseUrl).catch(() => {});
+    } else {
+      const { markGitLabTodoDone } = await import('$lib/services/gitlab/client');
+      for (const n of glItems) {
+        markGitLabTodoDone(
+          glConfig.token,
+          glConfig.baseUrl,
+          Number(n.id.replace('gitlab-', ''))
+        ).catch(() => {});
+      }
     }
   }
 }
