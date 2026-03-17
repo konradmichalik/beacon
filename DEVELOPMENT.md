@@ -51,11 +51,11 @@ cargo test
 
 ### What is tested
 
-| Scope | Coverage |
-| --- | --- |
-| Time formatting (`timeAgo`, `formatRefreshTime`) | Boundary cases: seconds, minutes, hours, days, date fallback, cross-year |
-| API transform pipeline | GitHub & GitLab notification type mapping, URL construction, action→reason mapping, state normalization, CI status, review decisions |
-| Rust polling transforms | Same mapping logic on the backend: `gh_type`, `gh_url`, `gl_type`, `gl_reason`, `gl_state` |
+| Scope                                            | Coverage                                                                                                                             |
+| ------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------ |
+| Time formatting (`timeAgo`, `formatRefreshTime`) | Boundary cases: seconds, minutes, hours, days, date fallback, cross-year                                                             |
+| API transform pipeline                           | GitHub & GitLab notification type mapping, URL construction, action→reason mapping, state normalization, CI status, review decisions |
+| Rust polling transforms                          | Same mapping logic on the backend: `gh_type`, `gh_url`, `gl_type`, `gl_reason`, `gl_state`                                           |
 
 Test files live next to the code they test (`*.test.ts`). Rust tests use `#[cfg(test)]` modules.
 

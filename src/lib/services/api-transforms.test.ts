@@ -1,10 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import { mapSubjectType, buildHtmlUrl } from './github/client';
-import {
-  mapTargetType,
-  mapActionToReason,
-  mapTargetState
-} from './gitlab/client';
+import { mapTargetType, mapActionToReason, mapTargetState } from './gitlab/client';
 import {
   mapCIStatus as ghMapCIStatus,
   mapReviewDecision as ghMapReviewDecision,
@@ -193,10 +189,7 @@ describe('GitHub PR: mapReviewDecision', () => {
   });
 
   it('returns "changes_requested" when present', () => {
-    const reviews: GitHubReview[] = [
-      { state: 'APPROVED' },
-      { state: 'CHANGES_REQUESTED' }
-    ];
+    const reviews: GitHubReview[] = [{ state: 'APPROVED' }, { state: 'CHANGES_REQUESTED' }];
     expect(ghMapReviewDecision(reviews)).toBe('changes_requested');
   });
 
