@@ -1,3 +1,4 @@
+use std::sync::Mutex;
 use tauri::{
     image::Image,
     menu::{MenuBuilder, MenuItemBuilder},
@@ -6,6 +7,21 @@ use tauri::{
 };
 
 pub const TRAY_ID: &str = "beacon-tray";
+
+/// Last known tray icon position + size, used to position the window on activation.
+pub static LAST_TRAY_RECT: Mutex<Option<(PhysicalPosition<i32>, (u32, u32))>> = Mutex::new(None);
+
+/// Position a window centered below the tray icon using the stored tray rect.
+pub fn position_window_at_tray(window: &tauri::WebviewWindow) {
+    let rect = LAST_TRAY_RECT.lock().unwrap();
+    if let Some((pos, size)) = *rect {
+        let window_width: i32 = 420;
+        let icon_center_x = pos.x + (size.0 as i32 / 2);
+        let x = icon_center_x - (window_width / 2);
+        let y = pos.y + size.1 as i32 + 4;
+        let _ = window.set_position(PhysicalPosition::new(x, y));
+    }
+}
 
 pub fn create_tray(app: &App) -> Result<(), Box<dyn std::error::Error>> {
     let quit = MenuItemBuilder::with_id("quit", "Quit Beacon").build(app)?;
@@ -42,13 +58,12 @@ pub fn create_tray(app: &App) -> Result<(), Box<dyn std::error::Error>> {
                         let scale = window.scale_factor().unwrap_or(1.0);
                         let pos = rect.position.to_physical::<i32>(scale);
                         let size = rect.size.to_physical::<u32>(scale);
-                        let window_width: i32 = 420;
 
-                        let icon_center_x = pos.x + (size.width as i32 / 2);
-                        let x = icon_center_x - (window_width / 2);
-                        let y = pos.y + size.height as i32 + 4;
+                        // Store tray rect for reuse (e.g. notification activation)
+                        *LAST_TRAY_RECT.lock().unwrap() =
+                            Some((pos, (size.width, size.height)));
 
-                        let _ = window.set_position(PhysicalPosition::new(x, y));
+                        position_window_at_tray(&window);
                         let _ = window.show();
                         let _ = window.set_focus();
 

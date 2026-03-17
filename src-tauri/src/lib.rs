@@ -234,6 +234,7 @@ pub fn run() {
                         let app_handle = app.handle().clone();
                         block2::RcBlock::new(move |_: std::ptr::NonNull<AnyObject>| {
                             if let Some(w) = app_handle.get_webview_window("main") {
+                                tray::position_window_at_tray(&w);
                                 let _ = w.show();
                                 let _ = w.set_focus();
 
