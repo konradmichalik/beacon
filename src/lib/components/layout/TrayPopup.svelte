@@ -11,13 +11,13 @@
   import { startPolling, markAllSeen } from '$lib/stores/notifications.svelte';
   import { refreshPullRequests } from '$lib/stores/pull-requests.svelte';
   import { ArrowLeft, ArrowUp } from '@lucide/svelte';
-  import { onMount } from 'svelte';
+  import { onMount, untrack } from 'svelte';
   import type { NotificationSource, PRRoleFilter } from '$lib/types';
   import type { PRSortMode } from '$lib/stores/pull-requests.svelte';
 
   let { initialTab = 'notifications' as const }: { initialTab?: 'notifications' | 'settings' } =
     $props();
-  let showSettings = $state(initialTab === 'settings');
+  let showSettings = $state(untrack(() => initialTab === 'settings'));
   let scrollEl: HTMLDivElement | undefined = $state();
   let showScrollTop = $state(false);
   let activeView: ViewTab = $state('notifications');
