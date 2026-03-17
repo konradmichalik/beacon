@@ -110,3 +110,12 @@ export async function markGitLabTodoDone(
     }
   });
 }
+
+export async function markAllGitLabTodosDone(token: string, baseUrl: string): Promise<void> {
+  await fetch(`${baseUrl.replace(/\/$/, '')}/api/v4/todos/mark_as_done`, {
+    method: 'POST',
+    headers: {
+      Authorization: `Bearer ${token}`
+    }
+  });
+}

@@ -6,3 +6,4 @@ src-tauri/gen/schemas/
 *.log
 .DS_Store
 .idea/
+IDEAS.md

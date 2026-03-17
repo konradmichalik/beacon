@@ -129,3 +129,16 @@ export async function markGitHubThreadRead(token: string, threadId: string): Pro
     }
   });
 }
+
+export async function markAllGitHubNotificationsRead(token: string): Promise<void> {
+  await fetch(`${GITHUB_API}/notifications`, {
+    method: 'PUT',
+    headers: {
+      Authorization: `Bearer ${token}`,
+      Accept: 'application/vnd.github+json',
+      'X-GitHub-Api-Version': '2022-11-28',
+      'Content-Type': 'application/json'
+    },
+    body: JSON.stringify({ last_read_at: new Date().toISOString() })
+  });
+}
