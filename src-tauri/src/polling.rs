@@ -244,20 +244,34 @@ fn gh_url(n: &GHNotification) -> String {
         if let Some((prefix, num)) = api_url.rsplit_once('/') {
             if num.chars().all(|c| c.is_ascii_digit()) {
                 if let Some((_, seg)) = prefix.rsplit_once('/') {
+                    let base = &n.repository.html_url;
                     match seg {
-                        "issues" => {
-                            return format!("{}/issues/{num}", n.repository.html_url);
-                        }
-                        "pulls" => {
-                            return format!("{}/pull/{num}", n.repository.html_url);
-                        }
+                        "pulls" => return format!("{base}/pull/{num}"),
+                        "issues" => return format!("{base}/issues/{num}"),
+                        "releases" => return format!("{base}/releases"),
+                        "discussions" => return format!("{base}/discussions/{num}"),
                         _ => {}
+                    }
+                }
+            }
+            // Commits use a SHA (hex), not a numeric ID
+            if num.chars().all(|c| c.is_ascii_hexdigit()) && num.len() >= 7 {
+                if let Some((_, seg)) = prefix.rsplit_once('/') {
+                    if seg == "commits" {
+                        return format!("{}/commit/{num}", n.repository.html_url);
                     }
                 }
             }
         }
     }
-    n.repository.html_url.clone()
+    // Type-based fallback when no subject URL is available
+    let base = &n.repository.html_url;
+    match n.subject.subject_type.as_str() {
+        "CheckSuite" => format!("{base}/actions"),
+        "Release" => format!("{base}/releases"),
+        "Discussion" => format!("{base}/discussions"),
+        _ => base.clone(),
+    }
 }
 
 async fn gh_detail(client: &reqwest::Client, url: &str, token: &str) -> GHDetail {
@@ -269,8 +283,24 @@ async fn gh_detail(client: &reqwest::Client, url: &str, token: &str) -> GHDetail
         .send()
         .await;
     match resp {
-        Ok(r) if r.status().is_success() => r.json().await.unwrap_or_default(),
-        _ => GHDetail::default(),
+        Ok(r) if r.status().is_success() => match r.json::<GHDetail>().await {
+            Ok(d) => d,
+            Err(_e) => {
+                #[cfg(debug_assertions)]
+                eprintln!("[beacon] detail JSON parse failed for {url}: {_e}");
+                GHDetail::default()
+            }
+        },
+        Ok(_r) => {
+            #[cfg(debug_assertions)]
+            eprintln!("[beacon] detail fetch {} returned {}", url, _r.status());
+            GHDetail::default()
+        }
+        Err(_e) => {
+            #[cfg(debug_assertions)]
+            eprintln!("[beacon] detail fetch failed for {url}: {_e}");
+            GHDetail::default()
+        }
     }
 }
 
@@ -624,6 +654,10 @@ mod tests {
     // ── GitHub URL construction ──────────────────────────────────
 
     fn make_gh_notification(subject_url: Option<&str>) -> GHNotification {
+        make_gh_notification_typed(subject_url, "PullRequest")
+    }
+
+    fn make_gh_notification_typed(subject_url: Option<&str>, subject_type: &str) -> GHNotification {
         GHNotification {
             id: "1".into(),
             unread: true,
@@ -632,7 +666,7 @@ mod tests {
             subject: GHSubject {
                 title: "Test".into(),
                 url: subject_url.map(Into::into),
-                subject_type: "PullRequest".into(),
+                subject_type: subject_type.into(),
             },
             repository: GHRepo {
                 full_name: "owner/repo".into(),
@@ -654,12 +688,46 @@ mod tests {
     }
 
     #[test]
+    fn gh_url_converts_releases_api_to_html() {
+        let n = make_gh_notification(Some("https://api.github.com/repos/owner/repo/releases/99"));
+        assert_eq!(gh_url(&n), "https://github.com/owner/repo/releases");
+    }
+
+    #[test]
+    fn gh_url_converts_discussions_api_to_html() {
+        let n = make_gh_notification(Some(
+            "https://api.github.com/repos/owner/repo/discussions/15",
+        ));
+        assert_eq!(gh_url(&n), "https://github.com/owner/repo/discussions/15");
+    }
+
+    #[test]
+    fn gh_url_converts_commits_api_to_html() {
+        let n = make_gh_notification(Some(
+            "https://api.github.com/repos/owner/repo/commits/abc123def456",
+        ));
+        assert_eq!(
+            gh_url(&n),
+            "https://github.com/owner/repo/commit/abc123def456"
+        );
+    }
+
+    #[test]
+    fn gh_url_check_suite_without_subject_url_links_to_actions() {
+        let n = make_gh_notification_typed(None, "CheckSuite");
+        assert_eq!(gh_url(&n), "https://github.com/owner/repo/actions");
+    }
+
+    #[test]
+    fn gh_url_release_without_subject_url_links_to_releases() {
+        let n = make_gh_notification_typed(None, "Release");
+        assert_eq!(gh_url(&n), "https://github.com/owner/repo/releases");
+    }
+
+    #[test]
     fn gh_url_falls_back_to_repo_url() {
         let n = make_gh_notification(None);
         assert_eq!(gh_url(&n), "https://github.com/owner/repo");
-
-        let n2 = make_gh_notification(Some("https://api.github.com/repos/owner/repo/releases/99"));
-        assert_eq!(gh_url(&n2), "https://github.com/owner/repo");
     }
 
     // ── GitLab type mapping ──────────────────────────────────────
