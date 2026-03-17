@@ -264,7 +264,14 @@ fn gh_url(n: &GHNotification) -> String {
             }
         }
     }
-    n.repository.html_url.clone()
+    // Type-based fallback when no subject URL is available
+    let base = &n.repository.html_url;
+    match n.subject.subject_type.as_str() {
+        "CheckSuite" => format!("{base}/actions"),
+        "Release" => format!("{base}/releases"),
+        "Discussion" => format!("{base}/discussions"),
+        _ => base.clone(),
+    }
 }
 
 async fn gh_detail(client: &reqwest::Client, url: &str, token: &str) -> GHDetail {
@@ -337,10 +344,6 @@ async fn fetch_github(client: &reqwest::Client, config: &GitHubConfig) -> Vec<Un
             };
 
             let url = detail.html_url.clone().unwrap_or_else(|| gh_url(&n));
-            eprintln!(
-                "[beacon] notification id={} type={} subject_url={:?} detail_html_url={:?} resolved_url={}",
-                n.id, n.subject.subject_type, n.subject.url, detail.html_url, url
-            );
             Some(UnifiedNotification {
                 id: format!("github-{}", n.id),
                 source: "github".into(),
@@ -648,6 +651,10 @@ mod tests {
     // ── GitHub URL construction ──────────────────────────────────
 
     fn make_gh_notification(subject_url: Option<&str>) -> GHNotification {
+        make_gh_notification_typed(subject_url, "PullRequest")
+    }
+
+    fn make_gh_notification_typed(subject_url: Option<&str>, subject_type: &str) -> GHNotification {
         GHNotification {
             id: "1".into(),
             unread: true,
@@ -656,7 +663,7 @@ mod tests {
             subject: GHSubject {
                 title: "Test".into(),
                 url: subject_url.map(Into::into),
-                subject_type: "PullRequest".into(),
+                subject_type: subject_type.into(),
             },
             repository: GHRepo {
                 full_name: "owner/repo".into(),
@@ -703,14 +710,21 @@ mod tests {
     }
 
     #[test]
+    fn gh_url_check_suite_without_subject_url_links_to_actions() {
+        let n = make_gh_notification_typed(None, "CheckSuite");
+        assert_eq!(gh_url(&n), "https://github.com/owner/repo/actions");
+    }
+
+    #[test]
+    fn gh_url_release_without_subject_url_links_to_releases() {
+        let n = make_gh_notification_typed(None, "Release");
+        assert_eq!(gh_url(&n), "https://github.com/owner/repo/releases");
+    }
+
+    #[test]
     fn gh_url_falls_back_to_repo_url() {
         let n = make_gh_notification(None);
         assert_eq!(gh_url(&n), "https://github.com/owner/repo");
-
-        let n2 = make_gh_notification(Some(
-            "https://api.github.com/repos/owner/repo/check-suites/99",
-        ));
-        assert_eq!(gh_url(&n2), "https://github.com/owner/repo");
     }
 
     // ── GitLab type mapping ──────────────────────────────────────
