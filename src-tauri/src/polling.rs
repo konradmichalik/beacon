@@ -312,9 +312,8 @@ fn thirty_days_ago_iso() -> String {
 
 async fn fetch_github(client: &reqwest::Client, config: &GitHubConfig) -> Vec<UnifiedNotification> {
     let since = thirty_days_ago_iso();
-    let url = format!(
-        "https://api.github.com/notifications?participating=false&all=false&since={since}"
-    );
+    let url =
+        format!("https://api.github.com/notifications?participating=false&all=false&since={since}");
     let resp = client
         .get(&url)
         .header("Authorization", format!("Bearer {}", config.token))
