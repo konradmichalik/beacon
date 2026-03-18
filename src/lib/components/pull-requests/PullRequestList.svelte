@@ -94,7 +94,7 @@
   {/snippet}
 
   <div class="flex min-h-full flex-col">
-    {#if roleFilter === 'all' && authored.length > 0}
+    {#if authored.length > 0}
       {@render sectionHeader('Created by me', authored.length, 'authored')}
       {#if !collapsed.authored}
         {#each authored as pr (pr.id)}

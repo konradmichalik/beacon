@@ -150,6 +150,7 @@ async function mapToUnified(
     ciStatus: mapCIStatus(mr.head_pipeline?.status ?? null),
     reviewDecision,
     reviewRequestedFromMe: reviewRequested,
+    // GitLab REST API only exposes approvals, not comment-based reviews (unlike GitHub)
     reviewedByMe: hasUserApproved(approvals, username)
   };
 }
