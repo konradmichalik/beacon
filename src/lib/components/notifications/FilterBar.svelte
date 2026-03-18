@@ -120,6 +120,19 @@
         {/if}
       </button>
     </div>
+  {:else}
+    <div
+      class="flex shrink-0 items-center gap-1 rounded-md border border-border bg-card px-2.5 py-1"
+      title={githubConnected ? 'GitHub' : 'GitLab'}
+    >
+      {#if githubConnected}
+        <GitHubIcon size={12} />
+        <span class="{badgeBase} {badgeInactive}">{githubCount}</span>
+      {:else if gitlabConnected}
+        <GitLabIcon size={12} />
+        <span class="{badgeBase} {badgeInactive}">{gitlabCount}</span>
+      {/if}
+    </div>
   {/if}
 
   <div class="ml-auto flex items-center gap-1.5">
