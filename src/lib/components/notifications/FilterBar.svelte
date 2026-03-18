@@ -17,7 +17,7 @@
   import GitHubIcon from '$lib/components/icons/GitHubIcon.svelte';
   import GitLabIcon from '$lib/components/icons/GitLabIcon.svelte';
   import FilterPopover from './FilterPopover.svelte';
-  import { ArrowDownUp, CheckCheck, Filter } from '@lucide/svelte';
+  import { ArrowDownUp, CheckCheck, Filter, ChevronDown } from '@lucide/svelte';
   import type { NotificationSource } from '$lib/types';
 
   type FilterOption = NotificationSource | 'all';
@@ -30,22 +30,31 @@
   let gitlabConnected = $derived(isServiceConnected('gitlab'));
   let bothConnected = $derived(githubConnected && gitlabConnected);
 
-  let filteredIds = $derived(
+  let filteredNotifications = $derived(
+    getFilteredNotifications(
+      filterState.source,
+      filterState.project,
+      filterState.sort,
+      filterState.types,
+      filterState.projects,
+      filterState.statuses
+    )
+  );
+
+  let filteredIds = $derived(new Set(filteredNotifications.map((n) => n.id)));
+
+  let closedMergedIds = $derived(
     new Set(
-      getFilteredNotifications(
-        filterState.source,
-        filterState.project,
-        filterState.sort,
-        filterState.types,
-        filterState.projects,
-        filterState.statuses
-      ).map((n) => n.id)
+      filteredNotifications
+        .filter((n) => n.subjectState === 'closed' || n.subjectState === 'merged')
+        .map((n) => n.id)
     )
   );
 
   let filtersActive = $derived(hasActiveFilters());
   let popoverOpen = $state(false);
-  let filterBtnEl: HTMLButtonElement | undefined = $state();
+  let markReadOpen = $state(false);
+  let markReadBtnEl: HTMLButtonElement | undefined = $state();
   let sortOpen = $state(false);
   let sortBtnEl: HTMLButtonElement | undefined = $state();
 
@@ -136,21 +145,63 @@
   {/if}
 
   <div class="ml-auto flex items-center gap-1.5">
-    <!-- Mark all as read -->
-    <button
-      type="button"
-      onclick={() => markAllAsRead(filteredIds)}
-      disabled={totalCount === 0}
-      title="Mark all as read"
-      class="rounded-full border border-border bg-card p-1.5 text-muted-foreground transition-colors hover:border-foreground/20 hover:text-foreground disabled:opacity-30"
-    >
-      <CheckCheck size={11} />
-    </button>
+    <!-- Mark as read (split button) -->
+    <div class="flex items-center overflow-hidden rounded-full border border-border bg-card">
+      <button
+        type="button"
+        onclick={() => markAllAsRead(filteredIds)}
+        disabled={totalCount === 0}
+        title="Mark all as read"
+        class="p-1.5 text-muted-foreground transition-colors hover:text-foreground disabled:opacity-30"
+      >
+        <CheckCheck size={11} />
+      </button>
+      <button
+        type="button"
+        bind:this={markReadBtnEl}
+        onclick={() => (markReadOpen = !markReadOpen)}
+        disabled={totalCount === 0}
+        title="Mark as read options"
+        class="border-l border-border px-0.5 py-1.5 text-muted-foreground transition-colors hover:text-foreground disabled:opacity-30"
+      >
+        <ChevronDown size={9} />
+      </button>
+    </div>
+
+    {#if markReadOpen && markReadBtnEl}
+      {@const rect = markReadBtnEl.getBoundingClientRect()}
+      <div
+        use:clickOutside={() => (markReadOpen = false)}
+        style="position:fixed;top:{rect.bottom + 4}px;right:{window.innerWidth - rect.right}px;"
+        class="z-50 min-w-[160px] rounded-lg border border-border bg-card py-1 shadow-lg"
+      >
+        <button
+          type="button"
+          onclick={() => {
+            markAllAsRead(filteredIds);
+            markReadOpen = false;
+          }}
+          class="flex w-full items-center px-3 py-1.5 text-[11px] font-medium text-muted-foreground transition-colors hover:bg-secondary hover:text-foreground"
+        >
+          All
+        </button>
+        <button
+          type="button"
+          disabled={closedMergedIds.size === 0}
+          onclick={() => {
+            markAllAsRead(closedMergedIds);
+            markReadOpen = false;
+          }}
+          class="flex w-full items-center px-3 py-1.5 text-[11px] font-medium text-muted-foreground transition-colors hover:bg-secondary hover:text-foreground disabled:opacity-30"
+        >
+          Closed & Merged
+        </button>
+      </div>
+    {/if}
 
     <!-- Filter button -->
     <button
       type="button"
-      bind:this={filterBtnEl}
       onclick={() => (popoverOpen = !popoverOpen)}
       title="Filter"
       class="relative rounded-full border border-border bg-card p-1.5 text-muted-foreground transition-colors hover:border-foreground/20 hover:text-foreground"
@@ -161,8 +212,8 @@
       {/if}
     </button>
 
-    {#if popoverOpen && filterBtnEl}
-      <FilterPopover anchorEl={filterBtnEl} onClose={() => (popoverOpen = false)} />
+    {#if popoverOpen}
+      <FilterPopover onClose={() => (popoverOpen = false)} />
     {/if}
 
     <!-- Sort button -->
@@ -171,9 +222,10 @@
       bind:this={sortBtnEl}
       onclick={() => (sortOpen = !sortOpen)}
       title="Sort"
-      class="rounded-full border border-border bg-card p-1.5 text-muted-foreground transition-colors hover:border-foreground/20 hover:text-foreground"
+      class="flex items-center gap-0.5 rounded-full border border-border bg-card py-1.5 pl-1.5 pr-1 text-muted-foreground transition-colors hover:border-foreground/20 hover:text-foreground"
     >
       <ArrowDownUp size={11} />
+      <ChevronDown size={9} />
     </button>
 
     {#if sortOpen && sortBtnEl}
