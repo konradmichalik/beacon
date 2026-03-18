@@ -4,8 +4,8 @@
   import { isServiceConnected } from '$lib/stores/connections.svelte';
   import GitHubIcon from '$lib/components/icons/GitHubIcon.svelte';
   import GitLabIcon from '$lib/components/icons/GitLabIcon.svelte';
-  import { ArrowDownUp, Filter } from '@lucide/svelte';
-  import type { NotificationSource, PRRoleFilter } from '$lib/types';
+  import { ArrowDownUp, ChevronDown, Filter, X } from '@lucide/svelte';
+  import type { NotificationSource, PRRoleFilter, PRDraftFilter, PRCIFilter } from '$lib/types';
 
   type SourceOption = NotificationSource | 'all';
   type SortMode = 'updated' | 'created';
@@ -13,16 +13,24 @@
   let {
     sourceFilter = 'all',
     roleFilter = 'all',
+    draftFilter = 'all',
+    ciFilter = 'all',
     sort = 'updated',
     onSourceChange,
     onRoleChange,
+    onDraftChange,
+    onCIChange,
     onSortChange
   }: {
     sourceFilter?: SourceOption;
     roleFilter?: PRRoleFilter;
+    draftFilter?: PRDraftFilter;
+    ciFilter?: PRCIFilter;
     sort?: SortMode;
     onSourceChange: (source: SourceOption) => void;
     onRoleChange: (role: PRRoleFilter) => void;
+    onDraftChange: (draft: PRDraftFilter) => void;
+    onCIChange: (ci: PRCIFilter) => void;
     onSortChange: (sort: SortMode) => void;
   } = $props();
 
@@ -35,11 +43,21 @@
   let bothConnected = $derived(githubConnected && gitlabConnected);
 
   let filterOpen = $state(false);
-  let filterBtnEl: HTMLButtonElement | undefined = $state();
   let sortOpen = $state(false);
   let sortBtnEl: HTMLButtonElement | undefined = $state();
 
-  let hasRoleFilter = $derived(roleFilter !== 'all');
+  let hasActiveFilter = $derived(roleFilter !== 'all' || draftFilter !== 'all' || ciFilter !== 'all');
+
+  const chipBase = 'rounded-md border px-2 py-0.5 text-[10px] font-medium transition-colors';
+  const chipActive = 'border-primary bg-primary text-primary-foreground';
+  const chipInactive = 'border-border text-muted-foreground hover:border-foreground/20 hover:text-foreground';
+
+  function resetFilters() {
+    onRoleChange('all');
+    onDraftChange('all');
+    onCIChange('all');
+    filterOpen = false;
+  }
 
   const btnBase = 'flex items-center gap-1 px-2.5 py-1 text-[11px] font-medium transition-colors';
   const btnActive = 'bg-foreground text-background';
@@ -134,60 +152,95 @@
     <!-- Filter button -->
     <button
       type="button"
-      bind:this={filterBtnEl}
       onclick={() => (filterOpen = !filterOpen)}
       title="Filter"
       class="relative rounded-full border border-border bg-card p-1.5 text-muted-foreground transition-colors hover:border-foreground/20 hover:text-foreground"
     >
       <Filter size={11} />
-      {#if hasRoleFilter}
+      {#if hasActiveFilter}
         <span class="absolute -right-0.5 -top-0.5 h-2 w-2 rounded-full bg-primary"></span>
       {/if}
     </button>
 
-    {#if filterOpen && filterBtnEl}
-      {@const rect = filterBtnEl.getBoundingClientRect()}
-      {@const popoverWidth = 200}
-      {@const left = Math.max(4, rect.right - popoverWidth)}
+    {#if filterOpen}
+      <!-- svelte-ignore a11y_no_static_element_interactions a11y_click_events_have_key_events -->
       <div
-        use:clickOutside={() => (filterOpen = false)}
-        style="position:fixed;top:{rect.bottom + 6}px;left:{left}px;"
-        class="z-50 w-[200px] rounded-lg border border-border bg-card shadow-lg"
+        class="fixed inset-0 z-40 flex items-center justify-center backdrop-blur-[2px]"
+        onclick={(e) => { if (e.target === e.currentTarget) filterOpen = false; }}
       >
-        <div class="border-b border-border px-3 py-2">
-          <span class="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground"
-            >Show</span
-          >
-        </div>
-        <div class="p-1.5">
-          <button
-            type="button"
-            onclick={() => {
-              onRoleChange('all');
-              filterOpen = false;
-            }}
-            class="flex w-full items-center rounded px-2 py-1.5 text-[11px] font-medium transition-colors
-              {roleFilter === 'all'
-              ? 'bg-secondary text-foreground'
-              : 'text-muted-foreground hover:bg-secondary/60 hover:text-foreground'}"
-          >
-            All pull requests
-          </button>
-          {#each roleOptions as opt (opt.value)}
+        <div class="z-50 w-72 rounded-lg border border-border bg-card shadow-lg">
+          <div class="flex items-center justify-between rounded-t-lg border-b border-border bg-secondary/40 px-3 py-2">
+            <span class="text-[11px] font-semibold text-foreground">Filters</span>
             <button
               type="button"
-              onclick={() => {
-                onRoleChange(opt.value);
-                filterOpen = false;
-              }}
-              class="flex w-full items-center rounded px-2 py-1.5 text-[11px] font-medium transition-colors
-                {roleFilter === opt.value
-                ? 'bg-secondary text-foreground'
-                : 'text-muted-foreground hover:bg-secondary/60 hover:text-foreground'}"
+              onclick={() => (filterOpen = false)}
+              class="rounded p-0.5 text-muted-foreground transition-colors hover:text-foreground"
             >
-              {opt.label}
+              <X size={12} />
             </button>
-          {/each}
+          </div>
+
+          <div class="space-y-3 p-3">
+            <!-- Role -->
+            <div>
+              <span class="mb-1.5 block text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">Role</span>
+              <div class="flex flex-wrap gap-1">
+                {#each [{ value: 'all', label: 'All' }, ...roleOptions] as opt (opt.value)}
+                  <button
+                    type="button"
+                    onclick={() => onRoleChange(opt.value)}
+                    class="{chipBase} {roleFilter === opt.value ? chipActive : chipInactive}"
+                  >
+                    {opt.label}
+                  </button>
+                {/each}
+              </div>
+            </div>
+
+            <!-- Status -->
+            <div>
+              <span class="mb-1.5 block text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">Status</span>
+              <div class="flex flex-wrap gap-1">
+                {#each [{ value: 'all', label: 'All' }, { value: 'ready', label: 'Ready' }, { value: 'draft', label: 'Draft' }] as opt (opt.value)}
+                  <button
+                    type="button"
+                    onclick={() => onDraftChange(opt.value as PRDraftFilter)}
+                    class="{chipBase} {draftFilter === opt.value ? chipActive : chipInactive}"
+                  >
+                    {opt.label}
+                  </button>
+                {/each}
+              </div>
+            </div>
+
+            <!-- CI -->
+            <div>
+              <span class="mb-1.5 block text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">CI</span>
+              <div class="flex flex-wrap gap-1">
+                {#each [{ value: 'all', label: 'All' }, { value: 'success', label: 'Passed' }, { value: 'failure', label: 'Failed' }, { value: 'pending', label: 'Pending' }] as opt (opt.value)}
+                  <button
+                    type="button"
+                    onclick={() => onCIChange(opt.value as PRCIFilter)}
+                    class="{chipBase} {ciFilter === opt.value ? chipActive : chipInactive}"
+                  >
+                    {opt.label}
+                  </button>
+                {/each}
+              </div>
+            </div>
+          </div>
+
+          {#if hasActiveFilter}
+            <div class="border-t border-border px-3 py-2">
+              <button
+                type="button"
+                onclick={resetFilters}
+                class="w-full rounded-md bg-secondary px-2 py-1 text-[10px] font-medium text-foreground transition-colors hover:bg-secondary/80"
+              >
+                Reset all filters
+              </button>
+            </div>
+          {/if}
         </div>
       </div>
     {/if}
@@ -198,9 +251,10 @@
       bind:this={sortBtnEl}
       onclick={() => (sortOpen = !sortOpen)}
       title="Sort"
-      class="rounded-full border border-border bg-card p-1.5 text-muted-foreground transition-colors hover:border-foreground/20 hover:text-foreground"
+      class="flex items-center gap-0.5 rounded-full border border-border bg-card py-1.5 pl-1.5 pr-1 text-muted-foreground transition-colors hover:border-foreground/20 hover:text-foreground"
     >
       <ArrowDownUp size={11} />
+      <ChevronDown size={9} />
     </button>
 
     {#if sortOpen && sortBtnEl}

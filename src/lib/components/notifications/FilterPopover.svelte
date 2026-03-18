@@ -1,5 +1,4 @@
 <script lang="ts">
-  import { clickOutside } from '$lib/actions/clickOutside';
   import {
     filterState,
     toggleTypeFilter,
@@ -18,168 +17,168 @@
   import GitLabIcon from '$lib/components/icons/GitLabIcon.svelte';
   import { X } from '@lucide/svelte';
 
-  let { anchorEl, onClose }: { anchorEl: HTMLElement; onClose: () => void } = $props();
+  let { onClose }: { onClose: () => void } = $props();
 
   let availableTypes = $derived(getUniqueTypes());
   let availableProjects = $derived(getUniqueProjectsWithSource());
   let filtersActive = $derived(hasActiveFilters());
 
-  // Position fixed below the anchor button, right-aligned
-  let style = $derived.by(() => {
-    const rect = anchorEl.getBoundingClientRect();
-    const popoverWidth = 288; // w-72 = 18rem = 288px
-    const left = Math.max(4, rect.right - popoverWidth);
-    return `position:fixed;top:${rect.bottom + 6}px;left:${left}px;`;
-  });
-
   function handleKeydown(e: KeyboardEvent) {
     if (e.key === 'Escape') onClose();
+  }
+
+  function handleBackdropClick(e: MouseEvent) {
+    if (e.target === e.currentTarget) onClose();
   }
 </script>
 
 <svelte:window onkeydown={handleKeydown} />
 
+<!-- Backdrop -->
+<!-- svelte-ignore a11y_no_static_element_interactions a11y_click_events_have_key_events -->
 <div
-  use:clickOutside={onClose}
-  {style}
-  class="z-50 w-72 rounded-lg border border-border bg-card shadow-lg"
+  class="fixed inset-0 z-40 flex items-center justify-center backdrop-blur-[2px]"
+  onclick={handleBackdropClick}
 >
-  <!-- Header -->
-  <div class="flex items-center justify-between border-b border-border px-3 py-2">
-    <span class="text-[11px] font-semibold text-foreground">Filters</span>
-    <button
-      type="button"
-      onclick={onClose}
-      class="rounded p-0.5 text-muted-foreground transition-colors hover:text-foreground"
-    >
-      <X size={12} />
-    </button>
-  </div>
+  <!-- Modal -->
+  <div class="z-50 w-72 rounded-lg border border-border bg-card shadow-lg">
+    <!-- Header -->
+    <div class="flex items-center justify-between rounded-t-lg border-b border-border bg-secondary/40 px-3 py-2">
+      <span class="text-[11px] font-semibold text-foreground">Filters</span>
+      <button
+        type="button"
+        onclick={onClose}
+        class="rounded p-0.5 text-muted-foreground transition-colors hover:text-foreground"
+      >
+        <X size={12} />
+      </button>
+    </div>
 
-  <div class="space-y-3 p-3">
-    <!-- Type filter -->
-    {#if availableTypes.length > 0}
+    <div class="space-y-3 p-3">
+      <!-- Type filter -->
+      {#if availableTypes.length > 0}
+        <div>
+          <div class="mb-1.5 flex items-center justify-between">
+            <span class="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground"
+              >Type</span
+            >
+            {#if filterState.types.size > 0}
+              <button
+                type="button"
+                onclick={clearTypeFilters}
+                class="text-[10px] text-primary hover:underline">Clear</button
+              >
+            {/if}
+          </div>
+          <div class="flex flex-wrap gap-1">
+            {#each availableTypes as type (type)}
+              {@const active = filterState.types.has(type)}
+              <button
+                type="button"
+                onclick={() => toggleTypeFilter(type)}
+                class="rounded-md border px-2 py-0.5 text-[10px] font-medium transition-colors
+                  {active
+                  ? 'border-primary bg-primary text-primary-foreground'
+                  : 'border-border text-muted-foreground hover:border-foreground/20 hover:text-foreground'}"
+              >
+                {NOTIFICATION_TYPE_LABELS[type] ?? type}
+              </button>
+            {/each}
+          </div>
+        </div>
+      {/if}
+
+      <!-- Status filter -->
       <div>
         <div class="mb-1.5 flex items-center justify-between">
           <span class="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground"
-            >Type</span
+            >Status</span
           >
-          {#if filterState.types.size > 0}
+          {#if filterState.statuses.size > 0}
             <button
               type="button"
-              onclick={clearTypeFilters}
+              onclick={clearStatusFilters}
               class="text-[10px] text-primary hover:underline">Clear</button
             >
           {/if}
         </div>
         <div class="flex flex-wrap gap-1">
-          {#each availableTypes as type (type)}
-            {@const active = filterState.types.has(type)}
+          {#each [{ value: 'open', label: 'Open' }, { value: 'closed', label: 'Closed / Merged' }] as status (status.value)}
+            {@const active = filterState.statuses.has(status.value as StatusFilter)}
             <button
               type="button"
-              onclick={() => toggleTypeFilter(type)}
+              onclick={() => toggleStatusFilter(status.value as StatusFilter)}
               class="rounded-md border px-2 py-0.5 text-[10px] font-medium transition-colors
                 {active
                 ? 'border-primary bg-primary text-primary-foreground'
                 : 'border-border text-muted-foreground hover:border-foreground/20 hover:text-foreground'}"
             >
-              {NOTIFICATION_TYPE_LABELS[type] ?? type}
+              {status.label}
             </button>
           {/each}
         </div>
       </div>
-    {/if}
 
-    <!-- Status filter -->
-    <div>
-      <div class="mb-1.5 flex items-center justify-between">
-        <span class="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground"
-          >Status</span
-        >
-        {#if filterState.statuses.size > 0}
-          <button
-            type="button"
-            onclick={clearStatusFilters}
-            class="text-[10px] text-primary hover:underline">Clear</button
-          >
-        {/if}
-      </div>
-      <div class="flex flex-wrap gap-1">
-        {#each [{ value: 'open', label: 'Open' }, { value: 'closed', label: 'Closed / Merged' }] as status (status.value)}
-          {@const active = filterState.statuses.has(status.value as StatusFilter)}
-          <button
-            type="button"
-            onclick={() => toggleStatusFilter(status.value as StatusFilter)}
-            class="rounded-md border px-2 py-0.5 text-[10px] font-medium transition-colors
-              {active
-              ? 'border-primary bg-primary text-primary-foreground'
-              : 'border-border text-muted-foreground hover:border-foreground/20 hover:text-foreground'}"
-          >
-            {status.label}
-          </button>
-        {/each}
-      </div>
+      <!-- Project filter -->
+      {#if availableProjects.length > 0}
+        <div>
+          <div class="mb-1.5 flex items-center justify-between">
+            <span class="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground"
+              >Project</span
+            >
+            {#if filterState.projects.size > 0}
+              <button
+                type="button"
+                onclick={clearProjectFilters}
+                class="text-[10px] text-primary hover:underline">Clear</button
+              >
+            {/if}
+          </div>
+          <div class="max-h-28 space-y-0.5 overflow-y-auto">
+            {#each availableProjects as project (project.repository)}
+              {@const active = filterState.projects.has(project.repository)}
+              <label
+                class="flex cursor-pointer items-center gap-2 rounded px-1.5 py-1 transition-colors hover:bg-secondary"
+              >
+                <input
+                  type="checkbox"
+                  checked={active}
+                  onchange={() => toggleProjectFilter(project.repository)}
+                  class="h-3 w-3 rounded border-border accent-primary"
+                />
+                {#if project.source === 'github'}
+                  <GitHubIcon size={11} class="shrink-0 text-muted-foreground" />
+                {:else}
+                  <GitLabIcon size={11} class="shrink-0 text-muted-foreground" />
+                {/if}
+                <span
+                  class="truncate text-[11px] {active
+                    ? 'font-medium text-foreground'
+                    : 'text-muted-foreground'}"
+                >
+                  {project.repository.split('/').slice(-2).join('/')}
+                </span>
+              </label>
+            {/each}
+          </div>
+        </div>
+      {/if}
     </div>
 
-    <!-- Project filter -->
-    {#if availableProjects.length > 0}
-      <div>
-        <div class="mb-1.5 flex items-center justify-between">
-          <span class="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground"
-            >Project</span
-          >
-          {#if filterState.projects.size > 0}
-            <button
-              type="button"
-              onclick={clearProjectFilters}
-              class="text-[10px] text-primary hover:underline">Clear</button
-            >
-          {/if}
-        </div>
-        <div class="max-h-28 space-y-0.5 overflow-y-auto">
-          {#each availableProjects as project (project.repository)}
-            {@const active = filterState.projects.has(project.repository)}
-            <label
-              class="flex cursor-pointer items-center gap-2 rounded px-1.5 py-1 transition-colors hover:bg-secondary"
-            >
-              <input
-                type="checkbox"
-                checked={active}
-                onchange={() => toggleProjectFilter(project.repository)}
-                class="h-3 w-3 rounded border-border accent-primary"
-              />
-              {#if project.source === 'github'}
-                <GitHubIcon size={11} class="shrink-0 text-muted-foreground" />
-              {:else}
-                <GitLabIcon size={11} class="shrink-0 text-muted-foreground" />
-              {/if}
-              <span
-                class="truncate text-[11px] {active
-                  ? 'font-medium text-foreground'
-                  : 'text-muted-foreground'}"
-              >
-                {project.repository.split('/').slice(-2).join('/')}
-              </span>
-            </label>
-          {/each}
-        </div>
+    <!-- Footer -->
+    {#if filtersActive}
+      <div class="border-t border-border px-3 py-2">
+        <button
+          type="button"
+          onclick={() => {
+            clearAllFilters();
+            onClose();
+          }}
+          class="w-full rounded-md bg-secondary px-2 py-1 text-[10px] font-medium text-foreground transition-colors hover:bg-secondary/80"
+        >
+          Reset all filters
+        </button>
       </div>
     {/if}
   </div>
-
-  <!-- Footer -->
-  {#if filtersActive}
-    <div class="border-t border-border px-3 py-2">
-      <button
-        type="button"
-        onclick={() => {
-          clearAllFilters();
-          onClose();
-        }}
-        class="w-full rounded-md bg-secondary px-2 py-1 text-[10px] font-medium text-foreground transition-colors hover:bg-secondary/80"
-      >
-        Reset all filters
-      </button>
-    </div>
-  {/if}
 </div>
