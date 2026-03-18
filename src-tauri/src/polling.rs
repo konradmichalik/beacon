@@ -432,16 +432,33 @@ fn gl_state(s: Option<&str>) -> Option<String> {
 
 async fn fetch_gitlab(client: &reqwest::Client, config: &GitLabConfig) -> Vec<UnifiedNotification> {
     let base = config.base_url.trim_end_matches('/');
-    let resp = client
-        .get(format!("{base}/api/v4/todos?state=pending&per_page=50"))
-        .header("Authorization", format!("Bearer {}", config.token))
-        .send()
-        .await;
+    let mut items: Vec<GLTodo> = Vec::new();
+    let mut page: u32 = 1;
+    const PER_PAGE: u32 = 100;
+    const MAX_PAGES: u32 = 5;
 
-    let items: Vec<GLTodo> = match resp {
-        Ok(r) if r.status().is_success() => r.json().await.unwrap_or_default(),
-        _ => return vec![],
-    };
+    loop {
+        let resp = client
+            .get(format!(
+                "{base}/api/v4/todos?state=pending&per_page={PER_PAGE}&page={page}"
+            ))
+            .header("Authorization", format!("Bearer {}", config.token))
+            .send()
+            .await;
+
+        let batch: Vec<GLTodo> = match resp {
+            Ok(r) if r.status().is_success() => r.json().await.unwrap_or_default(),
+            _ => break,
+        };
+
+        let is_last = batch.len() < PER_PAGE as usize;
+        items.extend(batch);
+        page += 1;
+
+        if is_last || page > MAX_PAGES {
+            break;
+        }
+    }
 
     items
         .into_iter()
