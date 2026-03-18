@@ -3,6 +3,7 @@ import type { NotificationSource, NotificationAuthor } from './notifications';
 export type CIStatus = 'pending' | 'success' | 'failure' | 'unknown';
 export type ReviewDecision = 'approved' | 'changes_requested' | 'review_required';
 export type PRRoleFilter = 'all' | 'authored' | 'review_requested';
+export type EnrichmentState = 'pending' | 'enriched' | 'skipped';
 
 export interface UnifiedPullRequest {
   readonly id: string;
@@ -19,4 +20,6 @@ export interface UnifiedPullRequest {
   readonly reviewDecision: ReviewDecision | null;
   readonly reviewRequestedFromMe: boolean;
   readonly reviewedByMe: boolean;
+  readonly enrichment: EnrichmentState;
+  readonly sourceMetadata?: Readonly<Record<string, number | string>>;
 }

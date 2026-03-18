@@ -18,7 +18,8 @@ export const demoPullRequests: readonly UnifiedPullRequest[] = [
     ciStatus: 'success',
     reviewDecision: 'review_required',
     reviewRequestedFromMe: true,
-    reviewedByMe: false
+    reviewedByMe: false,
+    enrichment: 'enriched'
   },
   {
     id: 'gitlab-mr-demo-2',
@@ -34,7 +35,8 @@ export const demoPullRequests: readonly UnifiedPullRequest[] = [
     ciStatus: 'pending',
     reviewDecision: 'approved',
     reviewRequestedFromMe: true,
-    reviewedByMe: true
+    reviewedByMe: true,
+    enrichment: 'enriched'
   },
   {
     id: 'github-pr-demo-3',
@@ -50,7 +52,8 @@ export const demoPullRequests: readonly UnifiedPullRequest[] = [
     ciStatus: 'success',
     reviewDecision: 'approved',
     reviewRequestedFromMe: false,
-    reviewedByMe: false
+    reviewedByMe: false,
+    enrichment: 'enriched'
   },
   {
     id: 'github-pr-demo-4',
@@ -66,7 +69,8 @@ export const demoPullRequests: readonly UnifiedPullRequest[] = [
     ciStatus: 'failure',
     reviewDecision: 'changes_requested',
     reviewRequestedFromMe: false,
-    reviewedByMe: false
+    reviewedByMe: false,
+    enrichment: 'enriched'
   },
   {
     id: 'gitlab-mr-demo-5',
@@ -82,6 +86,7 @@ export const demoPullRequests: readonly UnifiedPullRequest[] = [
     ciStatus: 'success',
     reviewDecision: 'review_required',
     reviewRequestedFromMe: false,
-    reviewedByMe: false
+    reviewedByMe: false,
+    enrichment: 'enriched'
   }
 ];

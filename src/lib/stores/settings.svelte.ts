@@ -35,6 +35,7 @@ interface Settings {
   notifyMode: NotifyMode;
   notifySummaryMinutes: number; // summary interval in minutes
   notifySound: NotifySound;
+  enrichPullRequests: boolean;
 }
 
 const defaultSettings: Settings = {
@@ -45,7 +46,8 @@ const defaultSettings: Settings = {
   hideClosed: false,
   notifyMode: 'disabled',
   notifySummaryMinutes: 15,
-  notifySound: 'none'
+  notifySound: 'none',
+  enrichPullRequests: true
 };
 
 export const settingsState: Settings = $state({ ...defaultSettings });
