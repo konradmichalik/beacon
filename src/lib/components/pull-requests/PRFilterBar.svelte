@@ -46,11 +46,14 @@
   let sortOpen = $state(false);
   let sortBtnEl: HTMLButtonElement | undefined = $state();
 
-  let hasActiveFilter = $derived(roleFilter !== 'all' || draftFilter !== 'all' || ciFilter !== 'all');
+  let hasActiveFilter = $derived(
+    roleFilter !== 'all' || draftFilter !== 'all' || ciFilter !== 'all'
+  );
 
   const chipBase = 'rounded-md border px-2 py-0.5 text-[10px] font-medium transition-colors';
   const chipActive = 'border-primary bg-primary text-primary-foreground';
-  const chipInactive = 'border-border text-muted-foreground hover:border-foreground/20 hover:text-foreground';
+  const chipInactive =
+    'border-border text-muted-foreground hover:border-foreground/20 hover:text-foreground';
 
   function resetFilters() {
     onRoleChange('all');
@@ -166,10 +169,14 @@
       <!-- svelte-ignore a11y_no_static_element_interactions a11y_click_events_have_key_events -->
       <div
         class="fixed inset-0 z-40 flex items-center justify-center backdrop-blur-[2px]"
-        onclick={(e) => { if (e.target === e.currentTarget) filterOpen = false; }}
+        onclick={(e) => {
+          if (e.target === e.currentTarget) filterOpen = false;
+        }}
       >
         <div class="z-50 w-72 rounded-lg border border-border bg-card shadow-lg">
-          <div class="flex items-center justify-between rounded-t-lg border-b border-border bg-secondary/40 px-3 py-2">
+          <div
+            class="flex items-center justify-between rounded-t-lg border-b border-border bg-secondary/40 px-3 py-2"
+          >
             <span class="text-[11px] font-semibold text-foreground">Filters</span>
             <button
               type="button"
@@ -183,7 +190,10 @@
           <div class="space-y-3 p-3">
             <!-- Role -->
             <div>
-              <span class="mb-1.5 block text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">Role</span>
+              <span
+                class="mb-1.5 block text-[10px] font-semibold uppercase tracking-wide text-muted-foreground"
+                >Role</span
+              >
               <div class="flex flex-wrap gap-1">
                 {#each [{ value: 'all', label: 'All' }, ...roleOptions] as opt (opt.value)}
                   <button
@@ -199,7 +209,10 @@
 
             <!-- Status -->
             <div>
-              <span class="mb-1.5 block text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">Status</span>
+              <span
+                class="mb-1.5 block text-[10px] font-semibold uppercase tracking-wide text-muted-foreground"
+                >Status</span
+              >
               <div class="flex flex-wrap gap-1">
                 {#each [{ value: 'all', label: 'All' }, { value: 'ready', label: 'Ready' }, { value: 'draft', label: 'Draft' }] as opt (opt.value)}
                   <button
@@ -215,7 +228,10 @@
 
             <!-- CI -->
             <div>
-              <span class="mb-1.5 block text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">CI</span>
+              <span
+                class="mb-1.5 block text-[10px] font-semibold uppercase tracking-wide text-muted-foreground"
+                >CI</span
+              >
               <div class="flex flex-wrap gap-1">
                 {#each [{ value: 'all', label: 'All' }, { value: 'success', label: 'Passed' }, { value: 'failure', label: 'Failed' }, { value: 'pending', label: 'Pending' }] as opt (opt.value)}
                   <button

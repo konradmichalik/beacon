@@ -104,7 +104,13 @@
         {#if activeView === 'notifications'}
           <NotificationList />
         {:else}
-          <PullRequestList sourceFilter={prSourceFilter} roleFilter={prRoleFilter} draftFilter={prDraftFilter} ciFilter={prCIFilter} sort={prSort} />
+          <PullRequestList
+            sourceFilter={prSourceFilter}
+            roleFilter={prRoleFilter}
+            draftFilter={prDraftFilter}
+            ciFilter={prCIFilter}
+            sort={prSort}
+          />
         {/if}
       </div>
       <button

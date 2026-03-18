@@ -43,7 +43,9 @@
   <!-- Modal -->
   <div class="z-50 w-72 rounded-lg border border-border bg-card shadow-lg">
     <!-- Header -->
-    <div class="flex items-center justify-between rounded-t-lg border-b border-border bg-secondary/40 px-3 py-2">
+    <div
+      class="flex items-center justify-between rounded-t-lg border-b border-border bg-secondary/40 px-3 py-2"
+    >
       <span class="text-[11px] font-semibold text-foreground">Filters</span>
       <button
         type="button"

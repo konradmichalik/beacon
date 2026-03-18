@@ -426,7 +426,9 @@
   {:else if activeTab === 'about'}
     <div class="flex flex-col items-center gap-5 py-4">
       <BeaconLogo height={30} class="text-foreground" />
-      <p class="text-center text-xs text-muted-foreground">Unified notifications and pull requests for GitHub & GitLab</p>
+      <p class="text-center text-xs text-muted-foreground">
+        Unified notifications and pull requests for GitHub & GitLab
+      </p>
 
       <div class="w-full rounded-xl border border-border bg-muted/30 divide-y divide-border">
         <div class="flex items-center justify-between px-4 py-2.5">
