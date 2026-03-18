@@ -67,10 +67,12 @@ export function mapReviewDecision(reviews: readonly GitHubReview[]): ReviewDecis
   return 'review_required';
 }
 
+const REVIEWED_STATES = new Set(['APPROVED', 'CHANGES_REQUESTED', 'COMMENTED']);
+
 export function hasUserReviewed(reviews: readonly GitHubReview[], username: string): boolean {
+  const normalized = username.toLowerCase();
   return reviews.some(
-    (r) =>
-      r.user?.login === username && ['APPROVED', 'CHANGES_REQUESTED', 'COMMENTED'].includes(r.state)
+    (r) => r.user?.login?.toLowerCase() === normalized && REVIEWED_STATES.has(r.state)
   );
 }
 

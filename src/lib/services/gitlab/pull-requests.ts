@@ -60,7 +60,8 @@ export function hasUserApproved(
   approvals: readonly { user: { username: string } }[],
   username: string
 ): boolean {
-  return approvals.some((a) => a.user.username === username);
+  const normalized = username.toLowerCase();
+  return approvals.some((a) => a.user.username.toLowerCase() === normalized);
 }
 
 interface GitLabApproval {
@@ -76,18 +77,18 @@ async function fetchApprovals(
   baseUrl: string,
   projectId: number,
   mrIid: number
-): Promise<readonly GitLabApproval[]> {
+): Promise<readonly GitLabApproval[] | null> {
   try {
     const api = baseUrl.replace(/\/$/, '');
     const response = await safeFetch(
       `${api}/api/v4/projects/${projectId}/merge_requests/${mrIid}/approvals`,
       { headers: { Authorization: `Bearer ${token}` } }
     );
-    if (!response.ok) return [];
+    if (!response.ok) return null;
     const data = (await response.json()) as GitLabApprovalsResponse;
     return data.approved_by ?? [];
   } catch {
-    return [];
+    return null;
   }
 }
 
@@ -179,13 +180,19 @@ export async function enrichGitLabMR(
   const projectId = (pr.sourceMetadata?.projectId as number) ?? 0;
   if (!projectId) return { ...pr, enrichment: 'enriched' };
 
-  const [repository, approvals] = await Promise.all([
+  const [repository, approvalsResult] = await Promise.all([
     fetchProjectPath(token, baseUrl, projectId),
     pr.reviewRequestedFromMe
       ? fetchApprovals(token, baseUrl, projectId, pr.number)
-      : Promise.resolve([] as readonly GitLabApproval[])
+      : Promise.resolve(null)
   ]);
 
+  // null = fetch failed, keep previous state
+  if (approvalsResult === null && pr.reviewRequestedFromMe) {
+    return { ...pr, repository, enrichment: 'enriched' };
+  }
+
+  const approvals = approvalsResult ?? [];
   const reviewDecision: ReviewDecision | null = pr.reviewRequestedFromMe
     ? approvals.length > 0
       ? 'approved'
