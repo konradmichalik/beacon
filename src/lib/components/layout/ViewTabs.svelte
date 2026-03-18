@@ -1,7 +1,7 @@
 <script lang="ts">
   import { getFilteredUnreadCount } from '$lib/stores/notifications.svelte';
   import { getPRCount } from '$lib/stores/pull-requests.svelte';
-  import { Bell, GitPullRequest } from '@lucide/svelte';
+  import { Inbox, GitPullRequest } from '@lucide/svelte';
 
   export type ViewTab = 'notifications' | 'pull-requests';
 
@@ -16,8 +16,8 @@
   let unreadCount = $derived(getFilteredUnreadCount());
   let prCount = $derived(getPRCount());
 
-  const tabs: { id: ViewTab; label: string; icon: typeof Bell; getCount: () => number }[] = [
-    { id: 'notifications', label: 'Notifications', icon: Bell, getCount: () => unreadCount },
+  const tabs: { id: ViewTab; label: string; icon: typeof Inbox; getCount: () => number }[] = [
+    { id: 'notifications', label: 'Inbox', icon: Inbox, getCount: () => unreadCount },
     { id: 'pull-requests', label: 'My PRs', icon: GitPullRequest, getCount: () => prCount }
   ];
 </script>
