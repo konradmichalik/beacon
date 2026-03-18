@@ -120,7 +120,7 @@
         {/if}
       </button>
     </div>
-  {:else}
+  {:else if githubConnected || gitlabConnected}
     <div
       class="flex shrink-0 items-center gap-1 rounded-md border border-border bg-card px-2.5 py-1"
       title={githubConnected ? 'GitHub' : 'GitLab'}
