@@ -299,7 +299,8 @@
             role="switch"
             aria-label="Toggle fetch CI and review status"
             aria-checked={settingsState.enrichPullRequests}
-            onclick={() => updateSettings({ enrichPullRequests: !settingsState.enrichPullRequests })}
+            onclick={() =>
+              updateSettings({ enrichPullRequests: !settingsState.enrichPullRequests })}
             class="relative inline-flex h-5 w-9 shrink-0 items-center rounded-full transition-colors {settingsState.enrichPullRequests
               ? 'bg-primary'
               : 'bg-secondary'}"
@@ -449,7 +450,9 @@
               Checking…
             </span>
           {:else if updateStatus === 'up-to-date'}
-            <span class="inline-flex items-center gap-1 text-xs font-medium text-green-600 dark:text-green-400">
+            <span
+              class="inline-flex items-center gap-1 text-xs font-medium text-green-600 dark:text-green-400"
+            >
               <CheckCircle size={11} />
               Up to date
             </span>
