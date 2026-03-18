@@ -448,7 +448,11 @@ async fn fetch_gitlab(client: &reqwest::Client, config: &GitLabConfig) -> Vec<Un
 
         let batch: Vec<GLTodo> = match resp {
             Ok(r) if r.status().is_success() => r.json().await.unwrap_or_default(),
-            _ => break,
+            _ => {
+                // Discard partial results to avoid known_ids churn
+                items.clear();
+                break;
+            }
         };
 
         let is_last = batch.len() < PER_PAGE as usize;
