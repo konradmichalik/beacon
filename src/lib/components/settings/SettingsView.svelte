@@ -10,6 +10,7 @@
     BellOff,
     Bell,
     BellDot,
+    BellRing,
     Info,
     ExternalLink,
     BookOpen,
@@ -29,10 +30,24 @@
   import BeaconLogo from '../icons/BeaconLogo.svelte';
   import { sendNotification } from '$lib/services/desktop-notifications';
   import { playNotificationSound } from '$lib/services/notification-sound';
+  import {
+    checkForUpdates,
+    type UpdateStatus,
+    type UpdateCheckResult
+  } from '$lib/services/update-check';
+  import { RefreshCw, ArrowUpCircle, CheckCircle, AlertCircle } from '@lucide/svelte';
 
-  type SettingsTab = 'connections' | 'notifications' | 'preferences' | 'about';
+  type SettingsTab = 'connections' | 'preferences' | 'alerts' | 'about';
   let activeTab: SettingsTab = $state('connections');
   let isPlayingPreview = $state(false);
+  let updateStatus: UpdateStatus = $state('idle');
+  let updateResult: UpdateCheckResult = $state({ status: 'idle' });
+
+  async function handleCheckForUpdates(): Promise<void> {
+    updateStatus = 'checking';
+    updateResult = await checkForUpdates(version);
+    updateStatus = updateResult.status;
+  }
 
   async function setNotifyMode(mode: NotifyMode): Promise<void> {
     await updateSettings({ notifyMode: mode });
@@ -51,8 +66,8 @@
 
   const tabs: { value: SettingsTab; label: string; icon: typeof Link }[] = [
     { value: 'connections', label: 'Connections', icon: Link },
-    { value: 'notifications', label: 'Notifications', icon: Bell },
     { value: 'preferences', label: 'Preferences', icon: SlidersHorizontal },
+    { value: 'alerts', label: 'Alerts', icon: BellRing },
     { value: 'about', label: 'About', icon: Info }
   ];
 
@@ -122,7 +137,183 @@
       <GitHubConnectionForm />
       <GitLabConnectionForm />
     </div>
-  {:else if activeTab === 'notifications'}
+  {:else if activeTab === 'preferences'}
+    <!-- ── General ── -->
+    <div class="space-y-4">
+      <h3 class="text-[10px] font-semibold uppercase tracking-widest text-muted-foreground/60">
+        General
+      </h3>
+
+      <!-- Refresh Interval -->
+      <section>
+        <h4 class="mb-3 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+          Refresh Interval
+        </h4>
+        <div class="flex gap-1.5">
+          {#each intervalOptions as option (option.value)}
+            <button
+              type="button"
+              onclick={() => updateSettings({ pollingInterval: option.value })}
+              class="rounded-md px-3 py-1.5 text-xs font-medium transition-colors {settingsState.pollingInterval ===
+              option.value
+                ? 'bg-primary text-primary-foreground'
+                : 'bg-secondary text-secondary-foreground hover:bg-secondary/80'}"
+            >
+              {option.label}
+            </button>
+          {/each}
+        </div>
+      </section>
+
+      <!-- Menubar Icon -->
+      <section>
+        <h4 class="mb-3 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+          Menubar Icon
+        </h4>
+        <div class="flex gap-1.5">
+          {#each badgeOptions as option (option.value)}
+            {@const Icon = option.icon}
+            <button
+              type="button"
+              onclick={() => updateSettings({ badgeMode: option.value })}
+              class="flex items-center gap-1.5 rounded-md px-3 py-1.5 text-xs font-medium transition-colors {settingsState.badgeMode ===
+              option.value
+                ? 'bg-primary text-primary-foreground'
+                : 'bg-secondary text-secondary-foreground hover:bg-secondary/80'}"
+            >
+              <Icon size={12} />
+              {option.label}
+            </button>
+          {/each}
+        </div>
+        <p class="mt-1.5 text-[10px] text-muted-foreground">
+          {settingsState.badgeMode === 'count'
+            ? 'Shows unread notification count next to the menubar icon.'
+            : 'Shows a colored dot when unread notifications are pending.'}
+        </p>
+
+        {#if settingsState.badgeMode === 'dot'}
+          <div class="mt-3">
+            <h5 class="mb-2 text-[11px] font-medium text-muted-foreground">Dot Color</h5>
+            <div class="flex gap-1.5">
+              {#each dotColorOptions as option (option.value)}
+                <button
+                  type="button"
+                  onclick={() => updateSettings({ dotColor: option.value })}
+                  class="flex items-center gap-1.5 rounded-md px-3 py-1.5 text-xs font-medium transition-colors {settingsState.dotColor ===
+                  option.value
+                    ? 'bg-primary text-primary-foreground'
+                    : 'bg-secondary text-secondary-foreground hover:bg-secondary/80'}"
+                >
+                  <span
+                    class="inline-block h-2.5 w-2.5 rounded-full"
+                    style="background-color: {option.color}"
+                  ></span>
+                  {option.label}
+                </button>
+              {/each}
+            </div>
+          </div>
+        {/if}
+      </section>
+
+      <!-- Theme -->
+      <section>
+        <h4 class="mb-3 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+          Theme
+        </h4>
+        <div class="flex gap-1.5">
+          {#each themeOptions as option (option.value)}
+            {@const Icon = option.icon}
+            <button
+              type="button"
+              onclick={() => updateSettings({ theme: option.value })}
+              class="flex items-center gap-1.5 rounded-md px-3 py-1.5 text-xs font-medium transition-colors {settingsState.theme ===
+              option.value
+                ? 'bg-primary text-primary-foreground'
+                : 'bg-secondary text-secondary-foreground hover:bg-secondary/80'}"
+            >
+              <Icon size={12} />
+              {option.label}
+            </button>
+          {/each}
+        </div>
+      </section>
+    </div>
+
+    <hr class="border-border" />
+
+    <!-- ── Inbox ── -->
+    <div class="space-y-4">
+      <h3 class="text-[10px] font-semibold uppercase tracking-widest text-muted-foreground/60">
+        Inbox
+      </h3>
+
+      <section>
+        <label class="flex cursor-pointer items-center justify-between gap-3">
+          <div>
+            <span class="text-xs font-medium text-foreground">Hide closed &amp; merged</span>
+            <p class="text-[10px] text-muted-foreground">
+              Don't show notifications for closed or merged items.
+            </p>
+          </div>
+          <button
+            type="button"
+            role="switch"
+            aria-label="Toggle hide closed and merged"
+            aria-checked={settingsState.hideClosed}
+            onclick={() => updateSettings({ hideClosed: !settingsState.hideClosed })}
+            class="relative inline-flex h-5 w-9 shrink-0 items-center rounded-full transition-colors {settingsState.hideClosed
+              ? 'bg-primary'
+              : 'bg-secondary'}"
+          >
+            <span
+              class="inline-block h-3.5 w-3.5 rounded-full bg-white shadow-sm transition-transform {settingsState.hideClosed
+                ? 'translate-x-4'
+                : 'translate-x-0.5'}"
+            ></span>
+          </button>
+        </label>
+      </section>
+    </div>
+
+    <hr class="border-border" />
+
+    <!-- ── Pull Requests ── -->
+    <div class="space-y-4">
+      <h3 class="text-[10px] font-semibold uppercase tracking-widest text-muted-foreground/60">
+        Pull Requests
+      </h3>
+
+      <section>
+        <label class="flex cursor-pointer items-center justify-between gap-3">
+          <div>
+            <span class="text-xs font-medium text-foreground">Fetch CI & review status</span>
+            <p class="text-[10px] text-muted-foreground">
+              Fetches pipeline status and review decisions per PR. Disable for faster loading with
+              many PRs.
+            </p>
+          </div>
+          <button
+            type="button"
+            role="switch"
+            aria-label="Toggle fetch CI and review status"
+            aria-checked={settingsState.enrichPullRequests}
+            onclick={() => updateSettings({ enrichPullRequests: !settingsState.enrichPullRequests })}
+            class="relative inline-flex h-5 w-9 shrink-0 items-center rounded-full transition-colors {settingsState.enrichPullRequests
+              ? 'bg-primary'
+              : 'bg-secondary'}"
+          >
+            <span
+              class="inline-block h-3.5 w-3.5 rounded-full bg-white shadow-sm transition-transform {settingsState.enrichPullRequests
+                ? 'translate-x-4'
+                : 'translate-x-0.5'}"
+            ></span>
+          </button>
+        </label>
+      </section>
+    </div>
+  {:else if activeTab === 'alerts'}
     <!-- Notification Mode -->
     <section>
       <h3 class="mb-3 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
@@ -227,165 +418,6 @@
         </div>
       </section>
     {/if}
-
-    <!-- Filtering -->
-    <section>
-      <h3 class="mb-3 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-        Filtering
-      </h3>
-      <label class="flex cursor-pointer items-center justify-between gap-3">
-        <div>
-          <span class="text-xs font-medium text-foreground">Hide closed &amp; merged</span>
-          <p class="text-[10px] text-muted-foreground">
-            Don't show notifications for closed or merged items.
-          </p>
-        </div>
-        <button
-          type="button"
-          role="switch"
-          aria-label="Toggle hide closed and merged"
-          aria-checked={settingsState.hideClosed}
-          onclick={() => updateSettings({ hideClosed: !settingsState.hideClosed })}
-          class="relative inline-flex h-5 w-9 shrink-0 items-center rounded-full transition-colors {settingsState.hideClosed
-            ? 'bg-primary'
-            : 'bg-secondary'}"
-        >
-          <span
-            class="inline-block h-3.5 w-3.5 rounded-full bg-white shadow-sm transition-transform {settingsState.hideClosed
-              ? 'translate-x-4'
-              : 'translate-x-0.5'}"
-          ></span>
-        </button>
-      </label>
-    </section>
-  {:else if activeTab === 'preferences'}
-    <!-- Refresh Interval -->
-    <section>
-      <h3 class="mb-3 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-        Refresh Interval
-      </h3>
-      <div class="flex gap-1.5">
-        {#each intervalOptions as option (option.value)}
-          <button
-            type="button"
-            onclick={() => updateSettings({ pollingInterval: option.value })}
-            class="rounded-md px-3 py-1.5 text-xs font-medium transition-colors {settingsState.pollingInterval ===
-            option.value
-              ? 'bg-primary text-primary-foreground'
-              : 'bg-secondary text-secondary-foreground hover:bg-secondary/80'}"
-          >
-            {option.label}
-          </button>
-        {/each}
-      </div>
-    </section>
-
-    <!-- Menubar Icon -->
-    <section>
-      <h3 class="mb-3 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-        Menubar Icon
-      </h3>
-      <div class="flex gap-1.5">
-        {#each badgeOptions as option (option.value)}
-          {@const Icon = option.icon}
-          <button
-            type="button"
-            onclick={() => updateSettings({ badgeMode: option.value })}
-            class="flex items-center gap-1.5 rounded-md px-3 py-1.5 text-xs font-medium transition-colors {settingsState.badgeMode ===
-            option.value
-              ? 'bg-primary text-primary-foreground'
-              : 'bg-secondary text-secondary-foreground hover:bg-secondary/80'}"
-          >
-            <Icon size={12} />
-            {option.label}
-          </button>
-        {/each}
-      </div>
-      <p class="mt-1.5 text-[10px] text-muted-foreground">
-        {settingsState.badgeMode === 'count'
-          ? 'Shows unread notification count next to the menubar icon.'
-          : 'Shows a colored dot when unread notifications are pending.'}
-      </p>
-
-      {#if settingsState.badgeMode === 'dot'}
-        <div class="mt-3">
-          <h4 class="mb-2 text-[11px] font-medium text-muted-foreground">Dot Color</h4>
-          <div class="flex gap-1.5">
-            {#each dotColorOptions as option (option.value)}
-              <button
-                type="button"
-                onclick={() => updateSettings({ dotColor: option.value })}
-                class="flex items-center gap-1.5 rounded-md px-3 py-1.5 text-xs font-medium transition-colors {settingsState.dotColor ===
-                option.value
-                  ? 'bg-primary text-primary-foreground'
-                  : 'bg-secondary text-secondary-foreground hover:bg-secondary/80'}"
-              >
-                <span
-                  class="inline-block h-2.5 w-2.5 rounded-full"
-                  style="background-color: {option.color}"
-                ></span>
-                {option.label}
-              </button>
-            {/each}
-          </div>
-        </div>
-      {/if}
-    </section>
-
-    <!-- Pull Request Details -->
-    <section>
-      <h3 class="mb-3 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-        Pull Requests
-      </h3>
-      <label class="flex cursor-pointer items-center justify-between gap-3">
-        <div>
-          <span class="text-xs font-medium text-foreground">Fetch CI & review status</span>
-          <p class="text-[10px] text-muted-foreground">
-            Fetches pipeline status and review decisions per PR. Disable for faster loading with
-            many PRs.
-          </p>
-        </div>
-        <button
-          type="button"
-          role="switch"
-          aria-label="Toggle fetch CI and review status"
-          aria-checked={settingsState.enrichPullRequests}
-          onclick={() => updateSettings({ enrichPullRequests: !settingsState.enrichPullRequests })}
-          class="relative inline-flex h-5 w-9 shrink-0 items-center rounded-full transition-colors {settingsState.enrichPullRequests
-            ? 'bg-primary'
-            : 'bg-secondary'}"
-        >
-          <span
-            class="inline-block h-3.5 w-3.5 rounded-full bg-white shadow-sm transition-transform {settingsState.enrichPullRequests
-              ? 'translate-x-4'
-              : 'translate-x-0.5'}"
-          ></span>
-        </button>
-      </label>
-    </section>
-
-    <!-- Theme -->
-    <section>
-      <h3 class="mb-3 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-        Theme
-      </h3>
-      <div class="flex gap-1.5">
-        {#each themeOptions as option (option.value)}
-          {@const Icon = option.icon}
-          <button
-            type="button"
-            onclick={() => updateSettings({ theme: option.value })}
-            class="flex items-center gap-1.5 rounded-md px-3 py-1.5 text-xs font-medium transition-colors {settingsState.theme ===
-            option.value
-              ? 'bg-primary text-primary-foreground'
-              : 'bg-secondary text-secondary-foreground hover:bg-secondary/80'}"
-          >
-            <Icon size={12} />
-            {option.label}
-          </button>
-        {/each}
-      </div>
-    </section>
   {:else if activeTab === 'about'}
     <div class="flex flex-col items-center gap-5 py-4">
       <BeaconLogo height={30} class="text-foreground" />
@@ -399,6 +431,49 @@
         <div class="flex items-center justify-between px-4 py-2.5">
           <span class="text-xs text-muted-foreground">Build</span>
           <span class="text-xs font-medium text-foreground">{buildDate}</span>
+        </div>
+        <div class="flex items-center justify-between px-4 py-2.5">
+          <span class="text-xs text-muted-foreground">Updates</span>
+          {#if updateStatus === 'idle'}
+            <button
+              type="button"
+              onclick={handleCheckForUpdates}
+              class="inline-flex items-center gap-1 text-xs font-medium text-primary hover:text-primary/80 transition-colors"
+            >
+              <RefreshCw size={11} />
+              Check for updates
+            </button>
+          {:else if updateStatus === 'checking'}
+            <span class="inline-flex items-center gap-1 text-xs text-muted-foreground">
+              <RefreshCw size={11} class="animate-spin" />
+              Checking…
+            </span>
+          {:else if updateStatus === 'up-to-date'}
+            <span class="inline-flex items-center gap-1 text-xs font-medium text-green-600 dark:text-green-400">
+              <CheckCircle size={11} />
+              Up to date
+            </span>
+          {:else if updateStatus === 'update-available'}
+            <a
+              href={updateResult.releaseUrl}
+              target="_blank"
+              rel="noopener noreferrer"
+              class="inline-flex items-center gap-1 text-xs font-medium text-primary hover:text-primary/80 transition-colors"
+            >
+              <ArrowUpCircle size={11} />
+              {updateResult.latestVersion} available
+            </a>
+          {:else if updateStatus === 'error'}
+            <button
+              type="button"
+              onclick={handleCheckForUpdates}
+              class="inline-flex items-center gap-1 text-xs font-medium text-destructive hover:text-destructive/80 transition-colors"
+              title={updateResult.error}
+            >
+              <AlertCircle size={11} />
+              Retry
+            </button>
+          {/if}
         </div>
       </div>
 
