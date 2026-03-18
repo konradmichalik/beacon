@@ -195,7 +195,7 @@
                 >Role</span
               >
               <div class="flex flex-wrap gap-1">
-                {#each [{ value: 'all', label: 'All' }, ...roleOptions] as opt (opt.value)}
+                {#each [{ value: 'all' as PRRoleFilter, label: 'All' }, ...roleOptions] as opt (opt.value)}
                   <button
                     type="button"
                     onclick={() => onRoleChange(opt.value)}
