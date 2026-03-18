@@ -121,8 +121,7 @@ function mapBasicMR(mr: GitLabMergeRequest, reviewRequested: boolean): UnifiedPu
     id: `gitlab-mr-${mr.id}`,
     source: 'gitlab',
     title: mr.title,
-    repository:
-      mr.references?.full?.replace(/![0-9]+$/, '').replace(/\/$/, '') ?? `project/${mr.project_id}`,
+    repository: mr.references?.full?.split('!')[0] ?? `project/${mr.project_id}`,
     url: mr.web_url,
     number: mr.iid,
     draft: mr.draft,
