@@ -332,6 +332,38 @@
       {/if}
     </section>
 
+    <!-- Pull Request Details -->
+    <section>
+      <h3 class="mb-3 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+        Pull Requests
+      </h3>
+      <label class="flex cursor-pointer items-center justify-between gap-3">
+        <div>
+          <span class="text-xs font-medium text-foreground">Fetch CI & review status</span>
+          <p class="text-[10px] text-muted-foreground">
+            Fetches pipeline status and review decisions per PR. Disable for faster loading with
+            many PRs.
+          </p>
+        </div>
+        <button
+          type="button"
+          role="switch"
+          aria-label="Toggle fetch CI and review status"
+          aria-checked={settingsState.enrichPullRequests}
+          onclick={() => updateSettings({ enrichPullRequests: !settingsState.enrichPullRequests })}
+          class="relative inline-flex h-5 w-9 shrink-0 items-center rounded-full transition-colors {settingsState.enrichPullRequests
+            ? 'bg-primary'
+            : 'bg-secondary'}"
+        >
+          <span
+            class="inline-block h-3.5 w-3.5 rounded-full bg-white shadow-sm transition-transform {settingsState.enrichPullRequests
+              ? 'translate-x-4'
+              : 'translate-x-0.5'}"
+          ></span>
+        </button>
+      </label>
+    </section>
+
     <!-- Theme -->
     <section>
       <h3 class="mb-3 text-xs font-semibold uppercase tracking-wider text-muted-foreground">

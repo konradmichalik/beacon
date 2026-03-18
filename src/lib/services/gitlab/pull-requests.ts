@@ -56,6 +56,42 @@ export function mapReviewDecision(mr: GitLabMergeRequest): ReviewDecision | null
   return null;
 }
 
+export function hasUserApproved(
+  approvals: readonly { user: { username: string } }[],
+  username: string
+): boolean {
+  const normalized = username.toLowerCase();
+  return approvals.some((a) => a.user.username.toLowerCase() === normalized);
+}
+
+interface GitLabApproval {
+  readonly user: { readonly username: string };
+}
+
+interface GitLabApprovalsResponse {
+  readonly approved_by: readonly GitLabApproval[];
+}
+
+async function fetchApprovals(
+  token: string,
+  baseUrl: string,
+  projectId: number,
+  mrIid: number
+): Promise<readonly GitLabApproval[] | null> {
+  try {
+    const api = baseUrl.replace(/\/$/, '');
+    const response = await safeFetch(
+      `${api}/api/v4/projects/${projectId}/merge_requests/${mrIid}/approvals`,
+      { headers: { Authorization: `Bearer ${token}` } }
+    );
+    if (!response.ok) return null;
+    const data = (await response.json()) as GitLabApprovalsResponse;
+    return data.approved_by ?? [];
+  } catch {
+    return null;
+  }
+}
+
 // Cache project paths to avoid refetching
 const projectPathCache = new Map<number, string>();
 
@@ -81,32 +117,29 @@ async function fetchProjectPath(
   }
 }
 
-async function mapToUnified(
-  token: string,
-  baseUrl: string,
-  mr: GitLabMergeRequest,
-  reviewRequested: boolean
-): Promise<UnifiedPullRequest> {
-  const repository = await fetchProjectPath(token, baseUrl, mr.project_id);
-
+function mapBasicMR(mr: GitLabMergeRequest, reviewRequested: boolean): UnifiedPullRequest {
   return {
     id: `gitlab-mr-${mr.id}`,
     source: 'gitlab',
     title: mr.title,
-    repository,
+    repository: mr.references?.full?.split('!')[0] ?? `project/${mr.project_id}`,
     url: mr.web_url,
     number: mr.iid,
     draft: mr.draft,
     author: mr.author ? { login: mr.author.username, avatarUrl: mr.author.avatar_url } : null,
     createdAt: mr.created_at,
     updatedAt: mr.updated_at,
+    // GitLab list endpoint includes pipeline status
     ciStatus: mapCIStatus(mr.head_pipeline?.status ?? null),
     reviewDecision: mapReviewDecision(mr),
-    reviewRequestedFromMe: reviewRequested
+    reviewRequestedFromMe: reviewRequested,
+    reviewedByMe: false,
+    enrichment: 'pending',
+    sourceMetadata: { projectId: mr.project_id }
   };
 }
 
-export async function fetchGitLabMergeRequests(
+export async function fetchGitLabMergeRequestsBasic(
   token: string,
   baseUrl: string,
   username: string
@@ -132,10 +165,46 @@ export async function fetchGitLabMergeRequests(
   const authoredIds = new Set(authored.map((mr) => mr.id));
   const reviewOnly = reviewRequested.filter((mr) => !authoredIds.has(mr.id));
 
-  const results = await Promise.all([
-    ...authored.map((mr) => mapToUnified(token, baseUrl, mr, false)),
-    ...reviewOnly.map((mr) => mapToUnified(token, baseUrl, mr, true))
+  return [
+    ...authored.map((mr) => mapBasicMR(mr, false)),
+    ...reviewOnly.map((mr) => mapBasicMR(mr, true))
+  ];
+}
+
+export async function enrichGitLabMR(
+  token: string,
+  baseUrl: string,
+  pr: UnifiedPullRequest,
+  username: string
+): Promise<UnifiedPullRequest> {
+  const projectId = (pr.sourceMetadata?.projectId as number) ?? 0;
+  if (!projectId) return { ...pr, enrichment: 'enriched' };
+
+  const [repository, approvalsResult] = await Promise.all([
+    fetchProjectPath(token, baseUrl, projectId),
+    pr.reviewRequestedFromMe
+      ? fetchApprovals(token, baseUrl, projectId, pr.number)
+      : Promise.resolve(null)
   ]);
 
-  return results;
+  // null = fetch failed, keep previous state
+  if (approvalsResult === null && pr.reviewRequestedFromMe) {
+    return { ...pr, repository, enrichment: 'enriched' };
+  }
+
+  const approvals = approvalsResult ?? [];
+  const reviewDecision: ReviewDecision | null = pr.reviewRequestedFromMe
+    ? approvals.length > 0
+      ? 'approved'
+      : 'review_required'
+    : pr.reviewDecision;
+
+  return {
+    ...pr,
+    repository,
+    reviewDecision,
+    // GitLab REST API only exposes approvals, not comment-based reviews (unlike GitHub)
+    reviewedByMe: hasUserApproved(approvals, username),
+    enrichment: 'enriched'
+  };
 }

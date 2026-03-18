@@ -13,7 +13,8 @@
     Eye,
     FileEdit,
     ExternalLink,
-    ClipboardCopy
+    ClipboardCopy,
+    CircleCheckBig
   } from '@lucide/svelte';
 
   let { pullRequest }: { pullRequest: UnifiedPullRequest } = $props();
@@ -39,7 +40,11 @@
     return avatarColors[Math.abs(hash) % avatarColors.length];
   });
 
+  let isPending = $derived(pullRequest.enrichment === 'pending');
+  let isSkipped = $derived(pullRequest.enrichment === 'skipped');
+
   let ciInfo = $derived.by(() => {
+    if (isSkipped && pullRequest.ciStatus === 'unknown') return null;
     switch (pullRequest.ciStatus) {
       case 'success':
         return { label: 'CI passed', class: 'text-success-text', icon: CircleCheck };
@@ -53,6 +58,16 @@
   });
 
   let reviewInfo = $derived.by(() => {
+    if (isSkipped && !pullRequest.reviewDecision) return null;
+    if (pullRequest.reviewRequestedFromMe) {
+      if (pullRequest.enrichment !== 'enriched') {
+        return null;
+      }
+      if (pullRequest.reviewedByMe) {
+        return { label: 'Reviewed', class: 'text-success-text', icon: CircleCheckBig };
+      }
+      return { label: 'Pending your review', class: 'text-muted-foreground', icon: Eye };
+    }
     switch (pullRequest.reviewDecision) {
       case 'approved':
         return { label: 'Approved', class: 'text-success-text', icon: ShieldCheck };
@@ -172,7 +187,9 @@
           </span>
         {/if}
 
-        {#if ciInfo}
+        {#if isPending && pullRequest.source === 'github'}
+          <span class="h-2.5 w-12 animate-pulse rounded-full bg-muted-foreground/15"></span>
+        {:else if ciInfo}
           {@const CIIcon = ciInfo.icon}
           <span class="flex shrink-0 items-center gap-0.5 text-[10px] font-medium {ciInfo.class}">
             <CIIcon size={10} />
@@ -180,7 +197,9 @@
           </span>
         {/if}
 
-        {#if reviewInfo}
+        {#if isPending && pullRequest.reviewRequestedFromMe}
+          <span class="h-2.5 w-14 animate-pulse rounded-full bg-muted-foreground/15"></span>
+        {:else if reviewInfo}
           {@const ReviewIcon = reviewInfo.icon}
           <span
             class="flex shrink-0 items-center gap-0.5 text-[10px] font-medium {reviewInfo.class}"

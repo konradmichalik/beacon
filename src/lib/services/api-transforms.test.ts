@@ -4,13 +4,15 @@ import { mapTargetType, mapActionToReason, mapTargetState } from './gitlab/clien
 import {
   mapCIStatus as ghMapCIStatus,
   mapReviewDecision as ghMapReviewDecision,
+  hasUserReviewed,
   repoFromUrl,
   type GitHubCheckRun,
   type GitHubReview
 } from './github/pull-requests';
 import {
   mapCIStatus as glMapCIStatus,
-  mapReviewDecision as glMapReviewDecision
+  mapReviewDecision as glMapReviewDecision,
+  hasUserApproved
 } from './gitlab/pull-requests';
 import type { GitHubNotification } from '$lib/types';
 
@@ -189,18 +191,57 @@ describe('GitHub PR: mapReviewDecision', () => {
   });
 
   it('returns "changes_requested" when present', () => {
-    const reviews: GitHubReview[] = [{ state: 'APPROVED' }, { state: 'CHANGES_REQUESTED' }];
+    const reviews: GitHubReview[] = [
+      { state: 'APPROVED', user: { login: 'alice' } },
+      { state: 'CHANGES_REQUESTED', user: { login: 'bob' } }
+    ];
     expect(ghMapReviewDecision(reviews)).toBe('changes_requested');
   });
 
   it('returns "approved" when approved without changes requested', () => {
-    const reviews: GitHubReview[] = [{ state: 'APPROVED' }];
+    const reviews: GitHubReview[] = [{ state: 'APPROVED', user: { login: 'alice' } }];
     expect(ghMapReviewDecision(reviews)).toBe('approved');
   });
 
   it('returns "review_required" for only comments', () => {
-    const reviews: GitHubReview[] = [{ state: 'COMMENTED' }];
+    const reviews: GitHubReview[] = [{ state: 'COMMENTED', user: { login: 'alice' } }];
     expect(ghMapReviewDecision(reviews)).toBe('review_required');
+  });
+});
+
+describe('GitHub PR: hasUserReviewed', () => {
+  it('returns true when user has approved', () => {
+    const reviews: GitHubReview[] = [{ state: 'APPROVED', user: { login: 'me' } }];
+    expect(hasUserReviewed(reviews, 'me')).toBe(true);
+  });
+
+  it('returns true when user has requested changes', () => {
+    const reviews: GitHubReview[] = [{ state: 'CHANGES_REQUESTED', user: { login: 'me' } }];
+    expect(hasUserReviewed(reviews, 'me')).toBe(true);
+  });
+
+  it('returns true when user has commented', () => {
+    const reviews: GitHubReview[] = [{ state: 'COMMENTED', user: { login: 'me' } }];
+    expect(hasUserReviewed(reviews, 'me')).toBe(true);
+  });
+
+  it('returns false when only other users reviewed', () => {
+    const reviews: GitHubReview[] = [{ state: 'APPROVED', user: { login: 'someone-else' } }];
+    expect(hasUserReviewed(reviews, 'me')).toBe(false);
+  });
+
+  it('returns false for empty reviews', () => {
+    expect(hasUserReviewed([], 'me')).toBe(false);
+  });
+
+  it('returns false when user is null', () => {
+    const reviews: GitHubReview[] = [{ state: 'APPROVED', user: null }];
+    expect(hasUserReviewed(reviews, 'me')).toBe(false);
+  });
+
+  it('ignores non-review states like DISMISSED', () => {
+    const reviews: GitHubReview[] = [{ state: 'DISMISSED', user: { login: 'me' } }];
+    expect(hasUserReviewed(reviews, 'me')).toBe(false);
   });
 });
 
@@ -241,5 +282,21 @@ describe('GitLab MR: mapReviewDecision', () => {
   it('returns null when no reviewers and no approvals', () => {
     const mr = { approved_by: [], reviewers: [] };
     expect(glMapReviewDecision(mr as never)).toBeNull();
+  });
+});
+
+describe('GitLab MR: hasUserApproved', () => {
+  it('returns true when user is in approvals', () => {
+    const approvals = [{ user: { username: 'me' } }];
+    expect(hasUserApproved(approvals, 'me')).toBe(true);
+  });
+
+  it('returns false when user is not in approvals', () => {
+    const approvals = [{ user: { username: 'someone-else' } }];
+    expect(hasUserApproved(approvals, 'me')).toBe(false);
+  });
+
+  it('returns false when approvals is empty', () => {
+    expect(hasUserApproved([], 'me')).toBe(false);
   });
 });
