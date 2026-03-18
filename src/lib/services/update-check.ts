@@ -12,7 +12,12 @@ export interface UpdateCheckResult {
 const RELEASES_API = 'https://api.github.com/repos/konradmichalik/beacon/releases/latest';
 
 function compareVersions(current: string, latest: string): number {
-  const parse = (v: string) => v.replace(/^v/, '').split('.').map(Number);
+  const parse = (v: string) =>
+    v
+      .replace(/^v/, '')
+      .split('-')[0]
+      .split('.')
+      .map((n) => parseInt(n, 10) || 0);
   const a = parse(current);
   const b = parse(latest);
 
@@ -34,8 +39,12 @@ export async function checkForUpdates(currentVersion: string): Promise<UpdateChe
     }
 
     const data = await response.json();
-    const latestVersion = data.tag_name as string;
-    const releaseUrl = data.html_url as string;
+    const latestVersion = data.tag_name;
+    const releaseUrl = data.html_url;
+
+    if (typeof latestVersion !== 'string' || typeof releaseUrl !== 'string') {
+      return { status: 'error', error: 'Invalid response from GitHub API' };
+    }
 
     const cmp = compareVersions(currentVersion, latestVersion);
 
