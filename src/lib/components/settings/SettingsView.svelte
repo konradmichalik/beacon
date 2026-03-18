@@ -153,6 +153,7 @@
           {#each intervalOptions as option (option.value)}
             <button
               type="button"
+              aria-pressed={settingsState.pollingInterval === option.value}
               onclick={() => updateSettings({ pollingInterval: option.value })}
               class="rounded-md px-3 py-1.5 text-xs font-medium transition-colors {settingsState.pollingInterval ===
               option.value
@@ -175,6 +176,7 @@
             {@const Icon = option.icon}
             <button
               type="button"
+              aria-pressed={settingsState.badgeMode === option.value}
               onclick={() => updateSettings({ badgeMode: option.value })}
               class="flex items-center gap-1.5 rounded-md px-3 py-1.5 text-xs font-medium transition-colors {settingsState.badgeMode ===
               option.value
@@ -199,6 +201,7 @@
               {#each dotColorOptions as option (option.value)}
                 <button
                   type="button"
+                  aria-pressed={settingsState.dotColor === option.value}
                   onclick={() => updateSettings({ dotColor: option.value })}
                   class="flex items-center gap-1.5 rounded-md px-3 py-1.5 text-xs font-medium transition-colors {settingsState.dotColor ===
                   option.value
@@ -227,6 +230,7 @@
             {@const Icon = option.icon}
             <button
               type="button"
+              aria-pressed={settingsState.theme === option.value}
               onclick={() => updateSettings({ theme: option.value })}
               class="flex items-center gap-1.5 rounded-md px-3 py-1.5 text-xs font-medium transition-colors {settingsState.theme ===
               option.value
@@ -433,7 +437,11 @@
           <span class="text-xs text-muted-foreground">Build</span>
           <span class="text-xs font-medium text-foreground">{buildDate}</span>
         </div>
-        <div class="flex items-center justify-between px-4 py-2.5">
+        <div
+          class="flex items-center justify-between px-4 py-2.5"
+          aria-live="polite"
+          aria-atomic="true"
+        >
           <span class="text-xs text-muted-foreground">Updates</span>
           {#if updateStatus === 'idle'}
             <button
@@ -471,11 +479,12 @@
               type="button"
               onclick={handleCheckForUpdates}
               class="inline-flex items-center gap-1 text-xs font-medium text-destructive hover:text-destructive/80 transition-colors"
-              title={updateResult.error}
+              aria-describedby="update-check-error"
             >
               <AlertCircle size={11} />
               Retry
             </button>
+            <span id="update-check-error" class="sr-only">{updateResult.error}</span>
           {/if}
         </div>
       </div>
