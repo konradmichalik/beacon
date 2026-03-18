@@ -25,6 +25,8 @@ export type {
   CIStatus,
   ReviewDecision,
   PRRoleFilter,
+  PRDraftFilter,
+  PRCIFilter,
   EnrichmentState,
   UnifiedPullRequest
 } from './pull-requests';

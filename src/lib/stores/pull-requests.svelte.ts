@@ -1,4 +1,10 @@
-import type { UnifiedPullRequest, NotificationSource, PRRoleFilter } from '$lib/types';
+import type {
+  UnifiedPullRequest,
+  NotificationSource,
+  PRRoleFilter,
+  PRDraftFilter,
+  PRCIFilter
+} from '$lib/types';
 import { isServiceConnected, getGitHubConfig, getGitLabConfig } from './connections.svelte';
 import { fetchGitHubPullRequestsBasic, enrichGitHubPR } from '$lib/services/github/pull-requests';
 import { fetchGitLabMergeRequestsBasic, enrichGitLabMR } from '$lib/services/gitlab/pull-requests';
@@ -27,7 +33,9 @@ export type PRSortMode = 'updated' | 'created';
 export function getFilteredPRs(
   sourceFilter: NotificationSource | 'all',
   roleFilter: PRRoleFilter = 'all',
-  sort: PRSortMode = 'updated'
+  sort: PRSortMode = 'updated',
+  draftFilter: PRDraftFilter = 'all',
+  ciFilter: PRCIFilter = 'all'
 ): readonly UnifiedPullRequest[] {
   let filtered = [...pullRequests];
 
@@ -39,6 +47,16 @@ export function getFilteredPRs(
     filtered = filtered.filter((pr) => !pr.reviewRequestedFromMe);
   } else if (roleFilter === 'review_requested') {
     filtered = filtered.filter((pr) => pr.reviewRequestedFromMe);
+  }
+
+  if (draftFilter === 'ready') {
+    filtered = filtered.filter((pr) => !pr.draft);
+  } else if (draftFilter === 'draft') {
+    filtered = filtered.filter((pr) => pr.draft);
+  }
+
+  if (ciFilter !== 'all') {
+    filtered = filtered.filter((pr) => pr.ciStatus === ciFilter);
   }
 
   const dateKey = sort === 'created' ? 'createdAt' : 'updatedAt';

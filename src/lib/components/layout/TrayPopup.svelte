@@ -12,7 +12,7 @@
   import { refreshPullRequests } from '$lib/stores/pull-requests.svelte';
   import { ArrowLeft, ArrowUp } from '@lucide/svelte';
   import { onMount, untrack } from 'svelte';
-  import type { NotificationSource, PRRoleFilter } from '$lib/types';
+  import type { NotificationSource, PRRoleFilter, PRDraftFilter, PRCIFilter } from '$lib/types';
   import type { PRSortMode } from '$lib/stores/pull-requests.svelte';
 
   let { initialTab = 'notifications' as const }: { initialTab?: 'notifications' | 'settings' } =
@@ -23,6 +23,8 @@
   let activeView: ViewTab = $state('notifications');
   let prSourceFilter: NotificationSource | 'all' = $state('all');
   let prRoleFilter: PRRoleFilter = $state('all');
+  let prDraftFilter: PRDraftFilter = $state('all');
+  let prCIFilter: PRCIFilter = $state('all');
   let prSort: PRSortMode = $state('updated');
 
   async function toggleSettings(): Promise<void> {
@@ -87,9 +89,13 @@
       <PRFilterBar
         sourceFilter={prSourceFilter}
         roleFilter={prRoleFilter}
+        draftFilter={prDraftFilter}
+        ciFilter={prCIFilter}
         sort={prSort}
         onSourceChange={(s) => (prSourceFilter = s)}
         onRoleChange={(r) => (prRoleFilter = r)}
+        onDraftChange={(d) => (prDraftFilter = d)}
+        onCIChange={(c) => (prCIFilter = c)}
         onSortChange={(s) => (prSort = s)}
       />
     {/if}
@@ -98,7 +104,13 @@
         {#if activeView === 'notifications'}
           <NotificationList />
         {:else}
-          <PullRequestList sourceFilter={prSourceFilter} roleFilter={prRoleFilter} sort={prSort} />
+          <PullRequestList
+            sourceFilter={prSourceFilter}
+            roleFilter={prRoleFilter}
+            draftFilter={prDraftFilter}
+            ciFilter={prCIFilter}
+            sort={prSort}
+          />
         {/if}
       </div>
       <button

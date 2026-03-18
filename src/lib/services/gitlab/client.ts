@@ -84,19 +84,28 @@ export async function fetchGitLabTodos(
   token: string,
   baseUrl: string
 ): Promise<UnifiedNotification[]> {
-  const url = `${baseUrl.replace(/\/$/, '')}/api/v4/todos?state=pending&per_page=50`;
-  const response = await safeFetch(url, {
-    headers: {
-      Authorization: `Bearer ${token}`
-    }
-  });
+  const base = baseUrl.replace(/\/$/, '');
+  const perPage = 100;
+  const maxPages = 5;
+  const allTodos: GitLabTodo[] = [];
 
-  if (!response.ok) {
-    throw new Error(`GitLab API error: ${response.status}`);
+  for (let page = 1; page <= maxPages; page++) {
+    const response = await safeFetch(
+      `${base}/api/v4/todos?state=pending&per_page=${perPage}&page=${page}`,
+      { headers: { Authorization: `Bearer ${token}` } }
+    );
+
+    if (!response.ok) {
+      throw new Error(`GitLab API error: ${response.status}`);
+    }
+
+    const batch: GitLabTodo[] = await response.json();
+    allTodos.push(...batch);
+
+    if (batch.length < perPage) break;
   }
 
-  const data: GitLabTodo[] = await response.json();
-  return data.map(mapToUnified);
+  return allTodos.map(mapToUnified);
 }
 
 export async function markGitLabTodoDone(

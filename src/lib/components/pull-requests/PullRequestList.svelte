@@ -6,15 +6,19 @@
   import EmptyState from '../notifications/EmptyState.svelte';
   import PartyPopperIcon from '$lib/components/icons/PartyPopperIcon.svelte';
   import { Inbox, ChevronRight } from '@lucide/svelte';
-  import type { NotificationSource, PRRoleFilter } from '$lib/types';
+  import type { NotificationSource, PRRoleFilter, PRDraftFilter, PRCIFilter } from '$lib/types';
 
   let {
     sourceFilter = 'all',
     roleFilter = 'all',
+    draftFilter = 'all',
+    ciFilter = 'all',
     sort = 'updated'
   }: {
     sourceFilter?: NotificationSource | 'all';
     roleFilter?: PRRoleFilter;
+    draftFilter?: PRDraftFilter;
+    ciFilter?: PRCIFilter;
     sort?: PRSortMode;
   } = $props();
 
@@ -24,7 +28,7 @@
     collapsed = { ...collapsed, [section]: !collapsed[section] };
   }
 
-  let items = $derived(getFilteredPRs(sourceFilter, roleFilter, sort));
+  let items = $derived(getFilteredPRs(sourceFilter, roleFilter, sort, draftFilter, ciFilter));
   let isLoading = $derived(getIsPRLoading());
   let isConfigured = $derived(hasAnyServiceConfigured());
 
