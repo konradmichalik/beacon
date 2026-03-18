@@ -70,8 +70,7 @@ export function mapReviewDecision(reviews: readonly GitHubReview[]): ReviewDecis
 export function hasUserReviewed(reviews: readonly GitHubReview[], username: string): boolean {
   return reviews.some(
     (r) =>
-      r.user?.login === username &&
-      ['APPROVED', 'CHANGES_REQUESTED', 'COMMENTED'].includes(r.state)
+      r.user?.login === username && ['APPROVED', 'CHANGES_REQUESTED', 'COMMENTED'].includes(r.state)
   );
 }
 
