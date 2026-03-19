@@ -452,9 +452,7 @@ async fn fetch_gitlab(client: &reqwest::Client, config: &GitLabConfig) -> Vec<Un
     const MAX_PAGES: u32 = 1;
 
     loop {
-        let url = format!(
-            "{base}/api/v4/todos?state=pending&per_page={PER_PAGE}&page={page}"
-        );
+        let url = format!("{base}/api/v4/todos?state=pending&per_page={PER_PAGE}&page={page}");
         let resp = client
             .get(&url)
             .header("Authorization", format!("Bearer {}", config.token))

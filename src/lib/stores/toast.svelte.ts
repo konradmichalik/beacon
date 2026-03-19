@@ -13,8 +13,14 @@ export const toastState = {
 };
 
 function clearTimers(): void {
-  if (hideTimer) { clearTimeout(hideTimer); hideTimer = null; }
-  if (removeTimer) { clearTimeout(removeTimer); removeTimer = null; }
+  if (hideTimer) {
+    clearTimeout(hideTimer);
+    hideTimer = null;
+  }
+  if (removeTimer) {
+    clearTimeout(removeTimer);
+    removeTimer = null;
+  }
 }
 
 export function showToast(text: string, duration = 2000): void {

@@ -64,7 +64,7 @@
   />
 {:else if isLoading && items.length === 0}
   <div class="divide-y divide-border">
-    {#each { length: 5 } as _}
+    {#each [0, 1, 2, 3, 4] as i (i)}
       <div class="flex gap-3 px-4 py-3">
         <div class="h-7 w-7 shrink-0 animate-pulse rounded-full bg-secondary"></div>
         <div class="flex min-w-0 flex-1 flex-col gap-1.5">

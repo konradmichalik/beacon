@@ -322,9 +322,7 @@ export function markAllAsRead(ids?: ReadonlySet<string>): void {
   // Mark on servers (best-effort)
   markOnServers(unread, { totalGhUnread, totalGlUnread }).catch(() => {});
 
-  showToast(
-    unread.length === 1 ? 'Marked as read' : `${unread.length} marked as read`
-  );
+  showToast(unread.length === 1 ? 'Marked as read' : `${unread.length} marked as read`);
 }
 
 export function markAsUnread(id: string): void {
