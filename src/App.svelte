@@ -8,6 +8,7 @@
     setPollingChangeCallback,
     setBadgeModeChangeCallback
   } from './lib/stores/settings.svelte';
+  import { initializeMuteRules } from './lib/stores/mute-rules.svelte';
   import {
     startPolling,
     stopPolling,
@@ -37,6 +38,7 @@
     async function initialize(): Promise<void> {
       try {
         await initializeSettings();
+        await initializeMuteRules();
 
         if (isSettingsWindow) {
           await initializeConnections();

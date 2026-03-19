@@ -89,6 +89,14 @@ export interface GitLabTodo {
   };
 }
 
+export interface MuteRule {
+  readonly id: string;
+  readonly project?: string;
+  readonly type?: NotificationType;
+  readonly status?: SubjectState;
+  readonly createdAt: string;
+}
+
 export interface NotificationGroup {
   readonly repository: string;
   readonly source: NotificationSource;

@@ -6,6 +6,7 @@ export type {
   UnifiedNotification,
   GitHubNotification,
   GitLabTodo,
+  MuteRule,
   NotificationGroup
 } from './notifications';
 

@@ -7,6 +7,7 @@ import type {
 import type { SortMode, StatusFilter } from './filters.svelte';
 import { filterState } from './filters.svelte';
 import { settingsState } from './settings.svelte';
+import { isNotificationMuted } from './mute-rules.svelte';
 import { isTauri } from '$lib/utils/storage';
 import { demoNotifications } from '$lib/utils/demo-data';
 import { playNotificationSound } from '$lib/services/notification-sound';
@@ -109,9 +110,7 @@ export function getFilteredNotifications(
       return false;
     });
   }
-  if (settingsState.hideClosed) {
-    filtered = filtered.filter((n) => n.subjectState !== 'closed' && n.subjectState !== 'merged');
-  }
+  filtered = filtered.filter((n) => !isNotificationMuted(n));
 
   if (sort === 'project') {
     filtered.sort((a, b) => {
