@@ -63,10 +63,16 @@
     description="Open Settings to connect GitHub or GitLab."
   />
 {:else if isLoading && items.length === 0}
-  <div class="flex items-center justify-center py-12">
-    <div
-      class="h-5 w-5 animate-spin rounded-full border-2 border-primary border-t-transparent"
-    ></div>
+  <div class="divide-y divide-border">
+    {#each { length: 5 } as _}
+      <div class="flex gap-3 px-4 py-3">
+        <div class="h-7 w-7 shrink-0 animate-pulse rounded-full bg-secondary"></div>
+        <div class="flex min-w-0 flex-1 flex-col gap-1.5">
+          <div class="h-3 w-3/4 animate-pulse rounded bg-secondary"></div>
+          <div class="h-2.5 w-1/2 animate-pulse rounded bg-secondary/60"></div>
+        </div>
+      </div>
+    {/each}
   </div>
 {:else if items.length === 0}
   <EmptyState
