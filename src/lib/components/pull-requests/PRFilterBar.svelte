@@ -1,11 +1,17 @@
 <script lang="ts">
   import { clickOutside } from '$lib/actions/clickOutside';
-  import { getPRCount, getPRCountBySource, getIsPRLoading } from '$lib/stores/pull-requests.svelte';
+  import {
+    getPRCount,
+    getPRCountBySource,
+    getIsPRLoading,
+    getUniquePRProjectsWithSource
+  } from '$lib/stores/pull-requests.svelte';
   import { isServiceConnected } from '$lib/stores/connections.svelte';
   import GitHubIcon from '$lib/components/icons/GitHubIcon.svelte';
   import GitLabIcon from '$lib/components/icons/GitLabIcon.svelte';
   import { ArrowDownUp, ChevronDown, Filter, X } from '@lucide/svelte';
   import type { NotificationSource, PRRoleFilter, PRDraftFilter, PRCIFilter } from '$lib/types';
+  import { SvelteSet } from 'svelte/reactivity';
 
   type SourceOption = NotificationSource | 'all';
   type SortMode = 'updated' | 'created';
@@ -16,22 +22,26 @@
     draftFilter = 'all',
     ciFilter = 'all',
     sort = 'updated',
+    projectsFilter = new SvelteSet<string>(),
     onSourceChange,
     onRoleChange,
     onDraftChange,
     onCIChange,
-    onSortChange
+    onSortChange,
+    onProjectsChange
   }: {
     sourceFilter?: SourceOption;
     roleFilter?: PRRoleFilter;
     draftFilter?: PRDraftFilter;
     ciFilter?: PRCIFilter;
     sort?: SortMode;
+    projectsFilter?: SvelteSet<string>;
     onSourceChange: (source: SourceOption) => void;
     onRoleChange: (role: PRRoleFilter) => void;
     onDraftChange: (draft: PRDraftFilter) => void;
     onCIChange: (ci: PRCIFilter) => void;
     onSortChange: (sort: SortMode) => void;
+    onProjectsChange: (projects: SvelteSet<string>) => void;
   } = $props();
 
   let totalCount = $derived(getPRCount());
@@ -46,8 +56,10 @@
   let sortOpen = $state(false);
   let sortBtnEl: HTMLButtonElement | undefined = $state();
 
+  let availableProjects = $derived(getUniquePRProjectsWithSource());
+
   let hasActiveFilter = $derived(
-    roleFilter !== 'all' || draftFilter !== 'all' || ciFilter !== 'all'
+    roleFilter !== 'all' || draftFilter !== 'all' || ciFilter !== 'all' || projectsFilter.size > 0
   );
 
   const chipBase = 'rounded-md border px-2 py-0.5 text-[10px] font-medium transition-colors';
@@ -55,10 +67,25 @@
   const chipInactive =
     'border-border text-muted-foreground hover:border-foreground/20 hover:text-foreground';
 
+  function toggleProject(repo: string) {
+    const next = new SvelteSet(projectsFilter);
+    if (next.has(repo)) {
+      next.delete(repo);
+    } else {
+      next.add(repo);
+    }
+    onProjectsChange(next);
+  }
+
+  function clearProjects() {
+    onProjectsChange(new SvelteSet());
+  }
+
   function resetFilters() {
     onRoleChange('all');
     onDraftChange('all');
     onCIChange('all');
+    onProjectsChange(new SvelteSet());
     filterOpen = false;
   }
 
@@ -73,6 +100,7 @@
   const badgeInactive = 'bg-secondary text-muted-foreground';
 
   const roleOptions: { value: PRRoleFilter; label: string }[] = [
+    { value: 'all', label: 'All' },
     { value: 'authored', label: 'Created by me' },
     { value: 'review_requested', label: 'Review requested' }
   ];
@@ -193,7 +221,7 @@
                 >Role</span
               >
               <div class="flex flex-wrap gap-1">
-                {#each [{ value: 'all' as PRRoleFilter, label: 'All' }, ...roleOptions] as opt (opt.value)}
+                {#each roleOptions as opt (opt.value)}
                   <button
                     type="button"
                     onclick={() => onRoleChange(opt.value)}
@@ -242,6 +270,52 @@
                 {/each}
               </div>
             </div>
+
+            <!-- Project -->
+            {#if availableProjects.length > 0}
+              <div>
+                <div class="mb-1.5 flex items-center justify-between">
+                  <span
+                    class="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground"
+                    >Project</span
+                  >
+                  {#if projectsFilter.size > 0}
+                    <button
+                      type="button"
+                      onclick={clearProjects}
+                      class="text-[10px] text-primary hover:underline">Clear</button
+                    >
+                  {/if}
+                </div>
+                <div class="max-h-28 space-y-0.5 overflow-y-auto">
+                  {#each availableProjects as project (project.repository)}
+                    {@const active = projectsFilter.has(project.repository)}
+                    <label
+                      class="flex cursor-pointer items-center gap-2 rounded px-1.5 py-1 transition-colors hover:bg-secondary"
+                    >
+                      <input
+                        type="checkbox"
+                        checked={active}
+                        onchange={() => toggleProject(project.repository)}
+                        class="h-3 w-3 rounded border-border accent-primary"
+                      />
+                      {#if project.source === 'github'}
+                        <GitHubIcon size={11} class="shrink-0 text-muted-foreground" />
+                      {:else}
+                        <GitLabIcon size={11} class="shrink-0 text-muted-foreground" />
+                      {/if}
+                      <span
+                        class="truncate text-[11px] {active
+                          ? 'font-medium text-foreground'
+                          : 'text-muted-foreground'}"
+                      >
+                        {project.repository.split('/').slice(-2).join('/')}
+                      </span>
+                    </label>
+                  {/each}
+                </div>
+              </div>
+            {/if}
           </div>
 
           {#if hasActiveFilter}

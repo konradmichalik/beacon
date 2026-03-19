@@ -30,12 +30,30 @@ export function getIsPRLoading(): boolean {
 
 export type PRSortMode = 'updated' | 'created';
 
+export function getUniquePRProjectsWithSource(): readonly {
+  repository: string;
+  source: NotificationSource;
+}[] {
+  // eslint-disable-next-line svelte/prefer-svelte-reactivity -- local computation, not reactive state
+  const seen = new Map<string, NotificationSource>();
+  for (const pr of pullRequests) {
+    if (!seen.has(pr.repository)) {
+      seen.set(pr.repository, pr.source);
+    }
+  }
+  return [...seen.entries()]
+    .map(([repository, source]) => ({ repository, source }))
+    .sort((a, b) => a.repository.localeCompare(b.repository));
+}
+
 export function getFilteredPRs(
   sourceFilter: NotificationSource | 'all',
   roleFilter: PRRoleFilter = 'all',
   sort: PRSortMode = 'updated',
   draftFilter: PRDraftFilter = 'all',
-  ciFilter: PRCIFilter = 'all'
+  ciFilter: PRCIFilter = 'all',
+  // eslint-disable-next-line svelte/prefer-svelte-reactivity -- parameter default, not reactive state
+  projectsFilter: ReadonlySet<string> = new Set()
 ): readonly UnifiedPullRequest[] {
   let filtered = [...pullRequests];
 
@@ -57,6 +75,10 @@ export function getFilteredPRs(
 
   if (ciFilter !== 'all') {
     filtered = filtered.filter((pr) => pr.ciStatus === ciFilter);
+  }
+
+  if (projectsFilter.size > 0) {
+    filtered = filtered.filter((pr) => projectsFilter.has(pr.repository));
   }
 
   const dateKey = sort === 'created' ? 'createdAt' : 'updatedAt';

@@ -60,19 +60,21 @@
       <!-- Type filter -->
       {#if availableTypes.length > 0}
         <div>
-          <div class="mb-1.5 flex items-center justify-between">
-            <span class="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground"
-              >Type</span
-            >
-            {#if filterState.types.size > 0}
-              <button
-                type="button"
-                onclick={clearTypeFilters}
-                class="text-[10px] text-primary hover:underline">Clear</button
-              >
-            {/if}
-          </div>
+          <span
+            class="mb-1.5 block text-[10px] font-semibold uppercase tracking-wide text-muted-foreground"
+            >Type</span
+          >
           <div class="flex flex-wrap gap-1">
+            <button
+              type="button"
+              onclick={clearTypeFilters}
+              class="rounded-md border px-2 py-0.5 text-[10px] font-medium transition-colors
+                {filterState.types.size === 0
+                ? 'border-primary bg-primary text-primary-foreground'
+                : 'border-border text-muted-foreground hover:border-foreground/20 hover:text-foreground'}"
+            >
+              All
+            </button>
             {#each availableTypes as type (type)}
               {@const active = filterState.types.has(type)}
               <button
@@ -92,19 +94,21 @@
 
       <!-- Status filter -->
       <div>
-        <div class="mb-1.5 flex items-center justify-between">
-          <span class="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground"
-            >Status</span
-          >
-          {#if filterState.statuses.size > 0}
-            <button
-              type="button"
-              onclick={clearStatusFilters}
-              class="text-[10px] text-primary hover:underline">Clear</button
-            >
-          {/if}
-        </div>
+        <span
+          class="mb-1.5 block text-[10px] font-semibold uppercase tracking-wide text-muted-foreground"
+          >Status</span
+        >
         <div class="flex flex-wrap gap-1">
+          <button
+            type="button"
+            onclick={clearStatusFilters}
+            class="rounded-md border px-2 py-0.5 text-[10px] font-medium transition-colors
+              {filterState.statuses.size === 0
+              ? 'border-primary bg-primary text-primary-foreground'
+              : 'border-border text-muted-foreground hover:border-foreground/20 hover:text-foreground'}"
+          >
+            All
+          </button>
           {#each [{ value: 'open', label: 'Open' }, { value: 'closed', label: 'Closed / Merged' }] as status (status.value)}
             {@const active = filterState.statuses.has(status.value as StatusFilter)}
             <button

@@ -13,13 +13,15 @@
     roleFilter = 'all',
     draftFilter = 'all',
     ciFilter = 'all',
-    sort = 'updated'
+    sort = 'updated',
+    projectsFilter = new Set<string>()
   }: {
     sourceFilter?: NotificationSource | 'all';
     roleFilter?: PRRoleFilter;
     draftFilter?: PRDraftFilter;
     ciFilter?: PRCIFilter;
     sort?: PRSortMode;
+    projectsFilter?: ReadonlySet<string>;
   } = $props();
 
   let collapsed: Record<string, boolean> = $state({ reviewed: true });
@@ -28,7 +30,9 @@
     collapsed = { ...collapsed, [section]: !collapsed[section] };
   }
 
-  let items = $derived(getFilteredPRs(sourceFilter, roleFilter, sort, draftFilter, ciFilter));
+  let items = $derived(
+    getFilteredPRs(sourceFilter, roleFilter, sort, draftFilter, ciFilter, projectsFilter)
+  );
   let isLoading = $derived(getIsPRLoading());
   let isConfigured = $derived(hasAnyServiceConfigured());
 

@@ -14,6 +14,7 @@
   import { onMount, untrack } from 'svelte';
   import type { NotificationSource, PRRoleFilter, PRDraftFilter, PRCIFilter } from '$lib/types';
   import type { PRSortMode } from '$lib/stores/pull-requests.svelte';
+  import { SvelteSet } from 'svelte/reactivity';
 
   let { initialTab = 'notifications' as const }: { initialTab?: 'notifications' | 'settings' } =
     $props();
@@ -26,6 +27,8 @@
   let prDraftFilter: PRDraftFilter = $state('all');
   let prCIFilter: PRCIFilter = $state('all');
   let prSort: PRSortMode = $state('updated');
+  // eslint-disable-next-line svelte/no-unnecessary-state-wrap -- needed for reassignment reactivity in callbacks
+  let prProjectsFilter: SvelteSet<string> = $state(new SvelteSet());
 
   async function toggleSettings(): Promise<void> {
     const { isTauri } = await import('$lib/utils/storage');
@@ -92,11 +95,13 @@
         draftFilter={prDraftFilter}
         ciFilter={prCIFilter}
         sort={prSort}
+        projectsFilter={prProjectsFilter}
         onSourceChange={(s) => (prSourceFilter = s)}
         onRoleChange={(r) => (prRoleFilter = r)}
         onDraftChange={(d) => (prDraftFilter = d)}
         onCIChange={(c) => (prCIFilter = c)}
         onSortChange={(s) => (prSort = s)}
+        onProjectsChange={(p) => (prProjectsFilter = p)}
       />
     {/if}
     <div class="relative flex-1 overflow-hidden">
@@ -110,6 +115,7 @@
             draftFilter={prDraftFilter}
             ciFilter={prCIFilter}
             sort={prSort}
+            projectsFilter={prProjectsFilter}
           />
         {/if}
       </div>
