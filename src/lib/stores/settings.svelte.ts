@@ -31,7 +31,6 @@ interface Settings {
   theme: 'light' | 'dark' | 'system';
   badgeMode: BadgeMode;
   dotColor: DotColor;
-  hideClosed: boolean;
   notifyMode: NotifyMode;
   notifySummaryMinutes: number; // summary interval in minutes
   notifySound: NotifySound;
@@ -43,7 +42,6 @@ const defaultSettings: Settings = {
   theme: 'system',
   badgeMode: 'count',
   dotColor: 'blue',
-  hideClosed: false,
   notifyMode: 'disabled',
   notifySummaryMinutes: 15,
   notifySound: 'none',

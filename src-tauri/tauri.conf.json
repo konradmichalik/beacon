@@ -5,7 +5,7 @@
   "identifier": "com.beacon.notifications",
   "build": {
     "beforeDevCommand": "npm run dev",
-    "devUrl": "http://localhost:5173",
+    "devUrl": "http://localhost:5199",
     "beforeBuildCommand": "npm run build",
     "frontendDist": "../dist"
   },

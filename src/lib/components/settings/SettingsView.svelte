@@ -18,6 +18,8 @@
     ChevronDown
   } from '@lucide/svelte';
   import { settingsState, updateSettings } from '$lib/stores/settings.svelte';
+  import { getMuteRules, removeMuteRule } from '$lib/stores/mute-rules.svelte';
+  import { NOTIFICATION_TYPE_LABELS } from '$lib/types';
   import {
     NOTIFY_SOUNDS,
     type BadgeMode,
@@ -35,11 +37,12 @@
     type UpdateStatus,
     type UpdateCheckResult
   } from '$lib/services/update-check';
-  import { RefreshCw, ArrowUpCircle, CheckCircle, AlertCircle } from '@lucide/svelte';
+  import { RefreshCw, ArrowUpCircle, CheckCircle, AlertCircle, X } from '@lucide/svelte';
 
   type SettingsTab = 'connections' | 'preferences' | 'alerts' | 'about';
   let activeTab: SettingsTab = $state('connections');
   let isPlayingPreview = $state(false);
+  let activeMuteRules = $derived(getMuteRules());
   let updateStatus: UpdateStatus = $state('idle');
   let updateResult: UpdateCheckResult = $state({ status: 'idle' });
 
@@ -254,30 +257,57 @@
       </h3>
 
       <section>
-        <label class="flex cursor-pointer items-center justify-between gap-3">
-          <div>
-            <span class="text-xs font-medium text-foreground">Hide closed &amp; merged</span>
-            <p class="text-[10px] text-muted-foreground">
-              Don't show notifications for closed or merged items.
-            </p>
+        <h4 class="mb-1 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+          Mute Rules
+        </h4>
+        <p class="mb-2 text-[10px] text-muted-foreground">
+          Notifications matching these rules are hidden from your inbox. Add rules via right-click
+          on a notification.
+        </p>
+
+        {#if activeMuteRules.length === 0}
+          <p class="text-[10px] italic text-muted-foreground">No mute rules configured.</p>
+        {:else}
+          <div class="space-y-1">
+            {#each activeMuteRules as rule (rule.id)}
+              <div
+                class="flex items-center justify-between rounded-md border border-border bg-secondary/30 px-2 py-1.5"
+              >
+                <div class="flex flex-wrap gap-1">
+                  {#if rule.project}
+                    <span
+                      class="rounded bg-secondary px-1.5 py-0.5 text-[10px] font-medium text-muted-foreground"
+                    >
+                      {rule.project.split('/').slice(-2).join('/')}
+                    </span>
+                  {/if}
+                  {#if rule.type}
+                    <span
+                      class="rounded bg-secondary px-1.5 py-0.5 text-[10px] font-medium text-muted-foreground"
+                    >
+                      {NOTIFICATION_TYPE_LABELS[rule.type] ?? rule.type}
+                    </span>
+                  {/if}
+                  {#if rule.status}
+                    <span
+                      class="rounded bg-secondary px-1.5 py-0.5 text-[10px] font-medium text-muted-foreground"
+                    >
+                      {rule.status.charAt(0).toUpperCase() + rule.status.slice(1)}
+                    </span>
+                  {/if}
+                </div>
+                <button
+                  type="button"
+                  onclick={() => removeMuteRule(rule.id)}
+                  aria-label="Remove mute rule"
+                  class="ml-2 shrink-0 rounded p-0.5 text-muted-foreground transition-colors hover:text-foreground"
+                >
+                  <X size={12} />
+                </button>
+              </div>
+            {/each}
           </div>
-          <button
-            type="button"
-            role="switch"
-            aria-label="Toggle hide closed and merged"
-            aria-checked={settingsState.hideClosed}
-            onclick={() => updateSettings({ hideClosed: !settingsState.hideClosed })}
-            class="relative inline-flex h-5 w-9 shrink-0 items-center rounded-full transition-colors {settingsState.hideClosed
-              ? 'bg-primary'
-              : 'bg-secondary'}"
-          >
-            <span
-              class="inline-block h-3.5 w-3.5 rounded-full bg-white shadow-sm transition-transform {settingsState.hideClosed
-                ? 'translate-x-4'
-                : 'translate-x-0.5'}"
-            ></span>
-          </button>
-        </label>
+        {/if}
       </section>
     </div>
 
