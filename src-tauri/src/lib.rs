@@ -121,6 +121,47 @@ fn update_badge(
 }
 
 #[tauri::command]
+fn play_sound(app: tauri::AppHandle, sound: String) -> Result<(), String> {
+    if sound == "none" {
+        return Ok(());
+    }
+
+    #[cfg(target_os = "macos")]
+    {
+        use tauri::Manager;
+
+        let resource_path = app
+            .path()
+            .resource_dir()
+            .map_err(|e| e.to_string())?
+            .join("sounds")
+            .join(format!("{}.mp3", sound));
+
+        if !resource_path.exists() {
+            return Err(format!("Sound file not found: {}", sound));
+        }
+
+        use objc2::AnyThread;
+        use objc2_app_kit::NSSound;
+        use objc2_foundation::NSString;
+
+        let path = NSString::from_str(&resource_path.to_string_lossy());
+        if let Some(ns_sound) =
+            NSSound::initWithContentsOfFile_byReference(NSSound::alloc(), &path, true)
+        {
+            let _: bool = ns_sound.play();
+        }
+    }
+
+    #[cfg(not(target_os = "macos"))]
+    {
+        let _ = (app, sound);
+    }
+
+    Ok(())
+}
+
+#[tauri::command]
 fn quit_app(app: tauri::AppHandle) {
     app.exit(0);
 }
@@ -292,6 +333,7 @@ pub fn run() {
         })
         .invoke_handler(tauri::generate_handler![
             update_badge,
+            play_sound,
             quit_app,
             open_settings_window,
             polling::start_polling,
