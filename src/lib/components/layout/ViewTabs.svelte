@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { getFilteredUnreadCount } from '$lib/stores/notifications.svelte';
+  import { getFilteredUnreadCount, getLastRefresh } from '$lib/stores/notifications.svelte';
   import { getPRCount } from '$lib/stores/pull-requests.svelte';
   import { Inbox, GitPullRequest } from '@lucide/svelte';
 
@@ -15,6 +15,7 @@
 
   let unreadCount = $derived(getFilteredUnreadCount());
   let prCount = $derived(getPRCount());
+  let initialLoading = $derived(getLastRefresh() === null);
 
   const tabs: { id: ViewTab; label: string; icon: typeof Inbox; getCount: () => number }[] = [
     { id: 'notifications', label: 'Inbox', icon: Inbox, getCount: () => unreadCount },
@@ -36,7 +37,9 @@
     >
       <TabIcon size={11} />
       {tab.label}
-      {#if count > 0}
+      {#if initialLoading}
+        <span class="inline-block h-3 w-5 animate-pulse rounded-full bg-secondary/80"></span>
+      {:else if count > 0}
         <span
           class="rounded-full px-1.5 py-px text-[9px] font-semibold leading-tight
             {activeTab === tab.id

@@ -86,7 +86,7 @@ export async function fetchGitLabTodos(
 ): Promise<UnifiedNotification[]> {
   const base = baseUrl.replace(/\/$/, '');
   const perPage = 100;
-  const maxPages = 5;
+  const maxPages = 1;
   const allTodos: GitLabTodo[] = [];
 
   for (let page = 1; page <= maxPages; page++) {

@@ -118,33 +118,47 @@ struct GHUser {
 #[derive(Deserialize)]
 struct GLTodo {
     id: u64,
+    #[serde(default)]
     action_name: String,
+    #[serde(default)]
     target_type: String,
+    #[serde(default)]
     target_url: String,
+    #[serde(default)]
     body: String,
+    #[serde(default)]
     state: String,
+    #[serde(default)]
     created_at: String,
+    #[serde(default)]
     updated_at: String,
+    #[serde(default)]
     project: GLProject,
+    #[serde(default)]
     target: GLTarget,
+    #[serde(default)]
     author: GLAuthor,
 }
 
-#[derive(Deserialize)]
+#[derive(Deserialize, Default)]
 struct GLProject {
+    #[serde(default)]
     path_with_namespace: String,
 }
 
-#[derive(Deserialize)]
+#[derive(Deserialize, Default)]
 struct GLTarget {
+    #[serde(default)]
     title: String,
     state: Option<String>,
     updated_at: Option<String>,
 }
 
-#[derive(Deserialize)]
+#[derive(Deserialize, Default)]
 struct GLAuthor {
+    #[serde(default)]
     username: String,
+    #[serde(default)]
     avatar_url: String,
 }
 
@@ -435,19 +449,37 @@ async fn fetch_gitlab(client: &reqwest::Client, config: &GitLabConfig) -> Vec<Un
     let mut items: Vec<GLTodo> = Vec::new();
     let mut page: u32 = 1;
     const PER_PAGE: u32 = 100;
-    const MAX_PAGES: u32 = 5;
+    const MAX_PAGES: u32 = 1;
 
     loop {
+        let url = format!("{base}/api/v4/todos?state=pending&per_page={PER_PAGE}&page={page}");
         let resp = client
-            .get(format!(
-                "{base}/api/v4/todos?state=pending&per_page={PER_PAGE}&page={page}"
-            ))
+            .get(&url)
             .header("Authorization", format!("Bearer {}", config.token))
             .send()
             .await;
 
         let batch: Vec<GLTodo> = match resp {
-            Ok(r) if r.status().is_success() => r.json().await.unwrap_or_default(),
+            Ok(r) if r.status().is_success() => {
+                let body = r.text().await.unwrap_or_default();
+                // Parse each todo individually so one malformed entry doesn't
+                // discard the entire page.
+                match serde_json::from_str::<Vec<serde_json::Value>>(&body) {
+                    Ok(raw_items) => {
+                        let mut parsed = Vec::with_capacity(raw_items.len());
+                        for raw in raw_items {
+                            if let Ok(todo) = serde_json::from_value::<GLTodo>(raw) {
+                                parsed.push(todo);
+                            }
+                        }
+                        parsed
+                    }
+                    Err(_) => {
+                        items.clear();
+                        break;
+                    }
+                }
+            }
             _ => {
                 // Discard partial results to avoid known_ids churn
                 items.clear();
