@@ -14,6 +14,10 @@ async function persist(): Promise<void> {
   await setStorageItem(STORAGE_KEY, [...muteRules]);
 }
 
+function hasCriteria(rule: Omit<MuteRule, 'id' | 'createdAt'>): boolean {
+  return rule.project !== undefined || rule.type !== undefined || rule.status !== undefined;
+}
+
 function isDuplicate(rule: Omit<MuteRule, 'id' | 'createdAt'>): boolean {
   return muteRules.some(
     (existing) =>
@@ -24,6 +28,11 @@ function isDuplicate(rule: Omit<MuteRule, 'id' | 'createdAt'>): boolean {
 }
 
 export async function addMuteRule(rule: Omit<MuteRule, 'id' | 'createdAt'>): Promise<void> {
+  if (!hasCriteria(rule)) {
+    showToast('Select at least one mute criterion');
+    return;
+  }
+
   if (isDuplicate(rule)) {
     showToast('Rule already exists');
     return;
@@ -55,11 +64,19 @@ export function isNotificationMuted(notification: UnifiedNotification): boolean 
   });
 }
 
+function isValidMuteRule(value: unknown): value is MuteRule {
+  if (!value || typeof value !== 'object') return false;
+  const rule = value as Partial<MuteRule>;
+  return (
+    typeof rule.id === 'string' &&
+    typeof rule.createdAt === 'string' &&
+    (rule.project !== undefined || rule.type !== undefined || rule.status !== undefined)
+  );
+}
+
 export async function initializeMuteRules(): Promise<void> {
-  const stored = await getStorageItem<MuteRule[]>(STORAGE_KEY);
-  if (stored) {
-    muteRules = stored;
-  }
+  const stored = await getStorageItem<unknown>(STORAGE_KEY);
+  muteRules = Array.isArray(stored) ? stored.filter(isValidMuteRule) : [];
 
   // Migrate hideClosed setting
   const settings = await getStorageItem<Record<string, unknown>>('settings');

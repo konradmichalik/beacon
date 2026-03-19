@@ -48,15 +48,23 @@
   class="fixed inset-0 z-40 flex items-center justify-center backdrop-blur-[2px]"
   onclick={handleBackdropClick}
 >
-  <div class="z-50 w-72 rounded-lg border border-border bg-card shadow-lg">
+  <div
+    class="z-50 w-72 rounded-lg border border-border bg-card shadow-lg"
+    role="dialog"
+    aria-modal="true"
+    aria-labelledby="mute-modal-title"
+  >
     <!-- Header -->
     <div
       class="flex items-center justify-between rounded-t-lg border-b border-border bg-secondary/40 px-3 py-2"
     >
-      <span class="text-[11px] font-semibold text-foreground">Mute notifications</span>
+      <span id="mute-modal-title" class="text-[11px] font-semibold text-foreground"
+        >Mute notifications</span
+      >
       <button
         type="button"
         onclick={onClose}
+        aria-label="Close mute dialog"
         class="rounded p-0.5 text-muted-foreground transition-colors hover:text-foreground"
       >
         <X size={12} />
