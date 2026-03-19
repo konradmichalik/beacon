@@ -41,6 +41,9 @@
       "icons/icon.icns",
       "icons/icon.png"
     ],
+    "resources": {
+      "../public/sounds/*": "sounds/"
+    },
     "macOS": {
       "minimumSystemVersion": "13.0"
     }
