@@ -73,12 +73,20 @@ export async function initializeMuteRules(): Promise<void> {
 
     const newRules: MuteRule[] = [];
     if (!hasClosed) {
-      // eslint-disable-next-line svelte/prefer-svelte-reactivity -- timestamp string, not reactive Date
-      newRules.push({ id: crypto.randomUUID(), status: 'closed', createdAt: new Date().toISOString() });
+      newRules.push({
+        id: crypto.randomUUID(),
+        status: 'closed',
+        // eslint-disable-next-line svelte/prefer-svelte-reactivity -- timestamp string, not reactive Date
+        createdAt: new Date().toISOString()
+      });
     }
     if (!hasMerged) {
-      // eslint-disable-next-line svelte/prefer-svelte-reactivity -- timestamp string, not reactive Date
-      newRules.push({ id: crypto.randomUUID(), status: 'merged', createdAt: new Date().toISOString() });
+      newRules.push({
+        id: crypto.randomUUID(),
+        status: 'merged',
+        // eslint-disable-next-line svelte/prefer-svelte-reactivity -- timestamp string, not reactive Date
+        createdAt: new Date().toISOString()
+      });
     }
 
     if (newRules.length > 0) {

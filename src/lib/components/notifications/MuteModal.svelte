@@ -4,10 +4,8 @@
   import { addMuteRule } from '$lib/stores/mute-rules.svelte';
   import { X } from '@lucide/svelte';
 
-  let {
-    notification,
-    onClose
-  }: { notification: UnifiedNotification; onClose: () => void } = $props();
+  let { notification, onClose }: { notification: UnifiedNotification; onClose: () => void } =
+    $props();
 
   let includeProject = $state(true);
   let includeType = $state(true);
@@ -72,7 +70,9 @@
       </p>
 
       <!-- Project -->
-      <label class="flex cursor-pointer items-center gap-2 rounded px-1.5 py-1.5 hover:bg-secondary">
+      <label
+        class="flex cursor-pointer items-center gap-2 rounded px-1.5 py-1.5 hover:bg-secondary"
+      >
         <input
           type="checkbox"
           bind:checked={includeProject}
@@ -87,7 +87,9 @@
       </label>
 
       <!-- Type -->
-      <label class="flex cursor-pointer items-center gap-2 rounded px-1.5 py-1.5 hover:bg-secondary">
+      <label
+        class="flex cursor-pointer items-center gap-2 rounded px-1.5 py-1.5 hover:bg-secondary"
+      >
         <input
           type="checkbox"
           bind:checked={includeType}
