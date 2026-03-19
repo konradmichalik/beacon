@@ -7,6 +7,10 @@ import { readFileSync } from 'fs';
 const pkg = JSON.parse(readFileSync('./package.json', 'utf-8'));
 
 export default defineConfig({
+  server: {
+    port: 5199,
+    strictPort: true
+  },
   plugins: [tailwindcss(), svelte()],
   resolve: {
     alias: {
