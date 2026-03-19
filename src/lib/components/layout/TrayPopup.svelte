@@ -27,6 +27,7 @@
   let prDraftFilter: PRDraftFilter = $state('all');
   let prCIFilter: PRCIFilter = $state('all');
   let prSort: PRSortMode = $state('updated');
+  // eslint-disable-next-line svelte/no-unnecessary-state-wrap -- needed for reassignment reactivity in callbacks
   let prProjectsFilter: SvelteSet<string> = $state(new SvelteSet());
 
   async function toggleSettings(): Promise<void> {

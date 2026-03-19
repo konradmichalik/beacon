@@ -34,6 +34,7 @@ export function getUniquePRProjectsWithSource(): readonly {
   repository: string;
   source: NotificationSource;
 }[] {
+  // eslint-disable-next-line svelte/prefer-svelte-reactivity -- local computation, not reactive state
   const seen = new Map<string, NotificationSource>();
   for (const pr of pullRequests) {
     if (!seen.has(pr.repository)) {
@@ -51,6 +52,7 @@ export function getFilteredPRs(
   sort: PRSortMode = 'updated',
   draftFilter: PRDraftFilter = 'all',
   ciFilter: PRCIFilter = 'all',
+  // eslint-disable-next-line svelte/prefer-svelte-reactivity -- parameter default, not reactive state
   projectsFilter: ReadonlySet<string> = new Set()
 ): readonly UnifiedPullRequest[] {
   let filtered = [...pullRequests];

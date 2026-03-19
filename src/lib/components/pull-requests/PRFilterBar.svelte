@@ -58,10 +58,7 @@
   let availableProjects = $derived(getUniquePRProjectsWithSource());
 
   let hasActiveFilter = $derived(
-    roleFilter !== 'all' ||
-      draftFilter !== 'all' ||
-      ciFilter !== 'all' ||
-      projectsFilter.size > 0
+    roleFilter !== 'all' || draftFilter !== 'all' || ciFilter !== 'all' || projectsFilter.size > 0
   );
 
   const chipBase = 'rounded-md border px-2 py-0.5 text-[10px] font-medium transition-colors';
