@@ -1,6 +1,6 @@
 <script lang="ts">
   import { clickOutside } from '$lib/actions/clickOutside';
-  import { getPRCount, getPRCountBySource } from '$lib/stores/pull-requests.svelte';
+  import { getPRCount, getPRCountBySource, getIsPRLoading } from '$lib/stores/pull-requests.svelte';
   import { isServiceConnected } from '$lib/stores/connections.svelte';
   import GitHubIcon from '$lib/components/icons/GitHubIcon.svelte';
   import GitLabIcon from '$lib/components/icons/GitLabIcon.svelte';
@@ -66,6 +66,8 @@
   const btnActive = 'bg-foreground text-background';
   const btnInactive = 'text-muted-foreground hover:bg-secondary/60 hover:text-foreground';
 
+  let initialLoading = $derived(getIsPRLoading() && totalCount === 0);
+
   const badgeBase = 'ml-0.5 rounded-full px-1 py-px text-[9px] font-semibold leading-tight';
   const badgeActive = 'bg-background/20 text-background';
   const badgeInactive = 'bg-secondary text-muted-foreground';
@@ -86,6 +88,14 @@
   }
 </script>
 
+{#snippet badge(count: number, active: boolean)}
+  {#if initialLoading}
+    <span class="ml-0.5 inline-block h-3 w-5 animate-pulse rounded-full bg-secondary"></span>
+  {:else if count > 0}
+    <span class="{badgeBase} {active ? badgeActive : badgeInactive}">{count}</span>
+  {/if}
+{/snippet}
+
 <div
   class="flex items-center gap-1.5 overflow-x-auto border-b border-border bg-secondary/40 px-4 py-1.5 scrollbar-none"
 >
@@ -97,11 +107,7 @@
         class="{btnBase} rounded-l-md {sourceFilter === 'all' ? btnActive : btnInactive}"
       >
         All
-        {#if totalCount > 0}
-          <span class="{badgeBase} {sourceFilter === 'all' ? badgeActive : badgeInactive}"
-            >{totalCount}</span
-          >
-        {/if}
+        {@render badge(totalCount, sourceFilter === 'all')}
       </button>
 
       <button
@@ -113,11 +119,7 @@
           : btnInactive}"
       >
         <GitHubIcon size={12} />
-        {#if githubCount > 0}
-          <span class="{badgeBase} {sourceFilter === 'github' ? badgeActive : badgeInactive}"
-            >{githubCount}</span
-          >
-        {/if}
+        {@render badge(githubCount, sourceFilter === 'github')}
       </button>
 
       <button
@@ -129,11 +131,7 @@
           : btnInactive}"
       >
         <GitLabIcon size={12} />
-        {#if gitlabCount > 0}
-          <span class="{badgeBase} {sourceFilter === 'gitlab' ? badgeActive : badgeInactive}"
-            >{gitlabCount}</span
-          >
-        {/if}
+        {@render badge(gitlabCount, sourceFilter === 'gitlab')}
       </button>
     </div>
   {:else if githubConnected || gitlabConnected}
@@ -143,10 +141,10 @@
     >
       {#if githubConnected}
         <GitHubIcon size={12} />
-        <span class="{badgeBase} {badgeInactive}">{githubCount}</span>
+        {@render badge(githubCount, false)}
       {:else if gitlabConnected}
         <GitLabIcon size={12} />
-        <span class="{badgeBase} {badgeInactive}">{gitlabCount}</span>
+        {@render badge(gitlabCount, false)}
       {/if}
     </div>
   {/if}

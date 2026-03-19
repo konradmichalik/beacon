@@ -23,6 +23,7 @@
     restartPRPolling,
     loadDemoPRs
   } from './lib/stores/pull-requests.svelte';
+  import Toast from './lib/components/ui/Toast.svelte';
   import { onMount } from 'svelte';
 
   const isSettingsWindow = new URLSearchParams(window.location.search).get('window') === 'settings';
@@ -91,3 +92,4 @@
     <TrayPopup {initialTab} />
   </div>
 {/if}
+<Toast />
