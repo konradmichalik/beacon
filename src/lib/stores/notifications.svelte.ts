@@ -10,6 +10,7 @@ import { settingsState } from './settings.svelte';
 import { isTauri } from '$lib/utils/storage';
 import { demoNotifications } from '$lib/utils/demo-data';
 import { playNotificationSound } from '$lib/services/notification-sound';
+import { showToast } from '$lib/stores/toast.svelte';
 
 let notifications: UnifiedNotification[] = $state([]);
 let isLoading = $state(false);
@@ -320,6 +321,10 @@ export function markAllAsRead(ids?: ReadonlySet<string>): void {
 
   // Mark on servers (best-effort)
   markOnServers(unread, { totalGhUnread, totalGlUnread }).catch(() => {});
+
+  showToast(
+    unread.length === 1 ? 'Marked as read' : `${unread.length} marked as read`
+  );
 }
 
 export function markAsUnread(id: string): void {
@@ -346,6 +351,8 @@ export function markAsRead(id: string): void {
   updateTrayBadge(unreadCount);
 
   markOnServers([notification], { totalGhUnread, totalGlUnread }).catch(() => {});
+
+  showToast('Marked as read');
 }
 
 // ── Server-side mark helper ─────────────────────────────────────
