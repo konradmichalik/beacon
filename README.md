@@ -48,10 +48,6 @@ On first launch, open **Settings** via the gear icon or the tray context menu an
 > [!NOTE]
 > Tokens are stored locally using Tauri's encrypted store. Nothing is sent to any server other than GitHub and GitLab.
 
-## 🛠 Development
-
-See [DEVELOPMENT.md](DEVELOPMENT.md) for build instructions, demo mode, and project structure.
-
 ## 💎 Credits
 
 Notification sounds from [Pixabay](https://pixabay.com).
