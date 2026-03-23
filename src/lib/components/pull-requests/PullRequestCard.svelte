@@ -15,8 +15,10 @@
     FileEdit,
     ExternalLink,
     ClipboardCopy,
-    CircleCheckBig
+    CircleCheckBig,
+    Star
   } from '@lucide/svelte';
+  import { isStarred, toggleStar } from '$lib/stores/starred-prs.svelte';
 
   let { pullRequest }: { pullRequest: UnifiedPullRequest } = $props();
 
@@ -90,11 +92,12 @@
     }
   }
 
+  let starred = $derived(isStarred(pullRequest.id));
   let contextMenu: { x: number; y: number } | null = $state(null);
 
   function handleContextMenu(event: MouseEvent): void {
     event.preventDefault();
-    contextMenu = clampMenuPosition(event, { width: 160, height: 70 });
+    contextMenu = clampMenuPosition(event, { width: 160, height: 105 });
 
     function close() {
       contextMenu = null;
@@ -207,6 +210,9 @@
           </span>
         {/if}
 
+        {#if starred}
+          <Star size={10} class="shrink-0 fill-warning text-warning" />
+        {/if}
         <span class="ml-auto shrink-0 text-[11px] text-muted-foreground">{timeLabel}</span>
       </div>
     </div>
@@ -239,6 +245,18 @@
     >
       <ClipboardCopy size={12} />
       Copy link
+    </button>
+    <div class="mx-2 my-0.5 border-t border-border/60"></div>
+    <button
+      type="button"
+      onclick={() => {
+        contextMenu = null;
+        toggleStar(pullRequest.id);
+      }}
+      class="flex w-full items-center gap-2 px-3 py-1.5 text-left text-xs text-foreground hover:bg-secondary"
+    >
+      <Star size={12} class={starred ? 'fill-warning text-warning' : ''} />
+      {starred ? 'Unstar' : 'Star'}
     </button>
   </div>
 {/if}

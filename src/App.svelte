@@ -9,6 +9,7 @@
     setBadgeModeChangeCallback
   } from './lib/stores/settings.svelte';
   import { initializeMuteRules } from './lib/stores/mute-rules.svelte';
+  import { loadStarredPRs } from './lib/stores/starred-prs.svelte';
   import {
     startPolling,
     stopPolling,
@@ -39,6 +40,7 @@
       try {
         await initializeSettings();
         await initializeMuteRules();
+        await loadStarredPRs();
 
         if (isSettingsWindow) {
           await initializeConnections();
