@@ -128,8 +128,7 @@ fn is_focus_mode_active() -> bool {
         Ok(h) => h,
         Err(_) => return false,
     };
-    let path =
-        std::path::PathBuf::from(home).join("Library/DoNotDisturb/DB/Assertions.json");
+    let path = std::path::PathBuf::from(home).join("Library/DoNotDisturb/DB/Assertions.json");
     let content = match std::fs::read_to_string(&path) {
         Ok(c) => c,
         Err(_) => return false,
