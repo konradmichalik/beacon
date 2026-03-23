@@ -7,7 +7,6 @@ Releases are fully automated via GitHub Actions. Pushing a version tag triggers 
 ## Release Steps
 
 1. **Bump versions** in both files (they must match):
-
    - `package.json` — `"version": "x.y.z"`
    - `src-tauri/tauri.conf.json` — `"version": "x.y.z"`
 
@@ -72,7 +71,7 @@ git push origin vx.y.z
 
 The release workflow requires these repository secrets:
 
-| Secret               | Purpose                                        |
-| -------------------- | ---------------------------------------------- |
-| `GITHUB_TOKEN`       | Provided automatically by GitHub Actions       |
+| Secret               | Purpose                                          |
+| -------------------- | ------------------------------------------------ |
+| `GITHUB_TOKEN`       | Provided automatically by GitHub Actions         |
 | `HOMEBREW_TAP_TOKEN` | PAT with access to `konradmichalik/homebrew-tap` |
