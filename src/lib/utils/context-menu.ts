@@ -1,8 +1,12 @@
-const MENU_WIDTH = 160;
+export function clampMenuPosition(
+  event: MouseEvent,
+  menuSize: { width: number; height: number }
+): { x: number; y: number } {
+  const maxX = Math.max(0, window.innerWidth - menuSize.width);
+  const maxY = Math.max(0, window.innerHeight - menuSize.height);
 
-export function clampMenuPosition(event: MouseEvent, menuHeight: number): { x: number; y: number } {
   return {
-    x: Math.max(0, Math.min(event.clientX, window.innerWidth - MENU_WIDTH)),
-    y: Math.max(0, Math.min(event.clientY, window.innerHeight - menuHeight))
+    x: Math.max(0, Math.min(event.clientX, maxX)),
+    y: Math.max(0, Math.min(event.clientY, maxY))
   };
 }

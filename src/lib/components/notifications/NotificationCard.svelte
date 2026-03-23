@@ -137,7 +137,7 @@
 
   function handleContextMenu(event: MouseEvent): void {
     event.preventDefault();
-    contextMenu = clampMenuPosition(event, 140);
+    contextMenu = clampMenuPosition(event, { width: 160, height: 140 });
 
     function close() {
       contextMenu = null;
