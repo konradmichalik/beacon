@@ -2,6 +2,7 @@
   import type { UnifiedPullRequest } from '$lib/types';
   import { timeAgo } from '$lib/utils/time';
   import { isTauri } from '$lib/utils/storage';
+  import { clampMenuPosition } from '$lib/utils/context-menu';
   import GitHubIcon from '$lib/components/icons/GitHubIcon.svelte';
   import GitLabIcon from '$lib/components/icons/GitLabIcon.svelte';
   import {
@@ -93,10 +94,7 @@
 
   function handleContextMenu(event: MouseEvent): void {
     event.preventDefault();
-    const menuHeight = 70;
-    const y =
-      event.clientY + menuHeight > window.innerHeight ? event.clientY - menuHeight : event.clientY;
-    contextMenu = { x: event.clientX, y };
+    contextMenu = clampMenuPosition(event, 70);
 
     function close() {
       contextMenu = null;
