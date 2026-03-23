@@ -307,6 +307,15 @@
       <ClipboardCopy size={12} />
       Copy link
     </button>
+    <button
+      type="button"
+      onclick={handleContextMute}
+      class="flex w-full items-center gap-2 px-3 py-1.5 text-left text-xs text-foreground hover:bg-secondary"
+    >
+      <BellOff size={12} />
+      Mute…
+    </button>
+    <div class="mx-2 my-0.5 border-t border-border"></div>
     {#if notification.unread}
       <button
         type="button"
@@ -326,15 +335,6 @@
         Mark as unread
       </button>
     {/if}
-    <div class="mx-2 my-0.5 border-t border-border"></div>
-    <button
-      type="button"
-      onclick={handleContextMute}
-      class="flex w-full items-center gap-2 px-3 py-1.5 text-left text-xs text-foreground hover:bg-secondary"
-    >
-      <BellOff size={12} />
-      Mute…
-    </button>
   </div>
 {/if}
 
