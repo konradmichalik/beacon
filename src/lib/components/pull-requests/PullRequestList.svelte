@@ -93,7 +93,13 @@
     iconSize={48}
   />
 {:else}
-  {#snippet sectionHeader(label: string, count: number, key: string, icon?: typeof Star, iconClass?: string)}
+  {#snippet sectionHeader(
+    label: string,
+    count: number,
+    key: string,
+    icon?: typeof Star,
+    iconClass?: string
+  )}
     <button
       type="button"
       onclick={() => toggle(key)}
@@ -120,7 +126,13 @@
 
   <div class="flex min-h-full flex-col">
     {#if starred.length > 0}
-      {@render sectionHeader('Starred', starred.length, 'starred', Star, 'fill-warning text-warning')}
+      {@render sectionHeader(
+        'Starred',
+        starred.length,
+        'starred',
+        Star,
+        'fill-warning text-warning'
+      )}
       {#if !collapsed.starred}
         {#each starred as pr (pr.id)}
           <PullRequestCard pullRequest={pr} />
@@ -147,7 +159,13 @@
     {/if}
 
     {#if reviewed.length > 0}
-      {@render sectionHeader('Reviewed', reviewed.length, 'reviewed', CircleCheckBig, 'text-success-text')}
+      {@render sectionHeader(
+        'Reviewed',
+        reviewed.length,
+        'reviewed',
+        CircleCheckBig,
+        'text-success-text'
+      )}
       {#if !collapsed.reviewed}
         {#each reviewed as pr (pr.id)}
           <PullRequestCard pullRequest={pr} />

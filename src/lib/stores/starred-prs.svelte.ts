@@ -13,6 +13,7 @@ export function getStarredIds(): ReadonlySet<string> {
 }
 
 export async function toggleStar(prId: string): Promise<void> {
+  // eslint-disable-next-line svelte/prefer-svelte-reactivity -- immutable replacement, not mutation
   const next = new Set(starredIds);
   if (next.has(prId)) {
     next.delete(prId);
@@ -26,6 +27,7 @@ export async function toggleStar(prId: string): Promise<void> {
 export async function loadStarredPRs(): Promise<void> {
   const stored = await getStorageItem<string[]>(STORAGE_KEY);
   if (stored) {
+    // eslint-disable-next-line svelte/prefer-svelte-reactivity -- immutable replacement, not mutation
     starredIds = new Set(stored);
   }
 }
