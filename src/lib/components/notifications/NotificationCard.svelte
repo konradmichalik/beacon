@@ -3,6 +3,7 @@
   import { markAsRead, markAsUnread, getLastSeenAt } from '$lib/stores/notifications.svelte';
   import { timeAgo } from '$lib/utils/time';
   import { isTauri } from '$lib/utils/storage';
+  import { clampMenuPosition } from '$lib/utils/context-menu';
   import GitHubIcon from '$lib/components/icons/GitHubIcon.svelte';
   import GitLabIcon from '$lib/components/icons/GitLabIcon.svelte';
   import {
@@ -136,10 +137,7 @@
 
   function handleContextMenu(event: MouseEvent): void {
     event.preventDefault();
-    const menuHeight = 100; // approximate max height of context menu
-    const y =
-      event.clientY + menuHeight > window.innerHeight ? event.clientY - menuHeight : event.clientY;
-    contextMenu = { x: event.clientX, y };
+    contextMenu = clampMenuPosition(event, { width: 160, height: 140 });
 
     function close() {
       contextMenu = null;
