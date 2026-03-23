@@ -120,6 +120,35 @@ fn update_badge(
     update_tray_icon(&app, count, &mode, &dot_color)
 }
 
+/// Check whether a macOS Focus mode (Do Not Disturb) is currently active.
+/// Reads the system assertions database; returns `true` when any focus session is running.
+#[cfg(target_os = "macos")]
+fn is_focus_mode_active() -> bool {
+    let home = match std::env::var("HOME") {
+        Ok(h) => h,
+        Err(_) => return false,
+    };
+    let path = std::path::PathBuf::from(home).join("Library/DoNotDisturb/DB/Assertions.json");
+    let content = match std::fs::read_to_string(&path) {
+        Ok(c) => c,
+        Err(_) => return false,
+    };
+    let json: serde_json::Value = match serde_json::from_str(&content) {
+        Ok(v) => v,
+        Err(_) => return false,
+    };
+    json.get("data")
+        .and_then(|d| d.as_array())
+        .is_some_and(|arr| {
+            arr.iter().any(|entry| {
+                entry
+                    .get("storeAssertionRecords")
+                    .and_then(|r| r.as_array())
+                    .is_some_and(|records| !records.is_empty())
+            })
+        })
+}
+
 #[tauri::command]
 fn play_sound(app: tauri::AppHandle, sound: String) -> Result<(), String> {
     if sound == "none" {
@@ -128,6 +157,10 @@ fn play_sound(app: tauri::AppHandle, sound: String) -> Result<(), String> {
 
     #[cfg(target_os = "macos")]
     {
+        if is_focus_mode_active() {
+            return Ok(());
+        }
+
         use tauri::Manager;
 
         let resource_path = app
