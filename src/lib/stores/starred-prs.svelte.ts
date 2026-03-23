@@ -25,9 +25,10 @@ export async function toggleStar(prId: string): Promise<void> {
 }
 
 export async function loadStarredPRs(): Promise<void> {
-  const stored = await getStorageItem<string[]>(STORAGE_KEY);
-  if (stored) {
-    // eslint-disable-next-line svelte/prefer-svelte-reactivity -- immutable replacement, not mutation
-    starredIds = new Set(stored);
-  }
+  const stored = await getStorageItem<unknown>(STORAGE_KEY);
+  const ids = Array.isArray(stored)
+    ? stored.filter((id): id is string => typeof id === 'string')
+    : [];
+  // eslint-disable-next-line svelte/prefer-svelte-reactivity -- immutable replacement, not mutation
+  starredIds = new Set(ids);
 }
