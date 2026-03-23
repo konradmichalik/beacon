@@ -5,8 +5,9 @@
   import PullRequestCard from './PullRequestCard.svelte';
   import EmptyState from '../notifications/EmptyState.svelte';
   import PartyPopperIcon from '$lib/components/icons/PartyPopperIcon.svelte';
-  import { Inbox, ChevronRight } from '@lucide/svelte';
+  import { Inbox, ChevronRight, Star, GitPullRequest, Eye, CircleCheckBig } from '@lucide/svelte';
   import type { NotificationSource, PRRoleFilter, PRDraftFilter, PRCIFilter } from '$lib/types';
+  import { getStarredIds } from '$lib/stores/starred-prs.svelte';
 
   let {
     sourceFilter = 'all',
@@ -36,26 +37,32 @@
   let isLoading = $derived(getIsPRLoading());
   let isConfigured = $derived(hasAnyServiceConfigured());
 
-  // Section splits
+  let starredIds = $derived(getStarredIds());
+
+  // Starred PRs (shown at top, excluded from other sections)
+  let starred = $derived(items.filter((pr) => starredIds.has(pr.id)));
+  let unstarred = $derived(items.filter((pr) => !starredIds.has(pr.id)));
+
+  // Section splits (only unstarred PRs)
   let authored = $derived(
     roleFilter === 'all'
-      ? items.filter((pr) => !pr.reviewRequestedFromMe)
+      ? unstarred.filter((pr) => !pr.reviewRequestedFromMe)
       : roleFilter === 'authored'
-        ? items
+        ? unstarred
         : []
   );
   let toReview = $derived(
     roleFilter === 'all'
-      ? items.filter((pr) => pr.reviewRequestedFromMe && !pr.reviewedByMe)
+      ? unstarred.filter((pr) => pr.reviewRequestedFromMe && !pr.reviewedByMe)
       : roleFilter === 'review_requested'
-        ? items.filter((pr) => !pr.reviewedByMe)
+        ? unstarred.filter((pr) => !pr.reviewedByMe)
         : []
   );
   let reviewed = $derived(
     roleFilter === 'all'
-      ? items.filter((pr) => pr.reviewRequestedFromMe && pr.reviewedByMe)
+      ? unstarred.filter((pr) => pr.reviewRequestedFromMe && pr.reviewedByMe)
       : roleFilter === 'review_requested'
-        ? items.filter((pr) => pr.reviewedByMe)
+        ? unstarred.filter((pr) => pr.reviewedByMe)
         : []
   );
 </script>
@@ -86,7 +93,7 @@
     iconSize={48}
   />
 {:else}
-  {#snippet sectionHeader(label: string, count: number, key: string)}
+  {#snippet sectionHeader(label: string, count: number, key: string, icon?: typeof Star, iconClass?: string)}
     <button
       type="button"
       onclick={() => toggle(key)}
@@ -98,6 +105,10 @@
           ? ''
           : 'rotate-90'}"
       />
+      {#if icon}
+        {@const Icon = icon}
+        <Icon size={10} class="shrink-0 {iconClass ?? 'text-muted-foreground'}" />
+      {/if}
       <span class="text-[11px] font-semibold text-muted-foreground">{label}</span>
       <span
         class="ml-auto shrink-0 rounded-full bg-secondary px-1.5 py-px text-[9px] font-semibold text-muted-foreground"
@@ -108,8 +119,17 @@
   {/snippet}
 
   <div class="flex min-h-full flex-col">
+    {#if starred.length > 0}
+      {@render sectionHeader('Starred', starred.length, 'starred', Star, 'fill-warning text-warning')}
+      {#if !collapsed.starred}
+        {#each starred as pr (pr.id)}
+          <PullRequestCard pullRequest={pr} />
+        {/each}
+      {/if}
+    {/if}
+
     {#if authored.length > 0}
-      {@render sectionHeader('Created by me', authored.length, 'authored')}
+      {@render sectionHeader('Created by me', authored.length, 'authored', GitPullRequest)}
       {#if !collapsed.authored}
         {#each authored as pr (pr.id)}
           <PullRequestCard pullRequest={pr} />
@@ -118,7 +138,7 @@
     {/if}
 
     {#if toReview.length > 0}
-      {@render sectionHeader('To review', toReview.length, 'toReview')}
+      {@render sectionHeader('To review', toReview.length, 'toReview', Eye)}
       {#if !collapsed.toReview}
         {#each toReview as pr (pr.id)}
           <PullRequestCard pullRequest={pr} />
@@ -127,7 +147,7 @@
     {/if}
 
     {#if reviewed.length > 0}
-      {@render sectionHeader('Reviewed', reviewed.length, 'reviewed')}
+      {@render sectionHeader('Reviewed', reviewed.length, 'reviewed', CircleCheckBig, 'text-success-text')}
       {#if !collapsed.reviewed}
         {#each reviewed as pr (pr.id)}
           <PullRequestCard pullRequest={pr} />
