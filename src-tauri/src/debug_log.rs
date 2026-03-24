@@ -104,10 +104,17 @@ pub fn reveal_log_in_finder() -> Result<(), String> {
     if !path.exists() {
         let _ = fs::write(path, "");
     }
-    std::process::Command::new("open")
-        .arg("-R")
-        .arg(path.as_os_str())
-        .spawn()
-        .map_err(|e| e.to_string())?;
+    #[cfg(target_os = "macos")]
+    {
+        std::process::Command::new("open")
+            .arg("-R")
+            .arg(path.as_os_str())
+            .spawn()
+            .map_err(|e| e.to_string())?;
+    }
+    #[cfg(not(target_os = "macos"))]
+    {
+        return Err("reveal in file manager is only supported on macOS".into());
+    }
     Ok(())
 }
