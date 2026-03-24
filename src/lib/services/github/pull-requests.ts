@@ -1,5 +1,6 @@
 import type { UnifiedPullRequest, CIStatus, ReviewDecision } from '$lib/types';
 import { safeFetch } from '$lib/utils/fetch';
+import { error as logError, info as logInfo } from '$lib/utils/logger';
 
 const GITHUB_API = 'https://api.github.com';
 
@@ -160,12 +161,21 @@ export async function fetchGitHubPullRequestsBasic(
     )
   ]);
 
+  if (!authoredRes.ok) {
+    logError('github-pr', `authored PRs fetch failed: HTTP ${authoredRes.status}`);
+  }
+  if (!reviewRes.ok) {
+    logError('github-pr', `review-requested PRs fetch failed: HTTP ${reviewRes.status}`);
+  }
+
   const authored: GitHubSearchResponse = authoredRes.ok
     ? await authoredRes.json()
     : { total_count: 0, items: [] };
   const reviewRequested: GitHubSearchResponse = reviewRes.ok
     ? await reviewRes.json()
     : { total_count: 0, items: [] };
+
+  logInfo('github-pr', `fetched ${authored.items.length} authored, ${reviewRequested.items.length} review-requested PRs`);
 
   // Deduplicate: authored wins over review-requested (own PRs always show as "Created by me")
   const authoredIds = new Set(authored.items.map((i) => i.id));
