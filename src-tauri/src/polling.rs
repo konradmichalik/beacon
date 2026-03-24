@@ -36,6 +36,8 @@ struct Settings {
     badge_mode: String,
     #[serde(default = "default_dot")]
     dot_color: String,
+    #[serde(default)]
+    debug_log: bool,
 }
 
 #[derive(Deserialize, Default, PartialEq)]
@@ -68,6 +70,7 @@ impl Default for Settings {
             notify_summary_minutes: default_summary_min(),
             badge_mode: default_badge(),
             dot_color: default_dot(),
+            debug_log: false,
         }
     }
 }
@@ -299,20 +302,23 @@ async fn gh_detail(client: &reqwest::Client, url: &str, token: &str) -> GHDetail
     match resp {
         Ok(r) if r.status().is_success() => match r.json::<GHDetail>().await {
             Ok(d) => d,
-            Err(_e) => {
-                #[cfg(debug_assertions)]
-                eprintln!("[beacon] detail JSON parse failed for {url}: {_e}");
+            Err(e) => {
+                crate::debug_log::error(
+                    "github",
+                    &format!("detail JSON parse failed for {url}: {e}"),
+                );
                 GHDetail::default()
             }
         },
-        Ok(_r) => {
-            #[cfg(debug_assertions)]
-            eprintln!("[beacon] detail fetch {} returned {}", url, _r.status());
+        Ok(r) => {
+            crate::debug_log::warn(
+                "github",
+                &format!("detail fetch {} returned {}", url, r.status()),
+            );
             GHDetail::default()
         }
-        Err(_e) => {
-            #[cfg(debug_assertions)]
-            eprintln!("[beacon] detail fetch failed for {url}: {_e}");
+        Err(e) => {
+            crate::debug_log::error("github", &format!("detail fetch failed for {url}: {e}"));
             GHDetail::default()
         }
     }
@@ -328,6 +334,7 @@ async fn fetch_github(client: &reqwest::Client, config: &GitHubConfig) -> Vec<Un
     let since = thirty_days_ago_iso();
     let url =
         format!("https://api.github.com/notifications?participating=false&all=false&since={since}");
+    crate::debug_log::info("github", &format!("fetching notifications since {since}"));
     let resp = client
         .get(&url)
         .header("Authorization", format!("Bearer {}", config.token))
@@ -337,8 +344,23 @@ async fn fetch_github(client: &reqwest::Client, config: &GitHubConfig) -> Vec<Un
         .await;
 
     let items: Vec<GHNotification> = match resp {
-        Ok(r) if r.status().is_success() => r.json().await.unwrap_or_default(),
-        _ => return vec![],
+        Ok(r) if r.status().is_success() => {
+            let status = r.status();
+            let data: Vec<GHNotification> = r.json().await.unwrap_or_default();
+            crate::debug_log::info(
+                "github",
+                &format!("received {} notifications (HTTP {})", data.len(), status),
+            );
+            data
+        }
+        Ok(r) => {
+            crate::debug_log::error("github", &format!("API error: HTTP {}", r.status()));
+            return vec![];
+        }
+        Err(e) => {
+            crate::debug_log::error("github", &format!("request failed: {e}"));
+            return vec![];
+        }
     };
 
     let mut handles = Vec::with_capacity(items.len());
@@ -451,6 +473,8 @@ async fn fetch_gitlab(client: &reqwest::Client, config: &GitLabConfig) -> Vec<Un
     const PER_PAGE: u32 = 100;
     const MAX_PAGES: u32 = 1;
 
+    crate::debug_log::info("gitlab", &format!("fetching todos from {base}"));
+
     loop {
         let url = format!("{base}/api/v4/todos?state=pending&per_page={PER_PAGE}&page={page}");
         let resp = client
@@ -461,27 +485,51 @@ async fn fetch_gitlab(client: &reqwest::Client, config: &GitLabConfig) -> Vec<Un
 
         let batch: Vec<GLTodo> = match resp {
             Ok(r) if r.status().is_success() => {
+                let status = r.status();
                 let body = r.text().await.unwrap_or_default();
                 // Parse each todo individually so one malformed entry doesn't
                 // discard the entire page.
                 match serde_json::from_str::<Vec<serde_json::Value>>(&body) {
                     Ok(raw_items) => {
                         let mut parsed = Vec::with_capacity(raw_items.len());
+                        let mut skipped = 0u32;
                         for raw in raw_items {
-                            if let Ok(todo) = serde_json::from_value::<GLTodo>(raw) {
-                                parsed.push(todo);
+                            match serde_json::from_value::<GLTodo>(raw) {
+                                Ok(todo) => parsed.push(todo),
+                                Err(e) => {
+                                    skipped += 1;
+                                    crate::debug_log::warn(
+                                        "gitlab",
+                                        &format!("skipped malformed todo: {e}"),
+                                    );
+                                }
                             }
                         }
+                        crate::debug_log::info(
+                            "gitlab",
+                            &format!(
+                                "page {page}: parsed {} todos, skipped {} (HTTP {})",
+                                parsed.len(),
+                                skipped,
+                                status
+                            ),
+                        );
                         parsed
                     }
-                    Err(_) => {
+                    Err(e) => {
+                        crate::debug_log::error("gitlab", &format!("JSON array parse failed: {e}"));
                         items.clear();
                         break;
                     }
                 }
             }
-            _ => {
-                // Discard partial results to avoid known_ids churn
+            Ok(r) => {
+                crate::debug_log::error("gitlab", &format!("API error: HTTP {}", r.status()));
+                items.clear();
+                break;
+            }
+            Err(e) => {
+                crate::debug_log::error("gitlab", &format!("request failed: {e}"));
                 items.clear();
                 break;
             }
@@ -613,6 +661,20 @@ async fn do_poll(app: &AppHandle) {
     let poller = app.state::<Arc<Poller>>();
     let (gh_config, gl_config, settings) = read_store(app);
 
+    // Sync the debug-log enabled flag from the settings store
+    crate::debug_log::set_enabled(settings.debug_log);
+
+    crate::debug_log::info("poll", "starting poll cycle");
+    crate::debug_log::info(
+        "poll",
+        &format!(
+            "config: github={}, gitlab={}, interval={}s",
+            gh_config.is_some(),
+            gl_config.is_some(),
+            settings.polling_interval
+        ),
+    );
+
     let (gh, gl) = tokio::join!(
         async {
             match gh_config {
@@ -634,12 +696,17 @@ async fn do_poll(app: &AppHandle) {
 
     results.sort_by(|a, b| b.updated_at.cmp(&a.updated_at));
 
+    let unread = results.iter().filter(|n| n.unread).count() as u32;
+    crate::debug_log::info(
+        "poll",
+        &format!("poll complete: {} total, {} unread", results.len(), unread),
+    );
+
     {
         let mut inner = poller.inner.lock().await;
         process_new(app, &mut inner, &results, &settings);
     }
 
-    let unread = results.iter().filter(|n| n.unread).count() as u32;
     let _ = crate::update_tray_icon(app, unread, &settings.badge_mode, &settings.dot_color);
 
     let _ = app.emit("notifications-updated", &results);

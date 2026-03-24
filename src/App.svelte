@@ -4,9 +4,11 @@
   import SettingsView from './lib/components/settings/SettingsView.svelte';
   import { initializeConnections, hasAnyServiceConfigured } from './lib/stores/connections.svelte';
   import {
+    settingsState,
     initializeSettings,
     setPollingChangeCallback,
-    setBadgeModeChangeCallback
+    setBadgeModeChangeCallback,
+    setDebugLogChangeCallback
   } from './lib/stores/settings.svelte';
   import { initializeMuteRules } from './lib/stores/mute-rules.svelte';
   import { loadStarredPRs } from './lib/stores/starred-prs.svelte';
@@ -26,6 +28,7 @@
     loadDemoPRs
   } from './lib/stores/pull-requests.svelte';
   import Toast from './lib/components/ui/Toast.svelte';
+  import { startConsoleCapture, stopConsoleCapture, info as logInfo } from './lib/utils/logger';
   import { onMount } from 'svelte';
 
   const isSettingsWindow = new URLSearchParams(window.location.search).get('window') === 'settings';
@@ -39,6 +42,11 @@
     async function initialize(): Promise<void> {
       try {
         await initializeSettings();
+
+        if (settingsState.debugLog) {
+          startConsoleCapture();
+          logInfo('app', 'frontend initializing (debug log enabled)');
+        }
         await initializeMuteRules();
         await loadStarredPRs();
 
@@ -52,6 +60,15 @@
           restartPRPolling();
         });
         setBadgeModeChangeCallback(refreshBadge);
+        setDebugLogChangeCallback((enabled) => {
+          if (enabled) {
+            startConsoleCapture();
+            logInfo('app', 'debug log enabled');
+          } else {
+            logInfo('app', 'debug log disabled');
+            stopConsoleCapture();
+          }
+        });
         await initializeConnections();
 
         // Listen for notification updates from Rust backend

@@ -37,7 +37,9 @@
     type UpdateStatus,
     type UpdateCheckResult
   } from '$lib/services/update-check';
-  import { RefreshCw, ArrowUpCircle, CheckCircle, AlertCircle, X } from '@lucide/svelte';
+  import { clearLog } from '$lib/utils/logger';
+  import { isTauri } from '$lib/utils/storage';
+  import { RefreshCw, ArrowUpCircle, CheckCircle, AlertCircle, X, FolderOpen, Trash2 } from '@lucide/svelte';
 
   type SettingsTab = 'connections' | 'preferences' | 'alerts' | 'about';
   let activeTab: SettingsTab = $state('connections');
@@ -45,6 +47,16 @@
   let activeMuteRules = $derived(getMuteRules());
   let updateStatus: UpdateStatus = $state('idle');
   let updateResult: UpdateCheckResult = $state({ status: 'idle' });
+
+  async function openLogInFinder(): Promise<void> {
+    if (!isTauri()) return;
+    const { invoke } = await import('@tauri-apps/api/core');
+    await invoke('reveal_log_in_finder');
+  }
+
+  async function handleClearLog(): Promise<void> {
+    await clearLog();
+  }
 
   async function handleCheckForUpdates(): Promise<void> {
     updateStatus = 'checking';
@@ -346,6 +358,63 @@
             ></span>
           </button>
         </label>
+      </section>
+    </div>
+
+    <hr class="border-border" />
+
+    <!-- ── Debug ── -->
+    <div class="space-y-4">
+      <h3 class="text-[10px] font-semibold uppercase tracking-widest text-muted-foreground/60">
+        Debug
+      </h3>
+
+      <section>
+        <label class="flex cursor-pointer items-center justify-between gap-3">
+          <div>
+            <span class="text-xs font-medium text-foreground">Debug Log</span>
+            <p class="text-[10px] text-muted-foreground">
+              Logs API requests, responses, and errors to a file for troubleshooting.
+            </p>
+          </div>
+          <button
+            type="button"
+            role="switch"
+            aria-label="Toggle debug logging"
+            aria-checked={settingsState.debugLog}
+            onclick={() => updateSettings({ debugLog: !settingsState.debugLog })}
+            class="relative inline-flex h-5 w-9 shrink-0 items-center rounded-full transition-colors {settingsState.debugLog
+              ? 'bg-primary'
+              : 'bg-secondary'}"
+          >
+            <span
+              class="inline-block h-3.5 w-3.5 rounded-full bg-white shadow-sm transition-transform {settingsState.debugLog
+                ? 'translate-x-4'
+                : 'translate-x-0.5'}"
+            ></span>
+          </button>
+        </label>
+
+        {#if settingsState.debugLog}
+          <div class="mt-2 flex gap-1.5">
+            <button
+              type="button"
+              onclick={openLogInFinder}
+              class="inline-flex items-center gap-1.5 rounded-md border border-border bg-card px-2.5 py-1.5 text-[11px] font-medium text-foreground transition-colors hover:bg-accent"
+            >
+              <FolderOpen size={12} />
+              Show in Finder
+            </button>
+            <button
+              type="button"
+              onclick={handleClearLog}
+              class="inline-flex items-center gap-1.5 rounded-md border border-border bg-card px-2.5 py-1.5 text-[11px] font-medium text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
+            >
+              <Trash2 size={12} />
+              Clear Log
+            </button>
+          </div>
+        {/if}
       </section>
     </div>
   {:else if activeTab === 'alerts'}
