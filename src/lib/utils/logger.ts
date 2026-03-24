@@ -2,14 +2,15 @@ import { isTauri } from './storage';
 
 type LogLevel = 'INFO' | 'WARN' | 'ERROR';
 
-let invokeCache: ((cmd: string, args: Record<string, unknown>) => Promise<void>) | null = null;
+type InvokeFn = (cmd: string, args?: Record<string, unknown>) => Promise<unknown>;
+let invokeCache: InvokeFn | null = null;
 
-async function getInvoke() {
+async function getInvoke(): Promise<InvokeFn> {
   if (!invokeCache) {
     const { invoke } = await import('@tauri-apps/api/core');
-    invokeCache = invoke as typeof invokeCache;
+    invokeCache = invoke;
   }
-  return invokeCache!;
+  return invokeCache;
 }
 
 async function writeToFile(level: LogLevel, source: string, message: string): Promise<void> {

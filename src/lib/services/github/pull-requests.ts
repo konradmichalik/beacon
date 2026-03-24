@@ -175,7 +175,10 @@ export async function fetchGitHubPullRequestsBasic(
     ? await reviewRes.json()
     : { total_count: 0, items: [] };
 
-  logInfo('github-pr', `fetched ${authored.items.length} authored, ${reviewRequested.items.length} review-requested PRs`);
+  logInfo(
+    'github-pr',
+    `fetched ${authored.items.length} authored, ${reviewRequested.items.length} review-requested PRs`
+  );
 
   // Deduplicate: authored wins over review-requested (own PRs always show as "Created by me")
   const authoredIds = new Set(authored.items.map((i) => i.id));

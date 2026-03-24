@@ -169,7 +169,10 @@ export async function fetchGitLabMergeRequestsBasic(
   const authored: GitLabMergeRequest[] = authoredRes?.ok ? await authoredRes.json() : [];
   const reviewRequested: GitLabMergeRequest[] = reviewRes?.ok ? await reviewRes.json() : [];
 
-  logInfo('gitlab-mr', `fetched ${authored.length} authored, ${reviewRequested.length} review-requested MRs`);
+  logInfo(
+    'gitlab-mr',
+    `fetched ${authored.length} authored, ${reviewRequested.length} review-requested MRs`
+  );
 
   // Deduplicate: authored wins over review-requested (own MRs always show as "Created by me")
   const authoredIds = new Set(authored.map((mr) => mr.id));

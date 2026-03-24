@@ -39,7 +39,15 @@
   } from '$lib/services/update-check';
   import { clearLog } from '$lib/utils/logger';
   import { isTauri } from '$lib/utils/storage';
-  import { RefreshCw, ArrowUpCircle, CheckCircle, AlertCircle, X, FolderOpen, Trash2 } from '@lucide/svelte';
+  import {
+    RefreshCw,
+    ArrowUpCircle,
+    CheckCircle,
+    AlertCircle,
+    X,
+    FolderOpen,
+    Trash2
+  } from '@lucide/svelte';
 
   type SettingsTab = 'connections' | 'preferences' | 'alerts' | 'about';
   let activeTab: SettingsTab = $state('connections');
