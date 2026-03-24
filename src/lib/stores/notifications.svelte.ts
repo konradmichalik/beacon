@@ -8,7 +8,7 @@ import type { SortMode, StatusFilter } from './filters.svelte';
 import { filterState } from './filters.svelte';
 import { settingsState } from './settings.svelte';
 import { isNotificationMuted } from './mute-rules.svelte';
-import { isTauri } from '$lib/utils/storage';
+import { isTauri, getStorageItem, setStorageItem } from '$lib/utils/storage';
 import { demoNotifications } from '$lib/utils/demo-data';
 import { playNotificationSound } from '$lib/services/notification-sound';
 import { showToast } from '$lib/stores/toast.svelte';
@@ -16,9 +16,35 @@ import { showToast } from '$lib/stores/toast.svelte';
 let notifications: UnifiedNotification[] = $state([]);
 let isLoading = $state(false);
 let lastRefresh: string | null = $state(null);
-// Track IDs marked as read locally so refreshes don't revert them
+// Track IDs marked as read locally so refreshes don't revert them.
+// Persisted as { [id]: timestamp } so stale entries can be pruned.
 // eslint-disable-next-line svelte/prefer-svelte-reactivity -- not reactive state, internal bookkeeping
-const locallyReadIds = new Set<string>();
+const locallyReadIds = new Map<string, number>();
+const READ_IDS_STORAGE_KEY = 'locallyReadIds';
+const READ_IDS_MAX_AGE_MS = 30 * 24 * 60 * 60 * 1000; // 30 days
+
+let persistTimer: ReturnType<typeof setTimeout> | null = null;
+
+function persistReadIds(): void {
+  if (persistTimer) return;
+  persistTimer = setTimeout(() => {
+    persistTimer = null;
+    const obj = Object.fromEntries(locallyReadIds);
+    setStorageItem(READ_IDS_STORAGE_KEY, obj).catch(() => {});
+  }, 500);
+}
+
+export async function loadPersistedReadIds(): Promise<void> {
+  const stored = await getStorageItem<Record<string, number>>(READ_IDS_STORAGE_KEY);
+  if (!stored) return;
+  const now = Date.now();
+  for (const [id, ts] of Object.entries(stored)) {
+    if (now - ts < READ_IDS_MAX_AGE_MS) {
+      locallyReadIds.set(id, ts);
+    }
+  }
+}
+
 // Timestamp of the last time the user opened the popup
 let lastSeenAt: string | null = $state(null);
 
@@ -209,11 +235,16 @@ let knownUnreadIds = new Set<string>();
 let isFirstLoad = true;
 
 function updateFromBackend(items: UnifiedNotification[]): void {
-  // Clean up locally-read IDs no longer in the list
+  // Clean up locally-read IDs no longer in the notification list
   const ids = new Set(items.map((n) => n.id));
-  for (const id of locallyReadIds) {
-    if (!ids.has(id)) locallyReadIds.delete(id);
+  let pruned = false;
+  for (const id of locallyReadIds.keys()) {
+    if (!ids.has(id)) {
+      locallyReadIds.delete(id);
+      pruned = true;
+    }
   }
+  if (pruned) persistReadIds();
 
   // Apply local read state overlay
   const effectiveItems = items.map((n) => (locallyReadIds.has(n.id) ? { ...n, unread: false } : n));
@@ -309,9 +340,11 @@ export function markAllAsRead(ids?: ReadonlySet<string>): void {
   const totalGhUnread = notifications.filter((n) => n.source === 'github' && n.unread).length;
   const totalGlUnread = notifications.filter((n) => n.source === 'gitlab' && n.unread).length;
 
+  const now = Date.now();
   for (const n of unread) {
-    locallyReadIds.add(n.id);
+    locallyReadIds.set(n.id, now);
   }
+  persistReadIds();
   notifications = notifications.map((n) =>
     n.unread && (!ids || ids.has(n.id)) ? { ...n, unread: false } : n
   );
@@ -329,6 +362,7 @@ export function markAsUnread(id: string): void {
   if (!notification || notification.unread) return;
 
   locallyReadIds.delete(id);
+  persistReadIds();
   notifications = notifications.map((n) => (n.id === id ? { ...n, unread: true } : n));
   const unreadCount = notifications.filter((n) => n.unread).length;
   updateTrayBadge(unreadCount);
@@ -342,7 +376,8 @@ export function markAsRead(id: string): void {
   const totalGhUnread = notifications.filter((n) => n.source === 'github' && n.unread).length;
   const totalGlUnread = notifications.filter((n) => n.source === 'gitlab' && n.unread).length;
 
-  locallyReadIds.add(id);
+  locallyReadIds.set(id, Date.now());
+  persistReadIds();
   notifications = notifications.map((n) => (n.id === id ? { ...n, unread: false } : n));
   const unreadCount = notifications.filter((n) => n.unread).length;
   updateTrayBadge(unreadCount);

@@ -116,19 +116,34 @@ export async function markGitLabTodoDone(
   baseUrl: string,
   todoId: number
 ): Promise<void> {
-  await safeFetch(`${baseUrl.replace(/\/$/, '')}/api/v4/todos/${todoId}/mark_as_done`, {
-    method: 'POST',
-    headers: {
-      Authorization: `Bearer ${token}`
+  const response = await safeFetch(
+    `${baseUrl.replace(/\/$/, '')}/api/v4/todos/${todoId}/mark_as_done`,
+    {
+      method: 'POST',
+      headers: {
+        Authorization: `Bearer ${token}`
+      }
     }
-  });
+  );
+
+  if (!response.ok) {
+    logError('gitlab', `mark todo ${todoId} as done failed: HTTP ${response.status}`);
+    throw new Error(`GitLab mark_as_done failed: ${response.status}`);
+  }
+  logInfo('gitlab', `marked todo ${todoId} as done`);
 }
 
 export async function markAllGitLabTodosDone(token: string, baseUrl: string): Promise<void> {
-  await safeFetch(`${baseUrl.replace(/\/$/, '')}/api/v4/todos/mark_as_done`, {
+  const response = await safeFetch(`${baseUrl.replace(/\/$/, '')}/api/v4/todos/mark_as_done`, {
     method: 'POST',
     headers: {
       Authorization: `Bearer ${token}`
     }
   });
+
+  if (!response.ok) {
+    logError('gitlab', `mark all todos as done failed: HTTP ${response.status}`);
+    throw new Error(`GitLab mark_all_as_done failed: ${response.status}`);
+  }
+  logInfo('gitlab', 'marked all todos as done');
 }
