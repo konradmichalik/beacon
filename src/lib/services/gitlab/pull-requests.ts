@@ -1,5 +1,6 @@
 import type { UnifiedPullRequest, CIStatus, ReviewDecision } from '$lib/types';
 import { safeFetch } from '$lib/utils/fetch';
+import { error as logError, info as logInfo } from '$lib/utils/logger';
 
 interface GitLabMergeRequest {
   readonly id: number;
@@ -158,8 +159,20 @@ export async function fetchGitLabMergeRequestsBasic(
     ).catch(() => null)
   ]);
 
+  if (authoredRes && !authoredRes.ok) {
+    logError('gitlab-mr', `authored MRs fetch failed: HTTP ${authoredRes.status}`);
+  }
+  if (reviewRes && !reviewRes.ok) {
+    logError('gitlab-mr', `reviewer MRs fetch failed: HTTP ${reviewRes.status}`);
+  }
+
   const authored: GitLabMergeRequest[] = authoredRes?.ok ? await authoredRes.json() : [];
   const reviewRequested: GitLabMergeRequest[] = reviewRes?.ok ? await reviewRes.json() : [];
+
+  logInfo(
+    'gitlab-mr',
+    `fetched ${authored.length} authored, ${reviewRequested.length} review-requested MRs`
+  );
 
   // Deduplicate: authored wins over review-requested (own MRs always show as "Created by me")
   const authoredIds = new Set(authored.map((mr) => mr.id));

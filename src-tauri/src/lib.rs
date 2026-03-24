@@ -1,3 +1,4 @@
+pub mod debug_log;
 mod polling;
 mod tray;
 
@@ -232,6 +233,7 @@ pub fn run() {
         .plugin(tauri_plugin_notification::init())
         .setup(|app| {
             use tauri::Manager;
+            debug_log::init(app);
             app.manage(std::sync::Arc::new(polling::Poller::new()));
             tray::create_tray(app)?;
 
@@ -372,6 +374,9 @@ pub fn run() {
             polling::start_polling,
             polling::stop_polling,
             polling::trigger_poll,
+            debug_log::write_log,
+            debug_log::clear_log,
+            debug_log::reveal_log_in_finder,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

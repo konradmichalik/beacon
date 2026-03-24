@@ -1,5 +1,6 @@
 import type { GitLabTodo, UnifiedNotification, NotificationType, SubjectState } from '$lib/types';
 import { safeFetch } from '$lib/utils/fetch';
+import { error as logError, info as logInfo } from '$lib/utils/logger';
 
 export function mapTargetType(type: string): NotificationType {
   switch (type) {
@@ -96,10 +97,12 @@ export async function fetchGitLabTodos(
     );
 
     if (!response.ok) {
+      logError('gitlab', `todos fetch failed: HTTP ${response.status} (page ${page})`);
       throw new Error(`GitLab API error: ${response.status}`);
     }
 
     const batch: GitLabTodo[] = await response.json();
+    logInfo('gitlab', `page ${page}: fetched ${batch.length} todos`);
     allTodos.push(...batch);
 
     if (batch.length < perPage) break;

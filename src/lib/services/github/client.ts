@@ -6,6 +6,7 @@ import type {
   NotificationAuthor
 } from '$lib/types';
 import { safeFetch } from '$lib/utils/fetch';
+import { error as logError, info as logInfo } from '$lib/utils/logger';
 
 const GITHUB_API = 'https://api.github.com';
 
@@ -53,7 +54,10 @@ async function fetchSubjectDetails(subjectUrl: string, token: string): Promise<S
       }
     });
 
-    if (!response.ok) return { state: null, author: null };
+    if (!response.ok) {
+      logError('github', `subject detail fetch failed: HTTP ${response.status} for ${subjectUrl}`);
+      return { state: null, author: null };
+    }
 
     const data = (await response.json()) as Record<string, unknown>;
 
@@ -73,7 +77,8 @@ async function fetchSubjectDetails(subjectUrl: string, token: string): Promise<S
     }
 
     return { state, author };
-  } catch {
+  } catch (e) {
+    logError('github', `subject detail fetch error for ${subjectUrl}: ${e}`);
     return { state: null, author: null };
   }
 }
@@ -88,10 +93,12 @@ export async function fetchGitHubNotifications(token: string): Promise<UnifiedNo
   });
 
   if (!response.ok) {
+    logError('github', `notifications fetch failed: HTTP ${response.status}`);
     throw new Error(`GitHub API error: ${response.status}`);
   }
 
   const data: GitHubNotification[] = await response.json();
+  logInfo('github', `fetched ${data.length} notifications`);
 
   // Enrich with subject details (state + author) in parallel
   const enriched = await Promise.all(

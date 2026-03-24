@@ -35,6 +35,7 @@ interface Settings {
   notifySummaryMinutes: number; // summary interval in minutes
   notifySound: NotifySound;
   enrichPullRequests: boolean;
+  debugLog: boolean;
 }
 
 const defaultSettings: Settings = {
@@ -45,7 +46,8 @@ const defaultSettings: Settings = {
   notifyMode: 'disabled',
   notifySummaryMinutes: 15,
   notifySound: 'none',
-  enrichPullRequests: true
+  enrichPullRequests: true,
+  debugLog: false
 };
 
 export const settingsState: Settings = $state({ ...defaultSettings });
@@ -53,6 +55,7 @@ export const settingsState: Settings = $state({ ...defaultSettings });
 let onPollingChange: (() => void) | null = null;
 let onBadgeModeChange: (() => void) | null = null;
 let onNotifyChange: (() => void) | null = null;
+let onDebugLogChange: ((enabled: boolean) => void) | null = null;
 
 export function setPollingChangeCallback(callback: () => void): void {
   onPollingChange = callback;
@@ -64,6 +67,10 @@ export function setBadgeModeChangeCallback(callback: () => void): void {
 
 export function setNotifyChangeCallback(callback: () => void): void {
   onNotifyChange = callback;
+}
+
+export function setDebugLogChangeCallback(callback: (enabled: boolean) => void): void {
+  onDebugLogChange = callback;
 }
 
 export async function initializeSettings(): Promise<void> {
@@ -96,6 +103,9 @@ export async function updateSettings(updates: Partial<Settings>): Promise<void> 
     onNotifyChange
   ) {
     onNotifyChange();
+  }
+  if (updates.debugLog !== undefined && onDebugLogChange) {
+    onDebugLogChange(updates.debugLog);
   }
 }
 
