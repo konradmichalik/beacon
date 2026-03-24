@@ -134,15 +134,12 @@ export async function markGitLabTodoDone(
 }
 
 export async function markAllGitLabTodosDone(token: string, baseUrl: string): Promise<void> {
-  const response = await safeFetch(
-    `${baseUrl.replace(/\/$/, '')}/api/v4/todos/mark_as_done`,
-    {
-      method: 'POST',
-      headers: {
-        Authorization: `Bearer ${token}`
-      }
+  const response = await safeFetch(`${baseUrl.replace(/\/$/, '')}/api/v4/todos/mark_as_done`, {
+    method: 'POST',
+    headers: {
+      Authorization: `Bearer ${token}`
     }
-  );
+  });
 
   if (!response.ok) {
     logError('gitlab', `mark all todos as done failed: HTTP ${response.status}`);

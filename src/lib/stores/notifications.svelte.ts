@@ -247,9 +247,7 @@ function updateFromBackend(items: UnifiedNotification[]): void {
   if (pruned) persistReadIds();
 
   // Apply local read state overlay
-  const effectiveItems = items.map((n) =>
-    locallyReadIds.has(n.id) ? { ...n, unread: false } : n
-  );
+  const effectiveItems = items.map((n) => (locallyReadIds.has(n.id) ? { ...n, unread: false } : n));
 
   // Detect genuinely new unread notifications for sound playback
   const currentUnreadIds = new Set(effectiveItems.filter((n) => n.unread).map((n) => n.id));
