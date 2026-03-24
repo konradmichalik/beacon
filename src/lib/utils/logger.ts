@@ -27,6 +27,7 @@ function formatArgs(args: unknown[]): string {
   return args
     .map((a) => {
       if (typeof a === 'string') return a;
+      if (a instanceof Error) return a.stack ?? `${a.name}: ${a.message}`;
       try {
         return JSON.stringify(a, null, 2);
       } catch {
