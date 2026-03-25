@@ -134,8 +134,18 @@ async function enrichAllPRs(
   }
 }
 
+declare const __DEMO_MODE__: boolean;
+
+function isDemoPRMode(): boolean {
+  return __DEMO_MODE__ || new URLSearchParams(window.location.search).has('demo');
+}
+
 export async function refreshPullRequests(): Promise<void> {
   if (isLoading) return;
+  if (isDemoPRMode()) {
+    loadDemoPRs();
+    return;
+  }
   isLoading = true;
 
   // Cancel any in-progress enrichment from previous poll
