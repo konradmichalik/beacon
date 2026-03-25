@@ -56,6 +56,12 @@
   let updateStatus: UpdateStatus = $state('idle');
   let updateResult: UpdateCheckResult = $state({ status: 'idle' });
 
+  async function openLoginItemsSettings(): Promise<void> {
+    if (!isTauri()) return;
+    const { invoke } = await import('@tauri-apps/api/core');
+    await invoke('open_login_items_settings');
+  }
+
   async function openLogInFinder(): Promise<void> {
     if (!isTauri()) return;
     const { invoke } = await import('@tauri-apps/api/core');
@@ -258,6 +264,25 @@
               {option.label}
             </button>
           {/each}
+        </div>
+      </section>
+
+      <section>
+        <div class="flex items-center justify-between gap-3">
+          <div>
+            <span class="text-xs font-medium text-foreground">Launch at Login</span>
+            <p class="text-[10px] text-muted-foreground">
+              Open macOS settings to add Beacon to your login items.
+            </p>
+          </div>
+          <button
+            type="button"
+            onclick={openLoginItemsSettings}
+            class="inline-flex items-center gap-1.5 rounded-md border border-border bg-card px-2.5 py-1.5 text-[11px] font-medium text-foreground transition-colors hover:bg-accent"
+          >
+            <ExternalLink size={12} />
+            Open
+          </button>
         </div>
       </section>
 

@@ -224,6 +224,15 @@ async fn open_settings_window(app: tauri::AppHandle) -> Result<(), String> {
     Ok(())
 }
 
+#[tauri::command]
+fn open_login_items_settings() -> Result<(), String> {
+    std::process::Command::new("open")
+        .arg("x-apple.systempreferences:com.apple.LoginItems-Settings.extension")
+        .spawn()
+        .map_err(|e| e.to_string())?;
+    Ok(())
+}
+
 const GLOBAL_SHORTCUT: &str = "CmdOrCtrl+Shift+B";
 
 #[tauri::command]
@@ -401,6 +410,7 @@ pub fn run() {
             play_sound,
             quit_app,
             open_settings_window,
+            open_login_items_settings,
             register_global_shortcut,
             unregister_global_shortcut,
             polling::start_polling,
