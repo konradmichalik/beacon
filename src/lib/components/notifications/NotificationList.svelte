@@ -7,7 +7,7 @@
   import GitHubIcon from '$lib/components/icons/GitHubIcon.svelte';
   import GitLabIcon from '$lib/components/icons/GitLabIcon.svelte';
   import PartyPopperIcon from '$lib/components/icons/PartyPopperIcon.svelte';
-  import { Inbox, ChevronRight } from '@lucide/svelte';
+  import { Inbox, ChevronRight, MailOpen } from '@lucide/svelte';
   import type { UnifiedNotification } from '$lib/types';
 
   let items = $derived(
@@ -132,11 +132,16 @@
       <button
         type="button"
         onclick={() => (showRead = !showRead)}
-        class="flex w-full items-center gap-1.5 border-t border-border bg-background/60 px-4 py-2 text-[11px] font-medium text-muted-foreground transition-colors hover:text-foreground"
+        class="sticky top-0 z-10 flex w-full items-center gap-1.5 border-b border-border bg-card/95 px-4 py-1.5 backdrop-blur-sm transition-colors hover:bg-secondary/40"
       >
-        <ChevronRight size={12} class="transition-transform {showRead ? 'rotate-90' : ''}" />
-        Read
-        <span class="rounded-full bg-secondary px-1.5 py-px text-[9px] font-semibold leading-tight"
+        <ChevronRight
+          size={12}
+          class="shrink-0 text-muted-foreground transition-transform {showRead ? 'rotate-90' : ''}"
+        />
+        <MailOpen size={10} class="shrink-0 text-muted-foreground" />
+        <span class="text-[11px] font-semibold text-muted-foreground">Read</span>
+        <span
+          class="ml-auto shrink-0 rounded-full bg-secondary px-1.5 py-px text-[9px] font-semibold text-muted-foreground"
           >{readItems.length}</span
         >
       </button>
