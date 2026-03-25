@@ -105,7 +105,7 @@
       />
     {/if}
     <div class="relative flex-1 overflow-hidden">
-      <div class="h-full overflow-y-auto bg-card" bind:this={scrollEl} onscroll={handleScroll}>
+      <div class="h-full overflow-y-auto" bind:this={scrollEl} onscroll={handleScroll}>
         {#if activeView === 'notifications'}
           <NotificationList />
         {:else}

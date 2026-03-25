@@ -60,20 +60,26 @@
     return notification.unread && notification.updatedAt > seen;
   });
 
-  const typeConfig: Record<string, { short: string; full: string }> = {
-    issue: { short: 'Issue', full: 'Issue' },
-    pull_request: { short: 'PR', full: 'Pull Request' },
-    merge_request: { short: 'MR', full: 'Merge Request' },
-    review: { short: 'Review', full: 'Review' },
+  const defaultBadge = 'bg-secondary text-muted-foreground';
+  const typeConfig: Record<string, { short: string; full: string; badge?: string }> = {
+    issue: { short: 'Issue', full: 'Issue', badge: 'bg-success-text/10 text-success-text' },
+    pull_request: { short: 'PR', full: 'Pull Request', badge: 'bg-accent-foreground/10 text-accent-foreground' },
+    merge_request: { short: 'MR', full: 'Merge Request', badge: 'bg-accent-foreground/10 text-accent-foreground' },
+    review: { short: 'Review', full: 'Review', badge: 'bg-discovery/10 text-discovery' },
     pipeline: { short: 'Pipeline', full: 'Pipeline' },
     release: { short: 'Release', full: 'Release' },
     discussion: { short: 'Discussion', full: 'Discussion' },
     other: { short: 'Other', full: 'Other' }
   };
 
-  let typeInfo = $derived(
-    typeConfig[notification.type] ?? { short: notification.type, full: notification.type }
-  );
+  let typeInfo = $derived.by(() => {
+    const config = typeConfig[notification.type];
+    return {
+      short: config?.short ?? notification.type,
+      full: config?.full ?? notification.type,
+      badge: config?.badge ?? defaultBadge
+    };
+  });
 
   const reasonMap: Record<string, { label: string; icon: typeof AtSign }> = {
     mention: { label: 'Mentioned', icon: AtSign },
@@ -108,9 +114,24 @@
 
   let stateInfo = $derived.by(() => {
     const s = notification.subjectState;
-    if (s === 'merged') return { label: 'Merged', class: 'text-discovery', icon: GitMerge };
-    if (s === 'closed') return { label: 'Closed', class: 'text-destructive', icon: CircleCheck };
-    if (s === 'open') return { label: 'Open', class: 'text-success-text', icon: CircleDot };
+    if (s === 'merged')
+      return {
+        label: 'Merged',
+        class: 'bg-discovery/10 text-discovery',
+        icon: GitMerge
+      };
+    if (s === 'closed')
+      return {
+        label: 'Closed',
+        class: 'bg-destructive/10 text-destructive',
+        icon: CircleCheck
+      };
+    if (s === 'open')
+      return {
+        label: 'Open',
+        class: 'bg-success-text/10 text-success-text',
+        icon: CircleDot
+      };
     return null;
   });
 
@@ -191,7 +212,7 @@
     type="button"
     onclick={handleClick}
     oncontextmenu={handleContextMenu}
-    class="group relative flex w-full items-start gap-3 px-4 py-3 text-left transition-all duration-200 ease-in-out hover:bg-secondary/40 {notification.unread
+    class="group relative flex w-full items-start gap-3 px-4 py-3 text-left transition-all duration-200 ease-in-out hover:bg-surface-hovered {notification.unread
       ? ''
       : 'opacity-45'} {notification.subjectState === 'closed' ||
     notification.subjectState === 'merged'
@@ -260,14 +281,14 @@
       <div class="mt-1 flex items-center gap-1.5">
         <span
           title={typeInfo.full}
-          class="shrink-0 rounded bg-secondary px-1.5 py-0.5 text-[10px] font-medium text-muted-foreground"
+          class="shrink-0 rounded px-1.5 py-0.5 text-[10px] font-medium {typeInfo.badge}"
         >
           {typeInfo.short}
         </span>
         {#if stateInfo}
           {@const StateIcon = stateInfo.icon}
           <span
-            class="flex shrink-0 items-center gap-0.5 text-[10px] font-medium {stateInfo.class}"
+            class="flex shrink-0 items-center gap-0.5 rounded px-1.5 py-0.5 text-[10px] font-medium {stateInfo.class}"
           >
             <StateIcon size={10} />
             {stateInfo.label}
