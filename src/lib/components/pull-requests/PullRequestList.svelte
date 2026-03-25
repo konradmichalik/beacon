@@ -8,6 +8,7 @@
   import { Inbox, ChevronRight, Star, GitPullRequest, Eye, CircleCheckBig } from '@lucide/svelte';
   import type { NotificationSource, PRRoleFilter, PRDraftFilter, PRCIFilter } from '$lib/types';
   import { getStarredIds } from '$lib/stores/starred-prs.svelte';
+  import { settingsState } from '$lib/stores/settings.svelte';
 
   let {
     sourceFilter = 'all',
@@ -140,37 +141,43 @@
       {/if}
     {/if}
 
-    {#if authored.length > 0}
-      {@render sectionHeader('Created by me', authored.length, 'authored', GitPullRequest)}
-      {#if !collapsed.authored}
-        {#each authored as pr (pr.id)}
-          <PullRequestCard pullRequest={pr} />
-        {/each}
+    {#if settingsState.groupPullRequests}
+      {#if authored.length > 0}
+        {@render sectionHeader('Created by me', authored.length, 'authored', GitPullRequest)}
+        {#if !collapsed.authored}
+          {#each authored as pr (pr.id)}
+            <PullRequestCard pullRequest={pr} />
+          {/each}
+        {/if}
       {/if}
-    {/if}
 
-    {#if toReview.length > 0}
-      {@render sectionHeader('To review', toReview.length, 'toReview', Eye)}
-      {#if !collapsed.toReview}
-        {#each toReview as pr (pr.id)}
-          <PullRequestCard pullRequest={pr} />
-        {/each}
+      {#if toReview.length > 0}
+        {@render sectionHeader('To review', toReview.length, 'toReview', Eye)}
+        {#if !collapsed.toReview}
+          {#each toReview as pr (pr.id)}
+            <PullRequestCard pullRequest={pr} />
+          {/each}
+        {/if}
       {/if}
-    {/if}
 
-    {#if reviewed.length > 0}
-      {@render sectionHeader(
-        'Reviewed',
-        reviewed.length,
-        'reviewed',
-        CircleCheckBig,
-        'text-success-text'
-      )}
-      {#if !collapsed.reviewed}
-        {#each reviewed as pr (pr.id)}
-          <PullRequestCard pullRequest={pr} />
-        {/each}
+      {#if reviewed.length > 0}
+        {@render sectionHeader(
+          'Reviewed',
+          reviewed.length,
+          'reviewed',
+          CircleCheckBig,
+          'text-success-text'
+        )}
+        {#if !collapsed.reviewed}
+          {#each reviewed as pr (pr.id)}
+            <PullRequestCard pullRequest={pr} />
+          {/each}
+        {/if}
       {/if}
+    {:else}
+      {#each unstarred as pr (pr.id)}
+        <PullRequestCard pullRequest={pr} />
+      {/each}
     {/if}
   </div>
 {/if}
