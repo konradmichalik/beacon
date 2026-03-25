@@ -268,12 +268,15 @@ pub fn run() {
             app.manage(std::sync::Arc::new(polling::Poller::new()));
             tray::create_tray(app)?;
 
-            // Register global shortcut (CmdOrCtrl+Shift+B) to toggle the main window
+            // Register global shortcut (CmdOrCtrl+Shift+B) to toggle the main window.
+            // The frontend will unregister it on init if the user has disabled it.
             {
                 use tauri_plugin_global_shortcut::GlobalShortcutExt;
                 let shortcut: tauri_plugin_global_shortcut::Shortcut =
                     GLOBAL_SHORTCUT.parse().expect("invalid shortcut");
-                let _ = app.global_shortcut().register(shortcut);
+                if let Err(e) = app.global_shortcut().register(shortcut) {
+                    eprintln!("Failed to register global shortcut: {e}");
+                }
             }
 
             #[cfg(target_os = "macos")]
