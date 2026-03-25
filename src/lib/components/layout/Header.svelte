@@ -1,6 +1,6 @@
 <script lang="ts">
   import { Settings, RefreshCw, Power } from '@lucide/svelte';
-  import { invoke } from '@tauri-apps/api/core';
+  import { isTauri } from '$lib/utils/storage';
   import BeaconLogo from '$lib/components/icons/BeaconLogo.svelte';
   import { getIsLoading, refreshNotifications } from '$lib/stores/notifications.svelte';
   import { getIsPRLoading, refreshPullRequests } from '$lib/stores/pull-requests.svelte';
@@ -8,8 +8,9 @@
 
   let {
     onSettingsToggle,
+    onQuit,
     activeView = 'notifications'
-  }: { onSettingsToggle: () => void; activeView?: ViewTab } = $props();
+  }: { onSettingsToggle: () => void; onQuit?: () => void; activeView?: ViewTab } = $props();
 
   let isLoading = $derived(activeView === 'notifications' ? getIsLoading() : getIsPRLoading());
 
@@ -18,6 +19,17 @@
       refreshNotifications();
     } else {
       refreshPullRequests();
+    }
+  }
+
+  async function handleQuit(): Promise<void> {
+    if (onQuit) {
+      onQuit();
+      return;
+    }
+    if (isTauri()) {
+      const { invoke } = await import('@tauri-apps/api/core');
+      await invoke('quit_app');
     }
   }
 </script>
@@ -46,7 +58,7 @@
     </button>
     <button
       type="button"
-      onclick={() => invoke('quit_app')}
+      onclick={handleQuit}
       class="rounded-md p-1.5 text-muted-foreground transition-colors hover:bg-destructive/80 hover:text-white"
       title="Quit Beacon"
     >
