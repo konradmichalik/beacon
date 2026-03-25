@@ -90,7 +90,12 @@
       <SettingsView />
     </div>
   {:else}
-    <Header onSettingsToggle={toggleSettings} {onQuit} {activeView} onTabChange={(tab) => (activeView = tab)} />
+    <Header
+      onSettingsToggle={toggleSettings}
+      {onQuit}
+      {activeView}
+      onTabChange={(tab) => (activeView = tab)}
+    />
     {#if activeView === 'notifications'}
       <FilterBar />
     {:else}

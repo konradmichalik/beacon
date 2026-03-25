@@ -2,8 +2,17 @@
   import { Settings, RefreshCw, Power, Inbox, GitPullRequest } from '@lucide/svelte';
   import { isTauri } from '$lib/utils/storage';
   import BeaconLogo from '$lib/components/icons/BeaconLogo.svelte';
-  import { getIsLoading, refreshNotifications, getFilteredUnreadCount, getLastRefresh } from '$lib/stores/notifications.svelte';
-  import { getIsPRLoading, refreshPullRequests, getPRCount } from '$lib/stores/pull-requests.svelte';
+  import {
+    getIsLoading,
+    refreshNotifications,
+    getFilteredUnreadCount,
+    getLastRefresh
+  } from '$lib/stores/notifications.svelte';
+  import {
+    getIsPRLoading,
+    refreshPullRequests,
+    getPRCount
+  } from '$lib/stores/pull-requests.svelte';
   import type { ViewTab } from '$lib/types';
 
   let {
