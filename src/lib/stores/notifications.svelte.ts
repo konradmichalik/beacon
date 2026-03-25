@@ -304,6 +304,10 @@ export async function refreshNotifications(): Promise<void> {
   if (isLoading) return;
   isLoading = true;
   try {
+    if (isDemoMode()) {
+      loadDemoData();
+      return;
+    }
     await tauriInvoke('trigger_poll');
   } finally {
     isLoading = false;

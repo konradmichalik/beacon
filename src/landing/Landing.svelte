@@ -93,7 +93,7 @@
   <!-- Header -->
   <header class="landing-header">
     <div class="landing-header-inner">
-      <a href="#" class="landing-header-logo">
+      <a href="#top" class="landing-header-logo">
         <BeaconLogo height={26} class="header-logo-svg" />
       </a>
       <div class="landing-header-right">
@@ -171,6 +171,7 @@
               </div>
             {:else}
               <TrayPopup onQuit={() => (demoClosed = true)} />
+              <Toast />
             {/if}
           </div>
         {/if}
@@ -188,7 +189,7 @@
 
     <div class="feature-grid">
       <div class="feature-card">
-        <div class="feature-icon" style="background: rgba(94,129,172,0.12)">
+        <div class="feature-icon" style="background: rgba(94,129,172,0.18)">
           <svg
             width="20"
             height="20"
@@ -209,7 +210,7 @@
       </div>
 
       <div class="feature-card">
-        <div class="feature-icon" style="background: rgba(163,190,140,0.12)">
+        <div class="feature-icon" style="background: rgba(163,190,140,0.18)">
           <svg
             width="20"
             height="20"
@@ -230,7 +231,7 @@
       </div>
 
       <div class="feature-card">
-        <div class="feature-icon" style="background: rgba(208,135,112,0.12)">
+        <div class="feature-icon" style="background: rgba(208,135,112,0.18)">
           <svg
             width="20"
             height="20"
@@ -251,7 +252,7 @@
       </div>
 
       <div class="feature-card">
-        <div class="feature-icon" style="background: rgba(180,142,173,0.12)">
+        <div class="feature-icon" style="background: rgba(180,142,173,0.18)">
           <svg
             width="20"
             height="20"
@@ -269,7 +270,7 @@
       </div>
 
       <div class="feature-card">
-        <div class="feature-icon" style="background: rgba(235,203,139,0.12)">
+        <div class="feature-icon" style="background: rgba(235,203,139,0.18)">
           <svg
             width="20"
             height="20"
@@ -287,7 +288,7 @@
       </div>
 
       <div class="feature-card">
-        <div class="feature-icon" style="background: rgba(136,192,208,0.12)">
+        <div class="feature-icon" style="background: rgba(136,192,208,0.18)">
           <svg
             width="20"
             height="20"
@@ -420,15 +421,18 @@
   <!-- Footer -->
   <footer class="landing-footer">
     <p>
-      Built by <a href="https://github.com/konradmichalik" target="_blank" rel="noopener noreferrer"
-        >Konrad Michalik</a
-      >
-      &middot;
       <a href="https://github.com/konradmichalik/beacon" target="_blank" rel="noopener noreferrer"
-        >Source on GitHub</a
+        >GitHub</a
       >
-      &middot; MIT License
+      <span class="footer-dot">&middot;</span>
+      <a
+        href="https://github.com/konradmichalik/beacon/releases"
+        target="_blank"
+        rel="noopener noreferrer">Releases</a
+      >
+      <span class="footer-dot">&middot;</span>
+      MIT License
     </p>
+    <p class="footer-copy">&copy; {new Date().getFullYear()} Konrad Michalik</p>
   </footer>
 </div>
-<Toast />
