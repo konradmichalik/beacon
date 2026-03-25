@@ -31,3 +31,5 @@ export type {
   EnrichmentState,
   UnifiedPullRequest
 } from './pull-requests';
+
+export type ViewTab = 'notifications' | 'pull-requests';

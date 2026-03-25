@@ -1,7 +1,6 @@
 <script lang="ts">
   import Header from './Header.svelte';
-  import ViewTabs from './ViewTabs.svelte';
-  import type { ViewTab } from './ViewTabs.svelte';
+  import type { ViewTab } from '$lib/types';
   import NotificationList from '../notifications/NotificationList.svelte';
   import FilterBar from '../notifications/FilterBar.svelte';
   import PullRequestList from '../pull-requests/PullRequestList.svelte';
@@ -91,8 +90,12 @@
       <SettingsView />
     </div>
   {:else}
-    <Header onSettingsToggle={toggleSettings} {onQuit} {activeView} />
-    <ViewTabs activeTab={activeView} onTabChange={(tab) => (activeView = tab)} />
+    <Header
+      onSettingsToggle={toggleSettings}
+      {onQuit}
+      {activeView}
+      onTabChange={(tab) => (activeView = tab)}
+    />
     {#if activeView === 'notifications'}
       <FilterBar />
     {:else}
