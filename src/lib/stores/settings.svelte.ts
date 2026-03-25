@@ -1,4 +1,4 @@
-import { getStorageItem, setStorageItem } from '$lib/utils/storage';
+import { getStorageItem, setStorageItem, isTauri } from '$lib/utils/storage';
 
 const STORAGE_KEY = 'settings';
 
@@ -141,6 +141,41 @@ function applyTheme(): void {
   } else {
     document.documentElement.classList.remove('dark');
   }
+}
+
+/**
+ * Listen for settings changes made in a separate window (e.g. the settings window).
+ * Uses the Tauri store's onKeyChange to detect writes from other webviews.
+ */
+export async function listenForExternalSettingsChanges(): Promise<() => void> {
+  if (!isTauri()) return () => {};
+
+  const { Store } = await import('@tauri-apps/plugin-store');
+  const store = await Store.load('settings.json');
+
+  const unlisten = await store.onKeyChange<Settings>(STORAGE_KEY, (updated) => {
+    if (!updated) return;
+
+    const prev = { ...settingsState };
+    Object.assign(settingsState, updated);
+
+    if (updated.theme !== prev.theme) applyTheme();
+    if (updated.pollingInterval !== prev.pollingInterval) onPollingChange?.();
+    if (updated.badgeMode !== prev.badgeMode || updated.dotColor !== prev.dotColor) {
+      onBadgeModeChange?.();
+    }
+    if (updated.notifyMode !== prev.notifyMode || updated.notifySummaryMinutes !== prev.notifySummaryMinutes) {
+      onNotifyChange?.();
+    }
+    if (updated.globalShortcut !== prev.globalShortcut) {
+      onGlobalShortcutChange?.(updated.globalShortcut);
+    }
+    if (updated.debugLog !== prev.debugLog) {
+      onDebugLogChange?.(updated.debugLog);
+    }
+  });
+
+  return unlisten;
 }
 
 // Listen for system theme changes

@@ -9,7 +9,8 @@
     setPollingChangeCallback,
     setBadgeModeChangeCallback,
     setGlobalShortcutChangeCallback,
-    setDebugLogChangeCallback
+    setDebugLogChangeCallback,
+    listenForExternalSettingsChanges
   } from './lib/stores/settings.svelte';
   import { initializeMuteRules } from './lib/stores/mute-rules.svelte';
   import { loadStarredPRs } from './lib/stores/starred-prs.svelte';
@@ -40,6 +41,7 @@
 
   onMount(() => {
     let unlistenNotifications: (() => void) | undefined;
+    let unlistenSettings: (() => void) | undefined;
 
     async function initialize(): Promise<void> {
       try {
@@ -72,6 +74,7 @@
           restartPRPolling();
         });
         setBadgeModeChangeCallback(refreshBadge);
+        unlistenSettings = await listenForExternalSettingsChanges();
         setDebugLogChangeCallback((enabled) => {
           if (enabled) {
             startConsoleCapture();
@@ -109,6 +112,7 @@
       stopPolling();
       stopPRPolling();
       unlistenNotifications?.();
+      unlistenSettings?.();
     };
   });
 </script>
