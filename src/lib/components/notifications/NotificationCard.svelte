@@ -63,8 +63,16 @@
   const defaultBadge = 'bg-secondary text-muted-foreground';
   const typeConfig: Record<string, { short: string; full: string; badge?: string }> = {
     issue: { short: 'Issue', full: 'Issue', badge: 'bg-success-text/10 text-success-text' },
-    pull_request: { short: 'PR', full: 'Pull Request', badge: 'bg-accent-foreground/10 text-accent-foreground' },
-    merge_request: { short: 'MR', full: 'Merge Request', badge: 'bg-accent-foreground/10 text-accent-foreground' },
+    pull_request: {
+      short: 'PR',
+      full: 'Pull Request',
+      badge: 'bg-accent-foreground/10 text-accent-foreground'
+    },
+    merge_request: {
+      short: 'MR',
+      full: 'Merge Request',
+      badge: 'bg-accent-foreground/10 text-accent-foreground'
+    },
     review: { short: 'Review', full: 'Review', badge: 'bg-discovery/10 text-discovery' },
     pipeline: { short: 'Pipeline', full: 'Pipeline' },
     release: { short: 'Release', full: 'Release' },
