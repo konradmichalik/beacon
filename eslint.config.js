@@ -35,6 +35,6 @@ export default ts.config(
     }
   },
   {
-    ignores: ['dist/', 'src-tauri/', 'node_modules/', '.svelte-kit/']
+    ignores: ['dist/', 'dist-pages/', 'src-tauri/', 'node_modules/', '.svelte-kit/']
   }
 );
