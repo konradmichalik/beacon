@@ -61,14 +61,14 @@
   <div class="flex items-center">
     <BeaconLogo height={18} class="text-foreground" />
   </div>
-  <div class="absolute inset-x-0 bottom-0 flex justify-center gap-1">
+  <div class="pointer-events-none absolute inset-x-0 bottom-0 flex justify-center gap-1">
     {#each tabs as tab (tab.id)}
       {@const TabIcon = tab.icon}
       {@const count = tab.getCount()}
       <button
         type="button"
         onclick={() => onTabChange(tab.id)}
-        class="flex items-center gap-1.5 rounded-t-md px-2.5 py-1 text-[11px] font-medium transition-colors
+        class="pointer-events-auto flex items-center gap-1.5 rounded-t-md px-2.5 py-1 text-[11px] font-medium transition-colors
           {activeView === tab.id
           ? 'bg-accent text-foreground shadow-sm'
           : 'text-muted-foreground hover:bg-secondary hover:text-foreground'}"
