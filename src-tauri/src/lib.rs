@@ -2,6 +2,42 @@ pub mod debug_log;
 mod polling;
 mod tray;
 
+/// Custom NSPanel subclass that accepts keyboard input and suppresses NSBeep.
+///
+/// The default NSPanel requires a title bar or resize bar to become key window.
+/// Our tray popup has neither, so we override `canBecomeKeyWindow` to return true.
+/// `noResponderFor:` is overridden to suppress the system beep for unhandled keys.
+#[cfg(target_os = "macos")]
+mod panel {
+    use objc2::define_class;
+    use objc2::runtime::NSObjectProtocol;
+    use objc2_app_kit::NSPanel;
+
+    pub struct BeaconPanelIvars;
+
+    define_class!(
+        #[unsafe(super = NSPanel)]
+        #[name = "BeaconPanel"]
+        #[ivars = BeaconPanelIvars]
+
+        pub struct BeaconPanel;
+
+        unsafe impl NSObjectProtocol for BeaconPanel {}
+
+        impl BeaconPanel {
+            #[unsafe(method(canBecomeKeyWindow))]
+            fn can_become_key_window(&self) -> bool {
+                true
+            }
+
+            #[unsafe(method(noResponderFor:))]
+            fn no_responder_for(&self, _selector: objc2::runtime::Sel) {
+                // Intentionally empty — prevents NSBeep() for unhandled key events
+            }
+        }
+    );
+}
+
 const TRAY_ICON_BYTES: &[u8] = include_bytes!("../icons/beacon-tray.png");
 
 /// Create a white tray icon with an optional colored dot overlay.
@@ -93,7 +129,7 @@ pub(crate) fn update_tray_icon(
                 _ => [94u8, 129, 172], // blue (default)
             };
 
-            let with_dot = mode == "dot" && count > 0;
+            let with_dot = dot_color != "none" && count > 0;
             let title = if mode == "count" && count > 0 {
                 count.to_string()
             } else {
@@ -303,10 +339,13 @@ pub fn run() {
 
                     if let Ok(ns_window) = window.ns_window() {
                         unsafe {
-                            // Swap the ObjC class from NSWindow to NSPanel at runtime
+                            // Swap the ObjC class from NSWindow to BeaconPanel at runtime.
+                            // BeaconPanel overrides canBecomeKeyWindow (→ true) and
+                            // noResponderFor: (→ no-op) to enable keyboard input and
+                            // suppress NSBeep for unhandled keys.
                             let obj = &*(ns_window as *const AnyObject);
-                            let panel_class =
-                                AnyClass::get(c"NSPanel").expect("NSPanel class not found");
+                            use objc2::ClassType;
+                            let panel_class = panel::BeaconPanel::class();
                             AnyObject::set_class(obj, panel_class);
 
                             let panel = &*(ns_window as *const NSPanel);
@@ -314,6 +353,11 @@ pub fn run() {
                             let mut mask = panel.styleMask();
                             mask |= NSWindowStyleMask::NonactivatingPanel;
                             panel.setStyleMask(mask);
+
+                            // Resynchronize the prevents-activation state with WindowServer.
+                            // macOS fails to call this when the style mask changes post-init,
+                            // causing key events to be dropped (FB16484811).
+                            let _: () = objc2::msg_send![panel, _setPreventsActivation: true];
 
                             panel.setFloatingPanel(true);
                             panel.setBecomesKeyOnlyIfNeeded(false);

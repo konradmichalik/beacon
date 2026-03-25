@@ -2,9 +2,9 @@ import { getStorageItem, setStorageItem } from '$lib/utils/storage';
 
 const STORAGE_KEY = 'settings';
 
-export type BadgeMode = 'count' | 'dot';
+export type BadgeMode = 'count' | 'hidden';
 export type NotifyMode = 'disabled' | 'instant' | 'summary';
-export type DotColor = 'blue' | 'red';
+export type DotColor = 'none' | 'blue' | 'red';
 export const NOTIFY_SOUNDS = [
   'none',
   'bell',
