@@ -90,13 +90,13 @@
   }
 
   const btnBase = 'flex items-center gap-1 px-2.5 py-1 text-[11px] font-medium transition-colors';
-  const btnActive = 'bg-foreground text-background';
+  const btnActive = 'bg-primary text-primary-foreground';
   const btnInactive = 'text-muted-foreground hover:bg-secondary/60 hover:text-foreground';
 
   let initialLoading = $derived(getIsPRLoading() && totalCount === 0);
 
   const badgeBase = 'ml-0.5 rounded-full px-1 py-px text-[9px] font-semibold leading-tight';
-  const badgeActive = 'bg-background/20 text-background';
+  const badgeActive = 'bg-primary-foreground/20 text-primary-foreground';
   const badgeInactive = 'bg-secondary text-muted-foreground';
 
   const roleOptions: { value: PRRoleFilter; label: string }[] = [

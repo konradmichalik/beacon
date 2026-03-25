@@ -84,7 +84,7 @@
       <div>
         {#each projectGroups as group (group.source + ':' + group.repository)}
           <div
-            class="sticky top-0 z-10 flex items-center gap-1.5 border-b border-border bg-card/95 px-4 py-1.5 backdrop-blur-sm"
+            class="sticky top-0 z-10 flex items-center gap-1.5 border-b border-border bg-background/95 px-4 py-1.5 backdrop-blur-sm"
           >
             {#if group.source === 'github'}
               <GitHubIcon size={12} class="text-muted-foreground" />

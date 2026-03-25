@@ -34,7 +34,7 @@
   }
 </script>
 
-<header class="flex items-center justify-between px-4 pt-2">
+<header class="flex items-center justify-between border-b border-border px-4 py-2">
   <div class="flex items-center">
     <BeaconLogo height={18} class="text-foreground" />
   </div>

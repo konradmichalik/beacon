@@ -69,7 +69,7 @@
       if (pullRequest.reviewedByMe) {
         return { label: 'Reviewed', class: 'text-success-text', icon: CircleCheckBig };
       }
-      return { label: 'Pending your review', class: 'text-muted-foreground', icon: Eye };
+      return { label: 'Pending your review', class: 'text-warning', icon: Eye };
     }
     switch (pullRequest.reviewDecision) {
       case 'approved':
@@ -77,7 +77,7 @@
       case 'changes_requested':
         return { label: 'Changes', class: 'text-warning', icon: PenLine };
       case 'review_required':
-        return { label: 'Review needed', class: 'text-muted-foreground', icon: Eye };
+        return { label: 'Review needed', class: 'text-warning', icon: Eye };
       default:
         return null;
     }
@@ -116,7 +116,7 @@
     type="button"
     onclick={openUrl}
     oncontextmenu={handleContextMenu}
-    class="group relative flex w-full items-start gap-3 px-4 py-3 text-left transition-all duration-200 ease-in-out hover:bg-secondary/40"
+    class="group relative flex w-full items-start gap-3 px-4 py-3 text-left transition-all duration-200 ease-in-out hover:bg-surface-hovered"
   >
     <!-- Avatar -->
     <div class="group/avatar relative mt-0.5 flex-shrink-0">
@@ -174,7 +174,7 @@
       <!-- Row 3: PR number + CI + Review + Draft + Time -->
       <div class="mt-1 flex items-center gap-1.5">
         <span
-          class="shrink-0 rounded bg-secondary px-1.5 py-0.5 text-[10px] font-medium text-muted-foreground"
+          class="shrink-0 rounded bg-accent-foreground/10 px-1.5 py-0.5 text-[10px] font-medium text-accent-foreground"
         >
           #{pullRequest.number}
         </span>
