@@ -79,6 +79,7 @@ export async function initializeSettings(): Promise<void> {
     Object.assign(settingsState, stored);
   }
   // Allow URL param override (used by landing page demo)
+  // eslint-disable-next-line svelte/prefer-svelte-reactivity -- one-shot URL check, not reactive state
   const themeParam = new URLSearchParams(window.location.search).get('theme');
   if (themeParam === 'dark' || themeParam === 'light') {
     settingsState.theme = themeParam;

@@ -36,6 +36,7 @@ export function getGitLabConfig(): GitLabConnectionConfig | null {
 declare const __DEMO_MODE__: boolean;
 
 export function hasAnyServiceConfigured(): boolean {
+  // eslint-disable-next-line svelte/prefer-svelte-reactivity -- one-shot URL check, not reactive state
   if (__DEMO_MODE__ || new URLSearchParams(window.location.search).has('demo')) return true;
   return (
     connectionsState.github.status === 'connected' || connectionsState.gitlab.status === 'connected'
@@ -43,6 +44,7 @@ export function hasAnyServiceConfigured(): boolean {
 }
 
 export function isServiceConnected(service: ServiceId): boolean {
+  // eslint-disable-next-line svelte/prefer-svelte-reactivity -- one-shot URL check, not reactive state
   if (__DEMO_MODE__ || new URLSearchParams(window.location.search).has('demo')) return true;
   return connectionsState[service].status === 'connected';
 }
