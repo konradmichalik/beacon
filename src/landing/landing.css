@@ -198,8 +198,8 @@ body {
   position: absolute !important;
 }
 
-/* Contain fixed-position elements (toasts, overlays) within the demo frame */
-.demo-frame .fixed {
+/* Contain toast within the demo frame */
+.demo-frame > .fixed {
   position: absolute !important;
 }
 
