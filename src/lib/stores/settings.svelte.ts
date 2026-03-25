@@ -78,6 +78,11 @@ export async function initializeSettings(): Promise<void> {
   if (stored) {
     Object.assign(settingsState, stored);
   }
+  // Allow URL param override (used by landing page demo)
+  const themeParam = new URLSearchParams(window.location.search).get('theme');
+  if (themeParam === 'dark' || themeParam === 'light') {
+    settingsState.theme = themeParam;
+  }
   applyTheme();
 }
 

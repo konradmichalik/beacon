@@ -33,13 +33,17 @@ export function getGitLabConfig(): GitLabConnectionConfig | null {
   return gitlabConfig;
 }
 
+declare const __DEMO_MODE__: boolean;
+
 export function hasAnyServiceConfigured(): boolean {
+  if (__DEMO_MODE__ || new URLSearchParams(window.location.search).has('demo')) return true;
   return (
     connectionsState.github.status === 'connected' || connectionsState.gitlab.status === 'connected'
   );
 }
 
 export function isServiceConnected(service: ServiceId): boolean {
+  if (__DEMO_MODE__ || new URLSearchParams(window.location.search).has('demo')) return true;
   return connectionsState[service].status === 'connected';
 }
 
