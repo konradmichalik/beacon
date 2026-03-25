@@ -35,6 +35,7 @@ interface Settings {
   notifySummaryMinutes: number; // summary interval in minutes
   notifySound: NotifySound;
   enrichPullRequests: boolean;
+  globalShortcut: boolean;
   debugLog: boolean;
 }
 
@@ -47,6 +48,7 @@ const defaultSettings: Settings = {
   notifySummaryMinutes: 15,
   notifySound: 'none',
   enrichPullRequests: true,
+  globalShortcut: true,
   debugLog: false
 };
 
@@ -55,6 +57,7 @@ export const settingsState: Settings = $state({ ...defaultSettings });
 let onPollingChange: (() => void) | null = null;
 let onBadgeModeChange: (() => void) | null = null;
 let onNotifyChange: (() => void) | null = null;
+let onGlobalShortcutChange: ((enabled: boolean) => void) | null = null;
 let onDebugLogChange: ((enabled: boolean) => void) | null = null;
 
 export function setPollingChangeCallback(callback: () => void): void {
@@ -67,6 +70,10 @@ export function setBadgeModeChangeCallback(callback: () => void): void {
 
 export function setNotifyChangeCallback(callback: () => void): void {
   onNotifyChange = callback;
+}
+
+export function setGlobalShortcutChangeCallback(callback: (enabled: boolean) => void): void {
+  onGlobalShortcutChange = callback;
 }
 
 export function setDebugLogChangeCallback(callback: (enabled: boolean) => void): void {
@@ -108,6 +115,9 @@ export async function updateSettings(updates: Partial<Settings>): Promise<void> 
     onNotifyChange
   ) {
     onNotifyChange();
+  }
+  if (updates.globalShortcut !== undefined && onGlobalShortcutChange) {
+    onGlobalShortcutChange(updates.globalShortcut);
   }
   if (updates.debugLog !== undefined && onDebugLogChange) {
     onDebugLogChange(updates.debugLog);

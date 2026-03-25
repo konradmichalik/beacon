@@ -8,6 +8,7 @@
     initializeSettings,
     setPollingChangeCallback,
     setBadgeModeChangeCallback,
+    setGlobalShortcutChangeCallback,
     setDebugLogChangeCallback
   } from './lib/stores/settings.svelte';
   import { initializeMuteRules } from './lib/stores/mute-rules.svelte';
@@ -55,6 +56,16 @@
           await initializeConnections();
           return;
         }
+
+        const { invoke } = await import('@tauri-apps/api/core');
+
+        // If user disabled the global shortcut, unregister it (Rust registers by default)
+        if (!settingsState.globalShortcut) {
+          await invoke('unregister_global_shortcut');
+        }
+        setGlobalShortcutChangeCallback(async (enabled) => {
+          await invoke(enabled ? 'register_global_shortcut' : 'unregister_global_shortcut');
+        });
 
         setPollingChangeCallback(() => {
           restartPolling();

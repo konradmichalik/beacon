@@ -169,9 +169,7 @@
 
       <!-- Refresh Interval -->
       <section>
-        <h4 class="mb-3 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-          Refresh Interval
-        </h4>
+        <h4 class="mb-2 text-xs font-medium text-foreground">Refresh Interval</h4>
         <div class="flex gap-1.5">
           {#each intervalOptions as option (option.value)}
             <button
@@ -191,9 +189,7 @@
 
       <!-- Menubar Icon -->
       <section>
-        <h4 class="mb-3 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-          Menubar Icon
-        </h4>
+        <h4 class="mb-2 text-xs font-medium text-foreground">Menubar Icon</h4>
         <div class="flex gap-1.5">
           {#each badgeOptions as option (option.value)}
             {@const Icon = option.icon}
@@ -245,9 +241,7 @@
 
       <!-- Theme -->
       <section>
-        <h4 class="mb-3 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-          Theme
-        </h4>
+        <h4 class="mb-2 text-xs font-medium text-foreground">Theme</h4>
         <div class="flex gap-1.5">
           {#each themeOptions as option (option.value)}
             {@const Icon = option.icon}
@@ -266,6 +260,45 @@
           {/each}
         </div>
       </section>
+
+      <section>
+        <label class="flex cursor-pointer items-center justify-between gap-3">
+          <div>
+            <span class="text-xs font-medium text-foreground">Global Shortcut</span>
+            <p class="text-[10px] text-muted-foreground">
+              Toggle Beacon with
+              <kbd
+                class="rounded border border-border bg-secondary px-1 py-0.5 font-mono text-[9px]"
+                >&#8984;</kbd
+              >
+              <kbd
+                class="rounded border border-border bg-secondary px-1 py-0.5 font-mono text-[9px]"
+                >&#8679;</kbd
+              >
+              <kbd
+                class="rounded border border-border bg-secondary px-1 py-0.5 font-mono text-[9px]"
+                >B</kbd
+              >
+            </p>
+          </div>
+          <button
+            type="button"
+            role="switch"
+            aria-label="Toggle global keyboard shortcut"
+            aria-checked={settingsState.globalShortcut}
+            onclick={() => updateSettings({ globalShortcut: !settingsState.globalShortcut })}
+            class="relative inline-flex h-5 w-9 shrink-0 items-center rounded-full transition-colors {settingsState.globalShortcut
+              ? 'bg-primary'
+              : 'bg-secondary'}"
+          >
+            <span
+              class="inline-block h-3.5 w-3.5 rounded-full bg-white shadow-sm transition-transform {settingsState.globalShortcut
+                ? 'translate-x-4'
+                : 'translate-x-0.5'}"
+            ></span>
+          </button>
+        </label>
+      </section>
     </div>
 
     <hr class="border-border" />
@@ -277,9 +310,7 @@
       </h3>
 
       <section>
-        <h4 class="mb-1 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-          Mute Rules
-        </h4>
+        <h4 class="mb-2 text-xs font-medium text-foreground">Mute Rules</h4>
         <p class="mb-2 text-[10px] text-muted-foreground">
           Notifications matching these rules are hidden from your inbox. Add rules via right-click
           on a notification.
