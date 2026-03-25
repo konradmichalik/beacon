@@ -224,6 +224,28 @@ async fn open_settings_window(app: tauri::AppHandle) -> Result<(), String> {
     Ok(())
 }
 
+const GLOBAL_SHORTCUT: &str = "CmdOrCtrl+Shift+B";
+
+#[tauri::command]
+fn register_global_shortcut(app: tauri::AppHandle) -> Result<(), String> {
+    use tauri_plugin_global_shortcut::GlobalShortcutExt;
+    let shortcut: tauri_plugin_global_shortcut::Shortcut =
+        GLOBAL_SHORTCUT.parse().map_err(|e| format!("{e:?}"))?;
+    app.global_shortcut()
+        .register(shortcut)
+        .map_err(|e| e.to_string())
+}
+
+#[tauri::command]
+fn unregister_global_shortcut(app: tauri::AppHandle) -> Result<(), String> {
+    use tauri_plugin_global_shortcut::GlobalShortcutExt;
+    let shortcut: tauri_plugin_global_shortcut::Shortcut =
+        GLOBAL_SHORTCUT.parse().map_err(|e| format!("{e:?}"))?;
+    app.global_shortcut()
+        .unregister(shortcut)
+        .map_err(|e| e.to_string())
+}
+
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     tauri::Builder::default()
@@ -231,11 +253,28 @@ pub fn run() {
         .plugin(tauri_plugin_shell::init())
         .plugin(tauri_plugin_http::init())
         .plugin(tauri_plugin_notification::init())
+        .plugin(
+            tauri_plugin_global_shortcut::Builder::new()
+                .with_handler(|app, _shortcut, event| {
+                    if event.state == tauri_plugin_global_shortcut::ShortcutState::Pressed {
+                        tray::toggle_main_window(app);
+                    }
+                })
+                .build(),
+        )
         .setup(|app| {
             use tauri::Manager;
             debug_log::init(app);
             app.manage(std::sync::Arc::new(polling::Poller::new()));
             tray::create_tray(app)?;
+
+            // Register global shortcut (CmdOrCtrl+Shift+B) to toggle the main window
+            {
+                use tauri_plugin_global_shortcut::GlobalShortcutExt;
+                let shortcut: tauri_plugin_global_shortcut::Shortcut =
+                    GLOBAL_SHORTCUT.parse().expect("invalid shortcut");
+                let _ = app.global_shortcut().register(shortcut);
+            }
 
             #[cfg(target_os = "macos")]
             {
@@ -329,19 +368,7 @@ pub fn run() {
                     let activation_block = {
                         let app_handle = app.handle().clone();
                         block2::RcBlock::new(move |_: std::ptr::NonNull<AnyObject>| {
-                            if let Some(w) = app_handle.get_webview_window("main") {
-                                tray::position_window_at_tray(&w);
-                                let _ = w.show();
-                                let _ = w.set_focus();
-
-                                if let Ok(ns_window) = w.ns_window() {
-                                    unsafe {
-                                        let panel = &*(ns_window as *const NSPanel);
-                                        panel.setFloatingPanel(true);
-                                        panel.setLevel(NSPopUpMenuWindowLevel);
-                                    }
-                                }
-                            }
+                            tray::show_main_window(&app_handle);
                         })
                     };
                     unsafe {
@@ -371,6 +398,8 @@ pub fn run() {
             play_sound,
             quit_app,
             open_settings_window,
+            register_global_shortcut,
+            unregister_global_shortcut,
             polling::start_polling,
             polling::stop_polling,
             polling::trigger_poll,
