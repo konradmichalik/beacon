@@ -93,7 +93,7 @@
   <!-- Header -->
   <header class="landing-header">
     <div class="landing-header-inner">
-      <a href="#" class="landing-header-logo">
+      <a href="#top" class="landing-header-logo">
         <BeaconLogo height={26} class="header-logo-svg" />
       </a>
       <div class="landing-header-right">
@@ -425,8 +425,10 @@
         >GitHub</a
       >
       <span class="footer-dot">&middot;</span>
-      <a href="https://github.com/konradmichalik/beacon/releases" target="_blank" rel="noopener noreferrer"
-        >Releases</a
+      <a
+        href="https://github.com/konradmichalik/beacon/releases"
+        target="_blank"
+        rel="noopener noreferrer">Releases</a
       >
       <span class="footer-dot">&middot;</span>
       MIT License
