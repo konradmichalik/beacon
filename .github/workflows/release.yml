@@ -100,12 +100,22 @@ jobs:
           SHA_ARM=$(shasum -a 256 /tmp/dmg/*_aarch64.dmg | awk '{print $1}')
           SHA_INTEL=$(shasum -a 256 /tmp/dmg/*_x64.dmg | awk '{print $1}')
 
-          APP_VERSION=$(cat package.json | python3 -c "import sys,json; print(json.load(sys.stdin)['version'])")
+          APP_VERSION=$(python3 -c "import json; print(json.load(open('package.json'))['version'])")
 
-          echo "SHA_ARM=${SHA_ARM}" >> "$GITHUB_ENV"
-          echo "SHA_INTEL=${SHA_INTEL}" >> "$GITHUB_ENV"
-          echo "APP_VERSION=${APP_VERSION}" >> "$GITHUB_ENV"
-          echo "TAG=${TAG}" >> "$GITHUB_ENV"
+          {
+            echo "SHA_ARM<<EOF"
+            echo "$SHA_ARM"
+            echo "EOF"
+            echo "SHA_INTEL<<EOF"
+            echo "$SHA_INTEL"
+            echo "EOF"
+            echo "APP_VERSION<<EOF"
+            echo "$APP_VERSION"
+            echo "EOF"
+            echo "TAG<<EOF"
+            echo "$TAG"
+            echo "EOF"
+          } >> "$GITHUB_ENV"
 
       - name: Trigger Homebrew tap update
         env:
