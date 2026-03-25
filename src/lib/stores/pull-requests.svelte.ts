@@ -9,6 +9,7 @@ import { isServiceConnected, getGitHubConfig, getGitLabConfig } from './connecti
 import { fetchGitHubPullRequestsBasic, enrichGitHubPR } from '$lib/services/github/pull-requests';
 import { fetchGitLabMergeRequestsBasic, enrichGitLabMR } from '$lib/services/gitlab/pull-requests';
 import { settingsState } from './settings.svelte';
+import { isDemoMode } from './notifications.svelte';
 import { demoPullRequests } from '$lib/utils/demo-data-prs';
 
 let pullRequests: UnifiedPullRequest[] = $state([]);
@@ -134,15 +135,9 @@ async function enrichAllPRs(
   }
 }
 
-declare const __DEMO_MODE__: boolean;
-
-function isDemoPRMode(): boolean {
-  return __DEMO_MODE__ || new URLSearchParams(window.location.search).has('demo');
-}
-
 export async function refreshPullRequests(): Promise<void> {
   if (isLoading) return;
-  if (isDemoPRMode()) {
+  if (isDemoMode()) {
     loadDemoPRs();
     return;
   }
