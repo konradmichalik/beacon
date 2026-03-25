@@ -16,7 +16,9 @@
     "tauri:dev": "tauri dev",
     "tauri:build": "tauri build",
     "test": "vitest run",
-    "test:watch": "vitest"
+    "test:watch": "vitest",
+    "build:pages": "vite build --config vite.landing.config.ts --base /beacon/",
+    "preview:pages": "vite build --config vite.landing.config.ts --base ./ && vite preview --outDir dist-pages"
   },
   "devDependencies": {
     "@eslint/js": "^10.0.1",

@@ -8,7 +8,8 @@
   import PRFilterBar from '../pull-requests/PRFilterBar.svelte';
   import SettingsView from '../settings/SettingsView.svelte';
   import { hasAnyServiceConfigured } from '$lib/stores/connections.svelte';
-  import { startPolling, markAllSeen } from '$lib/stores/notifications.svelte';
+  import { startPolling, markAllSeen, isDemoMode } from '$lib/stores/notifications.svelte';
+  import { showToast } from '$lib/stores/toast.svelte';
   import { refreshPullRequests } from '$lib/stores/pull-requests.svelte';
   import { ArrowLeft, ArrowUp } from '@lucide/svelte';
   import { onMount, untrack } from 'svelte';
@@ -16,8 +17,10 @@
   import type { PRSortMode } from '$lib/stores/pull-requests.svelte';
   import { SvelteSet } from 'svelte/reactivity';
 
-  let { initialTab = 'notifications' as const }: { initialTab?: 'notifications' | 'settings' } =
-    $props();
+  let {
+    initialTab = 'notifications' as const,
+    onQuit
+  }: { initialTab?: 'notifications' | 'settings'; onQuit?: () => void } = $props();
   let showSettings = $state(untrack(() => initialTab === 'settings'));
   let scrollEl: HTMLDivElement | undefined = $state();
   let showScrollTop = $state(false);
@@ -31,6 +34,10 @@
   let prProjectsFilter: SvelteSet<string> = $state(new SvelteSet());
 
   async function toggleSettings(): Promise<void> {
+    if (isDemoMode()) {
+      showToast('Settings are disabled in demo mode');
+      return;
+    }
     const { isTauri } = await import('$lib/utils/storage');
     if (isTauri()) {
       const { invoke } = await import('@tauri-apps/api/core');
@@ -84,7 +91,7 @@
       <SettingsView />
     </div>
   {:else}
-    <Header onSettingsToggle={toggleSettings} {activeView} />
+    <Header onSettingsToggle={toggleSettings} {onQuit} {activeView} />
     <ViewTabs activeTab={activeView} onTabChange={(tab) => (activeView = tab)} />
     {#if activeView === 'notifications'}
       <FilterBar />
