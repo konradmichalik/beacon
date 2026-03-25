@@ -3,7 +3,8 @@
 </p>
 
 <p align="center">
-  A lightweight macOS menu bar app that brings GitHub and GitLab notifications into one place.
+  A lightweight macOS menu bar app that brings GitHub and GitLab notifications into one place.<br>
+  Learn more at <a href="https://konradmichalik.github.io/beacon/">konradmichalik.github.io/beacon</a>
 </p>
 
 <p align="center">
