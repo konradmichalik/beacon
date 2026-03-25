@@ -152,10 +152,10 @@
     }
   }
 
-  function handleClick(event: MouseEvent): void {
+  function handleClick(event?: MouseEvent): void {
     if (dismissing) return;
     openUrl();
-    if (notification.unread && !event.altKey) {
+    if (notification.unread && !event?.altKey) {
       dismissing = true;
       setTimeout(() => markAsRead(notification.id), 350);
     }
