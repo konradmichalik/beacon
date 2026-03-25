@@ -30,10 +30,14 @@
     updateSettings({ theme: mode });
   }
 
-  function copyCommand(cmd: string): void {
-    navigator.clipboard.writeText(cmd);
-    copiedCommand = cmd;
-    setTimeout(() => (copiedCommand = null), 2000);
+  async function copyCommand(cmd: string): Promise<void> {
+    try {
+      await navigator.clipboard.writeText(cmd);
+      copiedCommand = cmd;
+      setTimeout(() => (copiedCommand = null), 2000);
+    } catch {
+      // Clipboard access denied or unavailable
+    }
   }
 
   let installTab: 'homebrew' | 'dmg' = $state('homebrew');
@@ -42,9 +46,15 @@
     async function initialize(): Promise<void> {
       try {
         await initializeSettings();
-        const mode = isDark ? 'dark' : 'light';
-        settingsState.theme = mode;
-        document.documentElement.setAttribute('data-color-mode', mode);
+        // Sync local state from loaded/overridden settings
+        const resolved =
+          settingsState.theme === 'system'
+            ? window.matchMedia('(prefers-color-scheme: dark)').matches
+              ? 'dark'
+              : 'light'
+            : settingsState.theme;
+        isDark = resolved === 'dark';
+        document.documentElement.setAttribute('data-color-mode', resolved);
         document.documentElement.classList.toggle('dark', isDark);
 
         await initializeMuteRules();
