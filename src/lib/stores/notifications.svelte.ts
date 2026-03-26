@@ -160,6 +160,36 @@ export function getUniqueTypes(): readonly NotificationType[] {
   return [...new Set(notifications.map((n) => n.type))].sort();
 }
 
+export function getUnreadCountByType(
+  sourceFilter: NotificationSource | 'all'
+): ReadonlyMap<NotificationType, number> {
+  let filtered = notifications.filter((n) => n.unread && !isNotificationMuted(n));
+  if (sourceFilter !== 'all') {
+    filtered = filtered.filter((n) => n.source === sourceFilter);
+  }
+  // eslint-disable-next-line svelte/prefer-svelte-reactivity -- local counting map, not state
+  const counts = new Map<NotificationType, number>();
+  for (const n of filtered) {
+    counts.set(n.type, (counts.get(n.type) ?? 0) + 1);
+  }
+  return counts;
+}
+
+export function getUnreadCountByProject(
+  sourceFilter: NotificationSource | 'all'
+): ReadonlyMap<string, number> {
+  let filtered = notifications.filter((n) => n.unread && !isNotificationMuted(n));
+  if (sourceFilter !== 'all') {
+    filtered = filtered.filter((n) => n.source === sourceFilter);
+  }
+  // eslint-disable-next-line svelte/prefer-svelte-reactivity -- local counting map, not state
+  const counts = new Map<string, number>();
+  for (const n of filtered) {
+    counts.set(n.repository, (counts.get(n.repository) ?? 0) + 1);
+  }
+  return counts;
+}
+
 export function getGroupedNotifications(
   sourceFilter: NotificationSource | 'all',
   projectFilter: string | null
