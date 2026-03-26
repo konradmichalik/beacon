@@ -370,6 +370,33 @@
       <section>
         <label class="flex cursor-pointer items-center justify-between gap-3">
           <div>
+            <span class="text-xs font-medium text-foreground">Group by role</span>
+            <p class="text-[10px] text-muted-foreground">
+              Separate PRs into "Created by me", "To review" and "Reviewed" sections.
+            </p>
+          </div>
+          <button
+            type="button"
+            role="switch"
+            aria-label="Toggle PR grouping by role"
+            aria-checked={settingsState.groupPullRequests}
+            onclick={() => updateSettings({ groupPullRequests: !settingsState.groupPullRequests })}
+            class="relative inline-flex h-5 w-9 shrink-0 items-center rounded-full transition-colors {settingsState.groupPullRequests
+              ? 'bg-primary'
+              : 'bg-secondary'}"
+          >
+            <span
+              class="inline-block h-3.5 w-3.5 rounded-full bg-white shadow-sm transition-transform {settingsState.groupPullRequests
+                ? 'translate-x-4'
+                : 'translate-x-0.5'}"
+            ></span>
+          </button>
+        </label>
+      </section>
+
+      <section>
+        <label class="flex cursor-pointer items-center justify-between gap-3">
+          <div>
             <span class="text-xs font-medium text-foreground">Fetch CI & review status</span>
             <p class="text-[10px] text-muted-foreground">
               Fetches pipeline status and review decisions per PR. Disable for faster loading with
@@ -639,7 +666,7 @@
           GitHub
         </a>
         <a
-          href="https://github.com/konradmichalik/beacon#readme"
+          href="https://konradmichalik.github.io/beacon/"
           target="_blank"
           rel="noopener noreferrer"
           class="inline-flex items-center gap-1.5 rounded-lg border border-border bg-card px-3 py-1.5 text-xs font-medium text-foreground hover:bg-accent transition-colors"

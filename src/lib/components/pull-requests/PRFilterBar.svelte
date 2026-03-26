@@ -193,9 +193,9 @@
     </button>
 
     {#if filterOpen}
-      <!-- svelte-ignore a11y_no_static_element_interactions a11y_click_events_have_key_events -->
       <div
         class="fixed inset-0 z-40 flex items-center justify-center backdrop-blur-[2px]"
+        role="presentation"
         onclick={(e) => {
           if (e.target === e.currentTarget) filterOpen = false;
         }}
