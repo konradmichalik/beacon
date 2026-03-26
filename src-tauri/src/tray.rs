@@ -47,7 +47,7 @@ fn show_and_focus(window: &tauri::WebviewWindow) {
                 if let Some(content) = panel.contentView() {
                     use objc2::runtime::AnyObject;
                     let subviews = content.subviews();
-                    let target: &AnyObject = if subviews.len() > 0 {
+                    let target: &AnyObject = if !subviews.is_empty() {
                         let first: *const AnyObject =
                             objc2::msg_send![&*subviews, objectAtIndex: 0usize];
                         &*first
