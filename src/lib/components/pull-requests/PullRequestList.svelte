@@ -8,6 +8,7 @@
   import { Inbox, ChevronRight, Star, GitPullRequest, Eye, CircleCheckBig } from '@lucide/svelte';
   import type { NotificationSource, PRRoleFilter, PRDraftFilter, PRCIFilter } from '$lib/types';
   import { getStarredIds } from '$lib/stores/starred-prs.svelte';
+  import { settingsState } from '$lib/stores/settings.svelte';
   import { roving } from '$lib/actions/roving';
 
   let {
@@ -143,43 +144,49 @@
       {/if}
     {/if}
 
-    {#if authored.length > 0}
-      {@render sectionHeader('Created by me', authored.length, 'authored', GitPullRequest)}
-      {#if !collapsed.authored}
-        <div use:roving>
-          {#each authored as pr (pr.id)}
-            <PullRequestCard pullRequest={pr} />
-          {/each}
-        </div>
+    {#if settingsState.groupPullRequests}
+      {#if authored.length > 0}
+        {@render sectionHeader('Created by me', authored.length, 'authored', GitPullRequest)}
+        {#if !collapsed.authored}
+          <div use:roving>
+            {#each authored as pr (pr.id)}
+              <PullRequestCard pullRequest={pr} />
+            {/each}
+          </div>
+        {/if}
       {/if}
-    {/if}
 
-    {#if toReview.length > 0}
-      {@render sectionHeader('To review', toReview.length, 'toReview', Eye)}
-      {#if !collapsed.toReview}
-        <div use:roving>
-          {#each toReview as pr (pr.id)}
-            <PullRequestCard pullRequest={pr} />
-          {/each}
-        </div>
+      {#if toReview.length > 0}
+        {@render sectionHeader('To review', toReview.length, 'toReview', Eye)}
+        {#if !collapsed.toReview}
+          <div use:roving>
+            {#each toReview as pr (pr.id)}
+              <PullRequestCard pullRequest={pr} />
+            {/each}
+          </div>
+        {/if}
       {/if}
-    {/if}
 
-    {#if reviewed.length > 0}
-      {@render sectionHeader(
-        'Reviewed',
-        reviewed.length,
-        'reviewed',
-        CircleCheckBig,
-        'text-success-text'
-      )}
-      {#if !collapsed.reviewed}
-        <div use:roving>
-          {#each reviewed as pr (pr.id)}
-            <PullRequestCard pullRequest={pr} />
-          {/each}
-        </div>
+      {#if reviewed.length > 0}
+        {@render sectionHeader(
+          'Reviewed',
+          reviewed.length,
+          'reviewed',
+          CircleCheckBig,
+          'text-success-text'
+        )}
+        {#if !collapsed.reviewed}
+          <div use:roving>
+            {#each reviewed as pr (pr.id)}
+              <PullRequestCard pullRequest={pr} />
+            {/each}
+          </div>
+        {/if}
       {/if}
+    {:else}
+      {#each unstarred as pr (pr.id)}
+        <PullRequestCard pullRequest={pr} />
+      {/each}
     {/if}
   </div>
 {/if}
