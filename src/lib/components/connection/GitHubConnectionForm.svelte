@@ -43,9 +43,7 @@
 <div class="rounded-xl border border-border bg-card p-4">
   <div class="flex items-center justify-between">
     <div class="flex items-center gap-3">
-      <div
-        class="flex h-9 w-9 items-center justify-center rounded-lg bg-secondary"
-      >
+      <div class="flex h-9 w-9 items-center justify-center rounded-lg bg-secondary">
         <GitHubIcon size={18} class="text-source-github-text" />
       </div>
       <div>

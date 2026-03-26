@@ -535,10 +535,7 @@
     {#if settingsState.notifyMode !== 'disabled'}
       <!-- Notification Sound -->
       <section>
-        <h4
-          id="notification-sound-heading"
-          class="mb-2 text-xs font-medium text-foreground"
-        >
+        <h4 id="notification-sound-heading" class="mb-2 text-xs font-medium text-foreground">
           Notification Sound
         </h4>
         <div class="inline-flex items-center gap-1.5">
