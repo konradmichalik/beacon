@@ -10,7 +10,6 @@
 
   let includeProject = $state(true);
   let includeType = $state(true);
-  // svelte-ignore state_referenced_locally — intentionally captures initial value
   let includeStatus = $state(notification.subjectState !== null);
   let hasStatus = $derived(notification.subjectState !== null);
   let canConfirm = $derived(includeProject || includeType || (includeStatus && hasStatus));
