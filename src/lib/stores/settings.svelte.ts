@@ -164,7 +164,10 @@ export async function listenForExternalSettingsChanges(): Promise<() => void> {
     if (updated.badgeMode !== prev.badgeMode || updated.dotColor !== prev.dotColor) {
       onBadgeModeChange?.();
     }
-    if (updated.notifyMode !== prev.notifyMode || updated.notifySummaryMinutes !== prev.notifySummaryMinutes) {
+    if (
+      updated.notifyMode !== prev.notifyMode ||
+      updated.notifySummaryMinutes !== prev.notifySummaryMinutes
+    ) {
       onNotifyChange?.();
     }
     if (updated.globalShortcut !== prev.globalShortcut) {
