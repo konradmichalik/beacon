@@ -7,7 +7,7 @@
   import PRFilterBar from '../pull-requests/PRFilterBar.svelte';
   import SettingsView from '../settings/SettingsView.svelte';
   import { hasAnyServiceConfigured } from '$lib/stores/connections.svelte';
-  import { startPolling, markAllSeen, isDemoMode } from '$lib/stores/notifications.svelte';
+  import { startPolling, markAllSeen, isDemoMode, refreshNotifications } from '$lib/stores/notifications.svelte';
   import { showToast } from '$lib/stores/toast.svelte';
   import { refreshPullRequests } from '$lib/stores/pull-requests.svelte';
   import { ArrowLeft, ArrowUp } from '@lucide/svelte';
@@ -59,6 +59,87 @@
     scrollEl?.scrollTo({ top: 0, behavior: 'smooth' });
   }
 
+  async function hidePopup(): Promise<void> {
+    const { isTauri } = await import('$lib/utils/storage');
+    if (isTauri()) {
+      const { getCurrentWindow } = await import('@tauri-apps/api/window');
+      await getCurrentWindow().hide();
+    }
+  }
+
+  function handleRefresh(): void {
+    if (activeView === 'notifications') {
+      refreshNotifications();
+    } else {
+      refreshPullRequests();
+    }
+  }
+
+  function handleShortcuts(e: KeyboardEvent): void {
+    if (showSettings) return;
+    if (e.ctrlKey || e.altKey || e.metaKey) return;
+
+    const tag = (e.target as HTMLElement).tagName;
+    if (tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT') return;
+
+    const actions: Record<string, () => void> = {
+      '1': () => (activeView = 'notifications'),
+      '2': () => (activeView = 'pull-requests'),
+      r: () => handleRefresh(),
+      '/': () => {
+        const btn = document.querySelector<HTMLElement>('[data-filter-bar] button');
+        btn?.focus();
+      }
+    };
+
+    const action = actions[e.key];
+    if (action) {
+      e.preventDefault();
+      action();
+      return;
+    }
+
+    // Escape: close the tray popup
+    if (e.key === 'Escape') {
+      e.preventDefault();
+      hidePopup();
+      return;
+    }
+
+    // When a list item is focused, let the roving action handle all arrow keys
+    const active = document.activeElement as HTMLElement;
+    const inList = active?.hasAttribute('data-roving-item') || !!active?.closest('[data-roving-item]');
+
+    if (inList) return;
+
+    // ArrowLeft/ArrowRight: switch tabs
+    if (e.key === 'ArrowLeft' || e.key === 'ArrowRight') {
+      e.preventDefault();
+      const tabs: ViewTab[] = ['notifications', 'pull-requests'];
+      const idx = tabs.indexOf(activeView);
+      activeView = e.key === 'ArrowRight'
+        ? tabs[(idx + 1) % tabs.length]
+        : tabs[(idx - 1 + tabs.length) % tabs.length];
+      return;
+    }
+
+    // ArrowDown/ArrowUp: jump into the first visible list item
+    if (e.key === 'ArrowDown' || e.key === 'ArrowUp') {
+      const item = document.querySelector<HTMLElement>('[data-roving-item]');
+      if (item) {
+        e.preventDefault();
+        item.setAttribute('tabindex', '0');
+        item.focus();
+      }
+      return;
+    }
+
+    // Prevent macOS NSBeep for any unhandled printable character keys
+    if (e.key.length === 1) {
+      e.preventDefault();
+    }
+  }
+
   onMount(() => {
     function handleVisibility(): void {
       if (document.hidden) {
@@ -67,12 +148,22 @@
         // Refresh PRs when popup becomes visible (PR polling runs in frontend
         // and may be throttled while the webview is hidden)
         refreshPullRequests();
+
+        // Ensure the webview accepts keyboard input after the panel becomes visible.
+        // NSPanel with NonactivatingPanel may not route key events to the webview
+        // until it has explicit DOM focus.
+        requestAnimationFrame(() => {
+          document.body.focus();
+          window.focus();
+        });
       }
     }
     document.addEventListener('visibilitychange', handleVisibility);
     return () => document.removeEventListener('visibilitychange', handleVisibility);
   });
 </script>
+
+<svelte:window onkeydown={handleShortcuts} />
 
 <div class="flex h-screen flex-col bg-background">
   {#if showSettings}
