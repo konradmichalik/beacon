@@ -139,7 +139,12 @@ export async function updateSettings(updates: Partial<Settings>): Promise<void> 
   if (pollingChanged && onPollingChange) {
     onPollingChange();
   }
-  if ((updates.badgeMode !== undefined || updates.indicatorMode !== undefined || updates.indicatorColor !== undefined) && onBadgeModeChange) {
+  if (
+    (updates.badgeMode !== undefined ||
+      updates.indicatorMode !== undefined ||
+      updates.indicatorColor !== undefined) &&
+    onBadgeModeChange
+  ) {
     onBadgeModeChange();
   }
   if (
@@ -192,7 +197,11 @@ export async function listenForExternalSettingsChanges(): Promise<() => void> {
 
     if (updated.theme !== prev.theme) applyTheme();
     if (updated.pollingInterval !== prev.pollingInterval) onPollingChange?.();
-    if (updated.badgeMode !== prev.badgeMode || updated.indicatorMode !== prev.indicatorMode || updated.indicatorColor !== prev.indicatorColor) {
+    if (
+      updated.badgeMode !== prev.badgeMode ||
+      updated.indicatorMode !== prev.indicatorMode ||
+      updated.indicatorColor !== prev.indicatorColor
+    ) {
       onBadgeModeChange?.();
     }
     if (
