@@ -4,11 +4,13 @@
   import BeaconLogo from '$lib/components/icons/BeaconLogo.svelte';
   import {
     getIsLoading,
+    getHasLoadedOnce,
     refreshNotifications,
     getFilteredUnreadCount
   } from '$lib/stores/notifications.svelte';
   import {
     getIsPRLoading,
+    getPRHasLoadedOnce,
     refreshPullRequests,
     getPRCount
   } from '$lib/stores/pull-requests.svelte';
@@ -109,7 +111,7 @@
           >
             {count}
           </span>
-        {:else if (tab.id === 'notifications' && notificationsLoading) || (tab.id === 'pull-requests' && prsLoading)}
+        {:else if (tab.id === 'notifications' && notificationsLoading && !getHasLoadedOnce()) || (tab.id === 'pull-requests' && prsLoading && !getPRHasLoadedOnce())}
           <span class="inline-block h-3 w-5 animate-pulse rounded-full bg-secondary/80"></span>
         {/if}
       </button>
