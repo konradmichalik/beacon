@@ -713,7 +713,13 @@ async fn do_poll(app: &AppHandle) {
         process_new(app, &mut inner, &results, &settings);
     }
 
-    let _ = crate::update_tray_icon(app, unread, &settings.badge_mode, &settings.indicator_mode, &settings.indicator_color);
+    let _ = crate::update_tray_icon(
+        app,
+        unread,
+        &settings.badge_mode,
+        &settings.indicator_mode,
+        &settings.indicator_color,
+    );
 
     let _ = app.emit("notifications-updated", &results);
 }
