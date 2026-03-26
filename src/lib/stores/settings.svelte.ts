@@ -83,6 +83,12 @@ export function setDebugLogChangeCallback(callback: (enabled: boolean) => void):
 export async function initializeSettings(): Promise<void> {
   const stored = await getStorageItem<Settings>(STORAGE_KEY);
   if (stored) {
+    if ((stored as Record<string, unknown>).badgeMode === 'dot') {
+      stored.badgeMode = 'hidden';
+      if (!stored.dotColor || stored.dotColor === 'none') {
+        stored.dotColor = 'blue';
+      }
+    }
     Object.assign(settingsState, stored);
   }
   // Allow URL param override (used by landing page demo)
