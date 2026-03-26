@@ -26,6 +26,8 @@
   let { onClose }: { onClose: () => void } = $props();
 
   let availableTypes = $derived(getUniqueTypes());
+  let unreadByType = $derived(getUnreadCountByType(filterState.source));
+  let unreadByProject = $derived(getUnreadCountByProject(filterState.source));
   let availableProjects = $derived.by(() => {
     const projects = getUniqueProjectsWithSource();
     return [...projects].sort((a, b) => {
@@ -36,8 +38,6 @@
     });
   });
   let filtersActive = $derived(hasActiveFilters());
-  let unreadByType = $derived(getUnreadCountByType(filterState.source));
-  let unreadByProject = $derived(getUnreadCountByProject(filterState.source));
 
   function handleKeydown(e: KeyboardEvent) {
     if (e.key === 'Escape') onClose();

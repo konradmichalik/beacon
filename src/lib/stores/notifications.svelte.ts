@@ -163,10 +163,10 @@ export function getUniqueTypes(): readonly NotificationType[] {
 export function getUnreadCountByType(
   sourceFilter: NotificationSource | 'all'
 ): ReadonlyMap<NotificationType, number> {
-  let filtered = notifications.filter((n) => n.unread && !isNotificationMuted(n));
-  if (sourceFilter !== 'all') {
-    filtered = filtered.filter((n) => n.source === sourceFilter);
-  }
+  const sourceOk = sourceFilter === 'all';
+  const filtered = notifications.filter(
+    (n) => n.unread && !isNotificationMuted(n) && (sourceOk || n.source === sourceFilter)
+  );
   // eslint-disable-next-line svelte/prefer-svelte-reactivity -- local counting map, not state
   const counts = new Map<NotificationType, number>();
   for (const n of filtered) {
@@ -178,10 +178,10 @@ export function getUnreadCountByType(
 export function getUnreadCountByProject(
   sourceFilter: NotificationSource | 'all'
 ): ReadonlyMap<string, number> {
-  let filtered = notifications.filter((n) => n.unread && !isNotificationMuted(n));
-  if (sourceFilter !== 'all') {
-    filtered = filtered.filter((n) => n.source === sourceFilter);
-  }
+  const sourceOk = sourceFilter === 'all';
+  const filtered = notifications.filter(
+    (n) => n.unread && !isNotificationMuted(n) && (sourceOk || n.source === sourceFilter)
+  );
   // eslint-disable-next-line svelte/prefer-svelte-reactivity -- local counting map, not state
   const counts = new Map<string, number>();
   for (const n of filtered) {
