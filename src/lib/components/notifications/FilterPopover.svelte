@@ -16,6 +16,7 @@
   import GitHubIcon from '$lib/components/icons/GitHubIcon.svelte';
   import GitLabIcon from '$lib/components/icons/GitLabIcon.svelte';
   import { X } from '@lucide/svelte';
+  import { focusTrap } from '$lib/actions/focusTrap';
 
   let { onClose }: { onClose: () => void } = $props();
 
@@ -41,7 +42,12 @@
   onclick={handleBackdropClick}
 >
   <!-- Modal -->
-  <div class="z-50 w-72 rounded-lg border border-border bg-card shadow-lg">
+  <div
+    class="z-50 w-72 rounded-lg border border-border bg-card shadow-lg"
+    role="dialog"
+    aria-modal="true"
+    use:focusTrap
+  >
     <!-- Header -->
     <div
       class="flex items-center justify-between rounded-t-lg border-b border-border bg-secondary/40 px-3 py-2"
