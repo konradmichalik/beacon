@@ -45,7 +45,7 @@ const TRAY_ICON_BYTES: &[u8] = include_bytes!("../icons/beacon-tray.png");
 /// - `"none"`:  all non-transparent pixels are white (template-friendly).
 /// - `"waves"`: wave arcs are tinted with `rgb`; center dot stays white.
 /// - `"dot"`:   all pixels white, then a colored circle is drawn at the
-///              bottom-right corner (~22 % of icon width).
+///   bottom-right corner (~22 % of icon width).
 ///
 /// Coloring is only applied when `active` is true (i.e. unread count > 0).
 #[cfg(target_os = "macos")]
