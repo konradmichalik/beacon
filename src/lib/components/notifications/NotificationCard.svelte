@@ -3,7 +3,8 @@
   import { markAsRead, markAsUnread, getLastSeenAt } from '$lib/stores/notifications.svelte';
   import { timeAgo } from '$lib/utils/time';
   import { isTauri } from '$lib/utils/storage';
-  import { clampMenuPosition } from '$lib/utils/context-menu';
+  import { clampMenuPosition, menuPositionFromElement } from '$lib/utils/context-menu';
+  import { focusTrap } from '$lib/actions/focusTrap';
   import GitHubIcon from '$lib/components/icons/GitHubIcon.svelte';
   import GitLabIcon from '$lib/components/icons/GitLabIcon.svelte';
   import {
@@ -208,16 +209,45 @@
   function handleContextMute(): void {
     closeContextMenu(() => (showMuteModal = true));
   }
+
+  function handleCardKeydown(e: KeyboardEvent): void {
+    if (e.key === 'F10' && e.shiftKey) {
+      e.preventDefault();
+      const rect = (e.currentTarget as HTMLElement).getBoundingClientRect();
+      contextMenu = menuPositionFromElement(rect, { width: 160, height: 140 });
+      function close() {
+        contextMenu = null;
+        window.removeEventListener('click', close);
+        window.removeEventListener('contextmenu', close);
+      }
+      requestAnimationFrame(() => {
+        window.addEventListener('click', close);
+        window.addEventListener('contextmenu', close);
+      });
+    } else if (e.key === 'Enter') {
+      e.preventDefault();
+      handleClick();
+    } else if (e.key === 'm' && notification.unread) {
+      e.preventDefault();
+      dismissing = true;
+      setTimeout(() => markAsRead(notification.id), 350);
+    }
+  }
 </script>
 
+<!-- svelte-ignore a11y_no_static_element_interactions -->
 <div
-  class="overflow-hidden transition-all duration-300 ease-in-out {dismissing
+  data-roving-item
+  tabindex="-1"
+  onkeydown={handleCardKeydown}
+  class="overflow-hidden outline-none transition-all duration-300 ease-in-out focus:bg-surface-hovered focus:shadow-[inset_3px_0_0_var(--ds-border-focused)] {dismissing
     ? 'max-h-0 border-b-0'
     : 'max-h-40 border-b border-border/60'}"
   style={dismissing ? 'margin-top: 0; margin-bottom: 0; padding-top: 0; padding-bottom: 0;' : ''}
 >
   <button
     type="button"
+    tabindex={-1}
     onclick={handleClick}
     oncontextmenu={handleContextMenu}
     class="group relative flex w-full items-start gap-3 px-4 py-3 text-left transition-all duration-200 ease-in-out hover:bg-surface-hovered {notification.unread
@@ -319,6 +349,7 @@
   <div
     class="fixed z-50 min-w-[140px] rounded-md border border-border bg-popover py-1 shadow-lg"
     style="left: {contextMenu.x}px; top: {contextMenu.y}px;"
+    use:focusTrap
   >
     <button
       type="button"
