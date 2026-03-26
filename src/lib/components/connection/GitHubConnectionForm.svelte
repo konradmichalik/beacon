@@ -40,11 +40,18 @@
   }
 </script>
 
-<div class="rounded-lg border border-border bg-card p-3">
+<div class="rounded-xl border border-border bg-card p-4">
   <div class="flex items-center justify-between">
-    <div class="flex items-center gap-2">
-      <GitHubIcon size={14} class="text-source-github-text" />
-      <span class="text-xs font-medium">GitHub</span>
+    <div class="flex items-center gap-3">
+      <div
+        class="flex h-9 w-9 items-center justify-center rounded-lg bg-secondary"
+      >
+        <GitHubIcon size={18} class="text-source-github-text" />
+      </div>
+      <div>
+        <span class="text-sm font-medium">GitHub</span>
+        <p class="text-[10px] text-muted-foreground">Notifications & Pull Requests</p>
+      </div>
     </div>
     {#if status === 'connected'}
       <div class="flex items-center gap-1.5">
