@@ -2,6 +2,7 @@
   import type { UnifiedNotification, MuteRule } from '$lib/types';
   import { NOTIFICATION_TYPE_LABELS } from '$lib/types';
   import { addMuteRule } from '$lib/stores/mute-rules.svelte';
+  import { untrack } from 'svelte';
   import { X } from '@lucide/svelte';
   import { focusTrap } from '$lib/actions/focusTrap';
 
@@ -10,8 +11,7 @@
 
   let includeProject = $state(true);
   let includeType = $state(true);
-  const initialHasStatus = notification.subjectState !== null;
-  let includeStatus = $state(initialHasStatus);
+  let includeStatus = $state(untrack(() => notification.subjectState !== null));
 
   let hasStatus = $derived(notification.subjectState !== null);
   let canConfirm = $derived(includeProject || includeType || (includeStatus && hasStatus));
@@ -45,9 +45,9 @@
 
 <svelte:window onkeydown={handleKeydown} />
 
-<!-- svelte-ignore a11y_no_static_element_interactions a11y_click_events_have_key_events -->
 <div
   class="fixed inset-0 z-40 flex items-center justify-center backdrop-blur-[2px]"
+  role="presentation"
   onclick={handleBackdropClick}
 >
   <div
