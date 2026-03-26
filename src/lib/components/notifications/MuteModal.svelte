@@ -12,7 +12,6 @@
   let includeProject = $state(true);
   let includeType = $state(true);
   let includeStatus = $state(untrack(() => notification.subjectState !== null));
-
   let hasStatus = $derived(notification.subjectState !== null);
   let canConfirm = $derived(includeProject || includeType || (includeStatus && hasStatus));
 

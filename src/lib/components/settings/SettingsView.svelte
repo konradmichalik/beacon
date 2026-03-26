@@ -118,12 +118,15 @@
 
   const badgeOptions: { value: BadgeMode; label: string; icon: typeof Hash }[] = [
     { value: 'count', label: 'Count', icon: Hash },
-    { value: 'dot', label: 'Dot', icon: Circle }
+    { value: 'hidden', label: 'Hidden', icon: Circle }
   ];
 
   const dotColorOptions: { value: DotColor; label: string; color: string }[] = [
+    { value: 'none', label: 'None', color: 'transparent' },
     { value: 'blue', label: 'Blue', color: '#5e81ac' },
-    { value: 'red', label: 'Red', color: '#ff786e' }
+    { value: 'red', label: 'Red', color: '#ff786e' },
+    { value: 'yellow', label: 'Yellow', color: '#ebcb8b' },
+    { value: 'green', label: 'Green', color: '#a3be8c' }
   ];
 
   const notifyOptions: { value: NotifyMode; label: string; icon: typeof Bell }[] = [
@@ -198,7 +201,7 @@
 
       <!-- Menubar Icon -->
       <section>
-        <h4 class="mb-2 text-xs font-medium text-foreground">Menubar Icon</h4>
+        <h4 class="mb-2 text-xs font-medium text-foreground">Badge Count</h4>
         <div class="flex gap-1.5">
           {#each badgeOptions as option (option.value)}
             {@const Icon = option.icon}
@@ -219,33 +222,38 @@
         <p class="mt-1.5 text-[10px] text-muted-foreground">
           {settingsState.badgeMode === 'count'
             ? 'Shows unread notification count next to the menubar icon.'
-            : 'Shows a colored dot when unread notifications are pending.'}
+            : 'Hides the count next to the menubar icon.'}
         </p>
+      </section>
 
-        {#if settingsState.badgeMode === 'dot'}
-          <div class="mt-3">
-            <h5 class="mb-2 text-[11px] font-medium text-muted-foreground">Dot Color</h5>
-            <div class="flex gap-1.5">
-              {#each dotColorOptions as option (option.value)}
-                <button
-                  type="button"
-                  aria-pressed={settingsState.dotColor === option.value}
-                  onclick={() => updateSettings({ dotColor: option.value })}
-                  class="flex items-center gap-1.5 rounded-md px-3 py-1.5 text-xs font-medium transition-colors {settingsState.dotColor ===
-                  option.value
-                    ? 'bg-primary text-primary-foreground'
-                    : 'bg-secondary text-secondary-foreground hover:bg-secondary/80'}"
-                >
-                  <span
-                    class="inline-block h-2.5 w-2.5 rounded-full"
-                    style="background-color: {option.color}"
-                  ></span>
-                  {option.label}
-                </button>
-              {/each}
-            </div>
-          </div>
-        {/if}
+      <section>
+        <h4 class="mb-2 text-xs font-medium text-foreground">Indicator Dot</h4>
+        <div class="flex gap-1.5">
+          {#each dotColorOptions as option (option.value)}
+            <button
+              type="button"
+              aria-pressed={settingsState.dotColor === option.value}
+              onclick={() => updateSettings({ dotColor: option.value })}
+              class="flex items-center gap-1.5 rounded-md px-3 py-1.5 text-xs font-medium transition-colors {settingsState.dotColor ===
+              option.value
+                ? 'bg-primary text-primary-foreground'
+                : 'bg-secondary text-secondary-foreground hover:bg-secondary/80'}"
+            >
+              {#if option.value !== 'none'}
+                <span
+                  class="inline-block h-2.5 w-2.5 rounded-full"
+                  style="background-color: {option.color}"
+                ></span>
+              {/if}
+              {option.label}
+            </button>
+          {/each}
+        </div>
+        <p class="mt-1.5 text-[10px] text-muted-foreground">
+          {settingsState.dotColor === 'none'
+            ? 'The icon dot stays white (default).'
+            : `Colors the icon dot ${settingsState.dotColor} when unread notifications are pending.`}
+        </p>
       </section>
 
       <!-- Theme -->

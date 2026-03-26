@@ -40,71 +40,46 @@ mod panel {
 
 const TRAY_ICON_BYTES: &[u8] = include_bytes!("../icons/beacon-tray.png");
 
-/// Create a white tray icon with an optional colored dot overlay.
+/// Create a white tray icon, optionally coloring the center dot.
+///
+/// The beacon icon has a filled circle at its center (pixels within ~7 px of
+/// the midpoint).  When `color_dot` is true the center dot pixels are tinted
+/// with `dot_rgb` instead of white, giving a colored indicator without drawing
+/// an extra overlay.
 #[cfg(target_os = "macos")]
-fn create_tray_icon(with_dot: bool, dot_rgb: [u8; 3]) -> (Vec<u8>, u32, u32) {
+fn create_tray_icon(color_dot: bool, dot_rgb: [u8; 3]) -> (Vec<u8>, u32, u32) {
     use image::{GenericImageView, RgbaImage};
 
     let base = image::load_from_memory(TRAY_ICON_BYTES).expect("failed to decode tray icon");
     let (w, h) = base.dimensions();
     let mut canvas = RgbaImage::from(base.to_rgba8());
 
-    // macOS menu bar always has a dark background, so the icon must always be white
-    for pixel in canvas.pixels_mut() {
-        if pixel.0[3] > 0 {
+    let cx = w as f32 / 2.0;
+    let cy = h as f32 / 2.0;
+    // The center dot extends to ~6 px from the midpoint; 7 px captures the
+    // anti-aliased fringe while staying well inside the gap before the first arc.
+    let dot_radius_sq: f32 = 7.0 * 7.0;
+
+    for (x, y, pixel) in canvas.enumerate_pixels_mut() {
+        if pixel.0[3] == 0 {
+            continue;
+        }
+        let dx = x as f32 - cx;
+        let dy = y as f32 - cy;
+        let is_center_dot = (dx * dx + dy * dy) <= dot_radius_sq;
+
+        if color_dot && is_center_dot {
+            pixel.0[0] = dot_rgb[0];
+            pixel.0[1] = dot_rgb[1];
+            pixel.0[2] = dot_rgb[2];
+        } else {
             pixel.0[0] = 255;
             pixel.0[1] = 255;
             pixel.0[2] = 255;
         }
     }
 
-    if with_dot {
-        let radius: f32 = (w as f32 * 0.22).max(3.0);
-        let cx = w as f32 - radius - 1.0;
-        let cy = h as f32 - radius - 1.0;
-        let dot_color = [dot_rgb[0], dot_rgb[1], dot_rgb[2], 255u8];
-
-        let r2 = radius * radius;
-        let search = (radius + 1.5) as i32;
-        for dy in -search..=search {
-            for dx in -search..=search {
-                let px = cx + dx as f32;
-                let py = cy + dy as f32;
-                if px < 0.0 || py < 0.0 || px >= w as f32 || py >= h as f32 {
-                    continue;
-                }
-                let dist2 = (dx as f32) * (dx as f32) + (dy as f32) * (dy as f32);
-                if dist2 <= r2 {
-                    canvas.put_pixel(px as u32, py as u32, image::Rgba(dot_color));
-                } else if dist2 <= (radius + 1.0) * (radius + 1.0) {
-                    let alpha = ((radius + 1.0) * (radius + 1.0) - dist2)
-                        / ((radius + 1.0) * (radius + 1.0) - r2);
-                    let a = (alpha * 255.0).clamp(0.0, 255.0) as u8;
-                    let existing = *canvas.get_pixel(px as u32, py as u32);
-                    let blended = blend_pixel(
-                        existing,
-                        image::Rgba([dot_color[0], dot_color[1], dot_color[2], a]),
-                    );
-                    canvas.put_pixel(px as u32, py as u32, blended);
-                }
-            }
-        }
-    }
-
     (canvas.into_raw(), w, h)
-}
-
-fn blend_pixel(base: image::Rgba<u8>, overlay: image::Rgba<u8>) -> image::Rgba<u8> {
-    let oa = overlay.0[3] as f32 / 255.0;
-    let ba = base.0[3] as f32 / 255.0;
-    let out_a = oa + ba * (1.0 - oa);
-    if out_a == 0.0 {
-        return image::Rgba([0, 0, 0, 0]);
-    }
-    let r = (overlay.0[0] as f32 * oa + base.0[0] as f32 * ba * (1.0 - oa)) / out_a;
-    let g = (overlay.0[1] as f32 * oa + base.0[1] as f32 * ba * (1.0 - oa)) / out_a;
-    let b = (overlay.0[2] as f32 * oa + base.0[2] as f32 * ba * (1.0 - oa)) / out_a;
-    image::Rgba([r as u8, g as u8, b as u8, (out_a * 255.0) as u8])
 }
 
 pub(crate) fn update_tray_icon(
@@ -126,17 +101,19 @@ pub(crate) fn update_tray_icon(
         {
             let rgb = match dot_color {
                 "red" => [255u8, 120, 110],
+                "yellow" => [235u8, 203, 139],
+                "green" => [163u8, 190, 140],
                 _ => [94u8, 129, 172], // blue (default)
             };
 
-            let with_dot = mode == "dot" && count > 0;
+            let color_dot = dot_color != "none" && count > 0;
             let title = if mode == "count" && count > 0 {
                 count.to_string()
             } else {
                 String::new()
             };
 
-            let (rgba, w, h) = create_tray_icon(with_dot, rgb);
+            let (rgba, w, h) = create_tray_icon(color_dot, rgb);
             let icon = tauri::image::Image::new_owned(rgba, w, h);
             tray.set_icon(Some(icon)).map_err(|e| e.to_string())?;
             tray.set_icon_as_template(false)
