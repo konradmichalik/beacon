@@ -37,6 +37,22 @@
     { id: 'pull-requests', label: 'My PRs', icon: GitPullRequest, getCount: () => prCount }
   ];
 
+  function handleTabKeydown(e: KeyboardEvent): void {
+    if (e.key !== 'ArrowLeft' && e.key !== 'ArrowRight') return;
+    e.preventDefault();
+    const currentIndex = tabs.findIndex((t) => t.id === activeView);
+    const next =
+      e.key === 'ArrowRight'
+        ? tabs[(currentIndex + 1) % tabs.length]
+        : tabs[(currentIndex - 1 + tabs.length) % tabs.length];
+    onTabChange(next.id);
+    // Focus the newly active tab button
+    const container = e.currentTarget as HTMLElement;
+    requestAnimationFrame(() => {
+      container.querySelector<HTMLElement>('[aria-selected="true"]')?.focus();
+    });
+  }
+
   function handleRefresh(): void {
     if (activeView === 'notifications') {
       refreshNotifications();
@@ -61,15 +77,24 @@
   <div class="flex items-center">
     <BeaconLogo height={18} class="text-foreground" />
   </div>
-  <div class="pointer-events-none absolute inset-x-0 bottom-0 flex justify-center gap-1">
+  <!-- svelte-ignore a11y_interactive_supports_focus -->
+  <div
+    class="pointer-events-none absolute inset-x-0 bottom-0 flex justify-center gap-1"
+    role="tablist"
+    onkeydown={handleTabKeydown}
+  >
     {#each tabs as tab (tab.id)}
       {@const TabIcon = tab.icon}
       {@const count = tab.getCount()}
+      {@const isActive = activeView === tab.id}
       <button
         type="button"
+        role="tab"
+        aria-selected={isActive}
+        tabindex={isActive ? 0 : -1}
         onclick={() => onTabChange(tab.id)}
         class="pointer-events-auto flex items-center gap-1.5 rounded-t-md px-2.5 py-1 text-[11px] font-medium transition-colors
-          {activeView === tab.id
+          {isActive
           ? 'bg-accent text-foreground shadow-sm'
           : 'text-muted-foreground hover:bg-secondary hover:text-foreground'}"
       >

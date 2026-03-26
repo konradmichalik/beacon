@@ -9,6 +9,7 @@
   import PartyPopperIcon from '$lib/components/icons/PartyPopperIcon.svelte';
   import { Inbox, ChevronRight } from '@lucide/svelte';
   import type { UnifiedNotification } from '$lib/types';
+  import { roving } from '$lib/actions/roving';
 
   let items = $derived(
     getFilteredNotifications(
@@ -81,7 +82,7 @@
   <div class="flex min-h-full flex-col">
     <!-- Unread -->
     {#if filterState.sort === 'project' && projectGroups.length > 0}
-      <div>
+      <div use:roving>
         {#each projectGroups as group (group.source + ':' + group.repository)}
           <div
             class="sticky top-0 z-10 flex items-center gap-1.5 border-b border-border bg-background/95 px-4 py-1.5 backdrop-blur-sm"
@@ -106,7 +107,7 @@
         {/each}
       </div>
     {:else}
-      <div>
+      <div use:roving>
         {#each unreadItems as notification (notification.id)}
           <NotificationCard {notification} />
         {/each}
@@ -141,7 +142,7 @@
         >
       </button>
       {#if showRead}
-        <div>
+        <div use:roving>
           {#each readItems as notification (notification.id)}
             <NotificationCard {notification} />
           {/each}

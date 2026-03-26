@@ -35,6 +35,7 @@ interface Settings {
   notifySummaryMinutes: number; // summary interval in minutes
   notifySound: NotifySound;
   enrichPullRequests: boolean;
+  groupPullRequests: boolean;
   globalShortcut: boolean;
   debugLog: boolean;
 }
@@ -48,6 +49,7 @@ const defaultSettings: Settings = {
   notifySummaryMinutes: 15,
   notifySound: 'none',
   enrichPullRequests: true,
+  groupPullRequests: true,
   globalShortcut: true,
   debugLog: false
 };
