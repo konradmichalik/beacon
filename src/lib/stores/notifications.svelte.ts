@@ -15,6 +15,7 @@ import { showToast } from '$lib/stores/toast.svelte';
 
 let notifications: UnifiedNotification[] = $state([]);
 let isLoading = $state(false);
+let hasLoadedOnce = $state(false);
 let lastRefresh: string | null = $state(null);
 // Track IDs marked as read locally so refreshes don't revert them.
 // Persisted as { [id]: timestamp } so stale entries can be pruned.
@@ -84,6 +85,10 @@ export function getCountBySource(source: NotificationSource): number {
 
 export function getIsLoading(): boolean {
   return isLoading;
+}
+
+export function getHasLoadedOnce(): boolean {
+  return hasLoadedOnce;
 }
 
 export function getLastRefresh(): string | null {
@@ -311,6 +316,7 @@ export async function refreshNotifications(): Promise<void> {
     await tauriInvoke('trigger_poll');
   } finally {
     isLoading = false;
+    hasLoadedOnce = true;
   }
 }
 

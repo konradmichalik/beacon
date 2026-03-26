@@ -4,12 +4,13 @@
   import BeaconLogo from '$lib/components/icons/BeaconLogo.svelte';
   import {
     getIsLoading,
+    getHasLoadedOnce,
     refreshNotifications,
-    getFilteredUnreadCount,
-    getLastRefresh
+    getFilteredUnreadCount
   } from '$lib/stores/notifications.svelte';
   import {
     getIsPRLoading,
+    getPRHasLoadedOnce,
     refreshPullRequests,
     getPRCount
   } from '$lib/stores/pull-requests.svelte';
@@ -30,7 +31,8 @@
   let isLoading = $derived(activeView === 'notifications' ? getIsLoading() : getIsPRLoading());
   let unreadCount = $derived(getFilteredUnreadCount());
   let prCount = $derived(getPRCount());
-  let initialLoading = $derived(getLastRefresh() === null);
+  let notificationsLoading = $derived(getIsLoading());
+  let prsLoading = $derived(getIsPRLoading());
 
   const tabs: { id: ViewTab; label: string; icon: typeof Inbox; getCount: () => number }[] = [
     { id: 'notifications', label: 'Inbox', icon: Inbox, getCount: () => unreadCount },
@@ -100,9 +102,7 @@
       >
         <TabIcon size={11} />
         {tab.label}
-        {#if initialLoading}
-          <span class="inline-block h-3 w-5 animate-pulse rounded-full bg-secondary/80"></span>
-        {:else if count > 0}
+        {#if count > 0}
           <span
             class="rounded-full px-1.5 py-px text-[9px] font-semibold leading-tight
               {activeView === tab.id
@@ -111,6 +111,8 @@
           >
             {count}
           </span>
+        {:else if (tab.id === 'notifications' && notificationsLoading && !getHasLoadedOnce()) || (tab.id === 'pull-requests' && prsLoading && !getPRHasLoadedOnce())}
+          <span class="inline-block h-3 w-5 animate-pulse rounded-full bg-secondary/80"></span>
         {/if}
       </button>
     {/each}

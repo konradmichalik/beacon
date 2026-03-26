@@ -14,6 +14,7 @@ import { demoPullRequests } from '$lib/utils/demo-data-prs';
 
 let pullRequests: UnifiedPullRequest[] = $state([]);
 let isLoading = $state(false);
+let hasLoadedOnce = $state(false);
 let pollingTimer: ReturnType<typeof setInterval> | null = null;
 let enrichmentController: AbortController | null = null;
 
@@ -27,6 +28,10 @@ export function getPRCountBySource(source: NotificationSource): number {
 
 export function getIsPRLoading(): boolean {
   return isLoading;
+}
+
+export function getPRHasLoadedOnce(): boolean {
+  return hasLoadedOnce;
 }
 
 export type PRSortMode = 'updated' | 'created';
@@ -193,6 +198,7 @@ export async function refreshPullRequests(): Promise<void> {
     pullRequests = results;
   } finally {
     isLoading = false;
+    hasLoadedOnce = true;
   }
 
   // Phase 2: Enrich in background (if enabled)
