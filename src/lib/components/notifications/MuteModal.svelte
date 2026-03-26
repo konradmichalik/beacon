@@ -3,6 +3,7 @@
   import { NOTIFICATION_TYPE_LABELS } from '$lib/types';
   import { addMuteRule } from '$lib/stores/mute-rules.svelte';
   import { X } from '@lucide/svelte';
+  import { focusTrap } from '$lib/actions/focusTrap';
 
   let { notification, onClose }: { notification: UnifiedNotification; onClose: () => void } =
     $props();
@@ -53,6 +54,7 @@
     role="dialog"
     aria-modal="true"
     aria-labelledby="mute-modal-title"
+    use:focusTrap
   >
     <!-- Header -->
     <div

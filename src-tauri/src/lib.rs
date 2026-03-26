@@ -229,7 +229,7 @@ async fn open_settings_window(app: tauri::AppHandle) -> Result<(), String> {
         tauri::WebviewUrl::App("?window=settings".into()),
     )
     .title("Beacon Settings")
-    .inner_size(420.0, 480.0)
+    .inner_size(480.0, 480.0)
     .resizable(false)
     .build()
     .map_err(|e| e.to_string())?;

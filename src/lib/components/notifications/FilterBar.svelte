@@ -93,6 +93,7 @@
 {/snippet}
 
 <div
+  data-filter-bar
   class="flex items-center gap-1.5 overflow-x-auto border-b border-border bg-secondary/40 px-4 py-1.5 scrollbar-none"
 >
   {#if bothConnected}
