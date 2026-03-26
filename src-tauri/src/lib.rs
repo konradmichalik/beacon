@@ -40,14 +40,16 @@ mod panel {
 
 const TRAY_ICON_BYTES: &[u8] = include_bytes!("../icons/beacon-tray.png");
 
-/// Create a white tray icon, optionally coloring the center dot.
+/// Create a tray icon with one of three indicator modes.
 ///
-/// The beacon icon has a filled circle at its center (pixels within ~7 px of
-/// the midpoint).  When `color_dot` is true the center dot pixels are tinted
-/// with `dot_rgb` instead of white, giving a colored indicator without drawing
-/// an extra overlay.
+/// - `"none"`:  all non-transparent pixels are white (template-friendly).
+/// - `"waves"`: wave arcs are tinted with `rgb`; center dot stays white.
+/// - `"dot"`:   all pixels white, then a colored circle is drawn at the
+///              bottom-right corner (~22 % of icon width).
+///
+/// Coloring is only applied when `active` is true (i.e. unread count > 0).
 #[cfg(target_os = "macos")]
-fn create_tray_icon(color_dot: bool, dot_rgb: [u8; 3]) -> (Vec<u8>, u32, u32) {
+fn create_tray_icon(mode: &str, active: bool, rgb: [u8; 3]) -> (Vec<u8>, u32, u32) {
     use image::{GenericImageView, RgbaImage};
 
     let base = image::load_from_memory(TRAY_ICON_BYTES).expect("failed to decode tray icon");
@@ -56,26 +58,66 @@ fn create_tray_icon(color_dot: bool, dot_rgb: [u8; 3]) -> (Vec<u8>, u32, u32) {
 
     let cx = w as f32 / 2.0;
     let cy = h as f32 / 2.0;
-    // The center dot extends to ~6 px from the midpoint; 7 px captures the
-    // anti-aliased fringe while staying well inside the gap before the first arc.
     let dot_radius_sq: f32 = 7.0 * 7.0;
 
-    for (x, y, pixel) in canvas.enumerate_pixels_mut() {
+    // Step 1: set all non-transparent pixels to white
+    for (_x, _y, pixel) in canvas.enumerate_pixels_mut() {
         if pixel.0[3] == 0 {
             continue;
         }
-        let dx = x as f32 - cx;
-        let dy = y as f32 - cy;
-        let is_center_dot = (dx * dx + dy * dy) <= dot_radius_sq;
+        pixel.0[0] = 255;
+        pixel.0[1] = 255;
+        pixel.0[2] = 255;
+    }
 
-        if color_dot && is_center_dot {
-            pixel.0[0] = dot_rgb[0];
-            pixel.0[1] = dot_rgb[1];
-            pixel.0[2] = dot_rgb[2];
-        } else {
-            pixel.0[0] = 255;
-            pixel.0[1] = 255;
-            pixel.0[2] = 255;
+    if active {
+        match mode {
+            "waves" => {
+                // Tint everything EXCEPT the center dot
+                for (x, y, pixel) in canvas.enumerate_pixels_mut() {
+                    if pixel.0[3] == 0 {
+                        continue;
+                    }
+                    let dx = x as f32 - cx;
+                    let dy = y as f32 - cy;
+                    if (dx * dx + dy * dy) > dot_radius_sq {
+                        pixel.0[0] = rgb[0];
+                        pixel.0[1] = rgb[1];
+                        pixel.0[2] = rgb[2];
+                    }
+                }
+            }
+            "dot" => {
+                // Draw a filled circle at the bottom-right corner
+                let radius = w as f32 * 0.22;
+                let r_sq = radius * radius;
+                let dot_cx = w as f32 - radius - 1.0;
+                let dot_cy = h as f32 - radius - 1.0;
+
+                for y in 0..h {
+                    for x in 0..w {
+                        let dx = x as f32 - dot_cx;
+                        let dy = y as f32 - dot_cy;
+                        let dist_sq = dx * dx + dy * dy;
+                        if dist_sq <= r_sq {
+                            // Anti-alias the edge: blend over 1.5 px
+                            let dist = dist_sq.sqrt();
+                            let alpha = ((radius - dist) / 1.5).clamp(0.0, 1.0);
+                            let pixel = canvas.get_pixel_mut(x, y);
+                            pixel.0[0] =
+                                (rgb[0] as f32 * alpha + pixel.0[0] as f32 * (1.0 - alpha)) as u8;
+                            pixel.0[1] =
+                                (rgb[1] as f32 * alpha + pixel.0[1] as f32 * (1.0 - alpha)) as u8;
+                            pixel.0[2] =
+                                (rgb[2] as f32 * alpha + pixel.0[2] as f32 * (1.0 - alpha)) as u8;
+                            if pixel.0[3] == 0 {
+                                pixel.0[3] = (255.0 * alpha) as u8;
+                            }
+                        }
+                    }
+                }
+            }
+            _ => {} // "none" — already all white
         }
     }
 
@@ -86,7 +128,8 @@ pub(crate) fn update_tray_icon(
     app: &tauri::AppHandle,
     count: u32,
     mode: &str,
-    dot_color: &str,
+    indicator_mode: &str,
+    indicator_color: &str,
 ) -> Result<(), String> {
     if let Some(tray) = app.tray_by_id(tray::TRAY_ID) {
         let tooltip = if count > 0 {
@@ -99,24 +142,24 @@ pub(crate) fn update_tray_icon(
 
         #[cfg(target_os = "macos")]
         {
-            let rgb = match dot_color {
+            let rgb = match indicator_color {
                 "red" => [255u8, 120, 110],
                 "yellow" => [235u8, 203, 139],
                 "green" => [163u8, 190, 140],
                 _ => [94u8, 129, 172], // blue (default)
             };
 
-            let color_dot = dot_color != "none" && count > 0;
+            let active = indicator_mode != "none" && count > 0;
             let title = if mode == "count" && count > 0 {
                 count.to_string()
             } else {
                 String::new()
             };
 
-            let (rgba, w, h) = create_tray_icon(color_dot, rgb);
+            let (rgba, w, h) = create_tray_icon(indicator_mode, active, rgb);
             let icon = tauri::image::Image::new_owned(rgba, w, h);
             tray.set_icon(Some(icon)).map_err(|e| e.to_string())?;
-            tray.set_icon_as_template(false)
+            tray.set_icon_as_template(indicator_mode == "none" || !active)
                 .map_err(|e| e.to_string())?;
             tray.set_title(Some(&title)).map_err(|e| e.to_string())?;
         }
@@ -129,9 +172,10 @@ fn update_badge(
     app: tauri::AppHandle,
     count: u32,
     mode: String,
-    dot_color: String,
+    indicator_mode: String,
+    indicator_color: String,
 ) -> Result<(), String> {
-    update_tray_icon(&app, count, &mode, &dot_color)
+    update_tray_icon(&app, count, &mode, &indicator_mode, &indicator_color)
 }
 
 /// Check whether a macOS Focus mode (Do Not Disturb) is currently active.
