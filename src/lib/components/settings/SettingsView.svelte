@@ -25,7 +25,8 @@
     NOTIFY_SOUNDS,
     type BadgeMode,
     type NotifyMode,
-    type DotColor,
+    type IndicatorMode,
+    type IndicatorColor,
     type NotifySound
   } from '$lib/stores/settings.svelte';
   import GitHubConnectionForm from '../connection/GitHubConnectionForm.svelte';
@@ -121,8 +122,13 @@
     { value: 'hidden', label: 'Hidden', icon: Circle }
   ];
 
-  const dotColorOptions: { value: DotColor; label: string; color: string }[] = [
-    { value: 'none', label: 'None', color: 'transparent' },
+  const indicatorModeOptions: { value: IndicatorMode; label: string }[] = [
+    { value: 'none', label: 'None' },
+    { value: 'dot', label: 'Dot' },
+    { value: 'waves', label: 'Waves' }
+  ];
+
+  const indicatorColorOptions: { value: IndicatorColor; label: string; color: string }[] = [
     { value: 'blue', label: 'Blue', color: '#5e81ac' },
     { value: 'red', label: 'Red', color: '#ff786e' },
     { value: 'yellow', label: 'Yellow', color: '#ebcb8b' },
@@ -227,32 +233,50 @@
       </section>
 
       <section>
-        <h4 class="mb-2 text-xs font-medium text-foreground">Indicator Dot</h4>
+        <h4 class="mb-2 text-xs font-medium text-foreground">Indicator Style</h4>
         <div class="flex gap-1.5">
-          {#each dotColorOptions as option (option.value)}
+          {#each indicatorModeOptions as option (option.value)}
             <button
               type="button"
-              aria-pressed={settingsState.dotColor === option.value}
-              onclick={() => updateSettings({ dotColor: option.value })}
-              class="flex items-center gap-1.5 rounded-md px-3 py-1.5 text-xs font-medium transition-colors {settingsState.dotColor ===
+              aria-pressed={settingsState.indicatorMode === option.value}
+              onclick={() => updateSettings({ indicatorMode: option.value })}
+              class="rounded-md px-3 py-1.5 text-xs font-medium transition-colors {settingsState.indicatorMode ===
               option.value
                 ? 'bg-primary text-primary-foreground'
                 : 'bg-secondary text-secondary-foreground hover:bg-secondary/80'}"
             >
-              {#if option.value !== 'none'}
-                <span
-                  class="inline-block h-2.5 w-2.5 rounded-full"
-                  style="background-color: {option.color}"
-                ></span>
-              {/if}
+              {option.label}
+            </button>
+          {/each}
+        </div>
+        <div class="mt-2 flex gap-1.5">
+          {#each indicatorColorOptions as option (option.value)}
+            <button
+              type="button"
+              disabled={settingsState.indicatorMode === 'none'}
+              aria-pressed={settingsState.indicatorColor === option.value}
+              onclick={() => updateSettings({ indicatorColor: option.value })}
+              class="flex items-center gap-1.5 rounded-md px-3 py-1.5 text-xs font-medium transition-colors {settingsState.indicatorMode ===
+              'none'
+                ? 'opacity-40 cursor-not-allowed bg-secondary text-secondary-foreground'
+                : settingsState.indicatorColor === option.value
+                  ? 'bg-primary text-primary-foreground'
+                  : 'bg-secondary text-secondary-foreground hover:bg-secondary/80'}"
+            >
+              <span
+                class="inline-block h-2.5 w-2.5 rounded-full"
+                style="background-color: {option.color}"
+              ></span>
               {option.label}
             </button>
           {/each}
         </div>
         <p class="mt-1.5 text-[10px] text-muted-foreground">
-          {settingsState.dotColor === 'none'
-            ? 'The icon dot stays white (default).'
-            : `Colors the icon dot ${settingsState.dotColor} when unread notifications are pending.`}
+          {settingsState.indicatorMode === 'none'
+            ? 'The menubar icon stays monochrome.'
+            : settingsState.indicatorMode === 'dot'
+              ? 'Shows a colored dot on the menubar icon when unread notifications are pending.'
+              : 'Colors the icon waves when unread notifications are pending.'}
         </p>
       </section>
 
