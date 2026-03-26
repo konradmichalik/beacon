@@ -9,6 +9,7 @@
   import type { NotificationSource, PRRoleFilter, PRDraftFilter, PRCIFilter } from '$lib/types';
   import { getStarredIds } from '$lib/stores/starred-prs.svelte';
   import { settingsState } from '$lib/stores/settings.svelte';
+  import { roving } from '$lib/actions/roving';
 
   let {
     sourceFilter = 'all',
@@ -135,9 +136,11 @@
         'fill-warning text-warning'
       )}
       {#if !collapsed.starred}
-        {#each starred as pr (pr.id)}
-          <PullRequestCard pullRequest={pr} />
-        {/each}
+        <div use:roving>
+          {#each starred as pr (pr.id)}
+            <PullRequestCard pullRequest={pr} />
+          {/each}
+        </div>
       {/if}
     {/if}
 
@@ -145,18 +148,22 @@
       {#if authored.length > 0}
         {@render sectionHeader('Created by me', authored.length, 'authored', GitPullRequest)}
         {#if !collapsed.authored}
-          {#each authored as pr (pr.id)}
-            <PullRequestCard pullRequest={pr} />
-          {/each}
+          <div use:roving>
+            {#each authored as pr (pr.id)}
+              <PullRequestCard pullRequest={pr} />
+            {/each}
+          </div>
         {/if}
       {/if}
 
       {#if toReview.length > 0}
         {@render sectionHeader('To review', toReview.length, 'toReview', Eye)}
         {#if !collapsed.toReview}
-          {#each toReview as pr (pr.id)}
-            <PullRequestCard pullRequest={pr} />
-          {/each}
+          <div use:roving>
+            {#each toReview as pr (pr.id)}
+              <PullRequestCard pullRequest={pr} />
+            {/each}
+          </div>
         {/if}
       {/if}
 
@@ -169,9 +176,11 @@
           'text-success-text'
         )}
         {#if !collapsed.reviewed}
-          {#each reviewed as pr (pr.id)}
-            <PullRequestCard pullRequest={pr} />
-          {/each}
+          <div use:roving>
+            {#each reviewed as pr (pr.id)}
+              <PullRequestCard pullRequest={pr} />
+            {/each}
+          </div>
         {/if}
       {/if}
     {:else}

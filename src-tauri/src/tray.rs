@@ -40,6 +40,24 @@ fn show_and_focus(window: &tauri::WebviewWindow) {
                 let panel = &*(ns_window as *const NSPanel);
                 panel.setFloatingPanel(true);
                 panel.setLevel(NSPopUpMenuWindowLevel);
+
+                // Make the WKWebView the first responder so keyboard events
+                // reach JavaScript. The content view itself is a container;
+                // the actual WKWebView is its first subview.
+                if let Some(content) = panel.contentView() {
+                    use objc2::runtime::AnyObject;
+                    let subviews = content.subviews();
+                    let target: &AnyObject = if !subviews.is_empty() {
+                        let first: *const AnyObject =
+                            objc2::msg_send![&*subviews, objectAtIndex: 0usize];
+                        &*first
+                    } else {
+                        // Fall back to content view itself
+                        let ptr: *const AnyObject = &*content as *const _ as *const AnyObject;
+                        &*ptr
+                    };
+                    let _: bool = objc2::msg_send![panel, makeFirstResponder: target];
+                }
             }
         }
     }

@@ -15,7 +15,8 @@
     ExternalLink,
     BookOpen,
     Play,
-    ChevronDown
+    ChevronDown,
+    Keyboard
   } from '@lucide/svelte';
   import { settingsState, updateSettings } from '$lib/stores/settings.svelte';
   import { getMuteRules, removeMuteRule } from '$lib/stores/mute-rules.svelte';
@@ -30,6 +31,7 @@
   import GitHubConnectionForm from '../connection/GitHubConnectionForm.svelte';
   import GitLabConnectionForm from '../connection/GitLabConnectionForm.svelte';
   import BeaconLogo from '../icons/BeaconLogo.svelte';
+  import ShortcutsTab from './ShortcutsTab.svelte';
   import { sendNotification } from '$lib/services/desktop-notifications';
   import { playNotificationSound } from '$lib/services/notification-sound';
   import {
@@ -49,7 +51,7 @@
     Trash2
   } from '@lucide/svelte';
 
-  type SettingsTab = 'connections' | 'preferences' | 'alerts' | 'about';
+  type SettingsTab = 'connections' | 'preferences' | 'alerts' | 'shortcuts' | 'about';
   let activeTab: SettingsTab = $state('connections');
   let isPlayingPreview = $state(false);
   let activeMuteRules = $derived(getMuteRules());
@@ -97,6 +99,7 @@
     { value: 'connections', label: 'Connections', icon: Link },
     { value: 'preferences', label: 'Preferences', icon: SlidersHorizontal },
     { value: 'alerts', label: 'Alerts', icon: BellRing },
+    { value: 'shortcuts', label: 'Shortcuts', icon: Keyboard },
     { value: 'about', label: 'About', icon: Info }
   ];
 
@@ -284,45 +287,6 @@
             Open
           </button>
         </div>
-      </section>
-
-      <section>
-        <label class="flex cursor-pointer items-center justify-between gap-3">
-          <div>
-            <span class="text-xs font-medium text-foreground">Global Shortcut</span>
-            <p class="text-[10px] text-muted-foreground">
-              Toggle Beacon with
-              <kbd
-                class="rounded border border-border bg-secondary px-1 py-0.5 font-mono text-[9px]"
-                >&#8984;</kbd
-              >
-              <kbd
-                class="rounded border border-border bg-secondary px-1 py-0.5 font-mono text-[9px]"
-                >&#8679;</kbd
-              >
-              <kbd
-                class="rounded border border-border bg-secondary px-1 py-0.5 font-mono text-[9px]"
-                >B</kbd
-              >
-            </p>
-          </div>
-          <button
-            type="button"
-            role="switch"
-            aria-label="Toggle global keyboard shortcut"
-            aria-checked={settingsState.globalShortcut}
-            onclick={() => updateSettings({ globalShortcut: !settingsState.globalShortcut })}
-            class="relative inline-flex h-5 w-9 shrink-0 items-center rounded-full transition-colors {settingsState.globalShortcut
-              ? 'bg-primary'
-              : 'bg-secondary'}"
-          >
-            <span
-              class="inline-block h-3.5 w-3.5 rounded-full bg-white shadow-sm transition-transform {settingsState.globalShortcut
-                ? 'translate-x-4'
-                : 'translate-x-0.5'}"
-            ></span>
-          </button>
-        </label>
       </section>
     </div>
 
@@ -614,6 +578,8 @@
         </div>
       </section>
     {/if}
+  {:else if activeTab === 'shortcuts'}
+    <ShortcutsTab />
   {:else if activeTab === 'about'}
     <div class="flex flex-col items-center gap-5 py-4">
       <BeaconLogo height={30} class="text-foreground" />
