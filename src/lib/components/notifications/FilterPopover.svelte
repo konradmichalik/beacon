@@ -11,7 +11,12 @@
     hasActiveFilters
   } from '$lib/stores/filters.svelte';
   import type { StatusFilter } from '$lib/stores/filters.svelte';
-  import { getUniqueTypes, getUniqueProjectsWithSource } from '$lib/stores/notifications.svelte';
+  import {
+    getUniqueTypes,
+    getUniqueProjectsWithSource,
+    getUnreadCountByType,
+    getUnreadCountByProject
+  } from '$lib/stores/notifications.svelte';
   import { NOTIFICATION_TYPE_LABELS } from '$lib/types';
   import GitHubIcon from '$lib/components/icons/GitHubIcon.svelte';
   import GitLabIcon from '$lib/components/icons/GitLabIcon.svelte';
@@ -23,6 +28,9 @@
   let availableTypes = $derived(getUniqueTypes());
   let availableProjects = $derived(getUniqueProjectsWithSource());
   let filtersActive = $derived(hasActiveFilters());
+  let unreadByType = $derived(getUnreadCountByType(filterState.source));
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  let unreadByProject = $derived(getUnreadCountByProject(filterState.source));
 
   function handleKeydown(e: KeyboardEvent) {
     if (e.key === 'Escape') onClose();
@@ -83,15 +91,28 @@
             </button>
             {#each availableTypes as type (type)}
               {@const active = filterState.types.has(type)}
+              {@const count = unreadByType.get(type) ?? 0}
               <button
                 type="button"
                 onclick={() => toggleTypeFilter(type)}
-                class="rounded-md border px-2 py-0.5 text-[10px] font-medium transition-colors
+                class="flex items-center gap-1 rounded-md border px-2 py-0.5 text-[10px] font-medium transition-colors
                   {active
                   ? 'border-primary bg-primary text-primary-foreground'
-                  : 'border-border text-muted-foreground hover:border-foreground/20 hover:text-foreground'}"
+                  : count === 0
+                    ? 'border-border text-muted-foreground/50'
+                    : 'border-border text-muted-foreground hover:border-foreground/20 hover:text-foreground'}"
               >
                 {NOTIFICATION_TYPE_LABELS[type] ?? type}
+                {#if count > 0}
+                  <span
+                    class="rounded-full px-1 py-px text-[9px] font-semibold leading-tight
+                      {active
+                      ? 'bg-primary-foreground/20 text-primary-foreground'
+                      : 'bg-secondary text-muted-foreground'}"
+                  >
+                    {count}
+                  </span>
+                {/if}
               </button>
             {/each}
           </div>
