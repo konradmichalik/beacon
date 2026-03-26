@@ -26,10 +26,17 @@
   let { onClose }: { onClose: () => void } = $props();
 
   let availableTypes = $derived(getUniqueTypes());
-  let availableProjects = $derived(getUniqueProjectsWithSource());
+  let availableProjects = $derived.by(() => {
+    const projects = getUniqueProjectsWithSource();
+    return [...projects].sort((a, b) => {
+      const countA = unreadByProject.get(a.repository) ?? 0;
+      const countB = unreadByProject.get(b.repository) ?? 0;
+      if (countB !== countA) return countB - countA;
+      return a.repository.localeCompare(b.repository);
+    });
+  });
   let filtersActive = $derived(hasActiveFilters());
   let unreadByType = $derived(getUnreadCountByType(filterState.source));
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   let unreadByProject = $derived(getUnreadCountByProject(filterState.source));
 
   function handleKeydown(e: KeyboardEvent) {
@@ -170,6 +177,7 @@
           <div class="max-h-28 space-y-0.5 overflow-y-auto">
             {#each availableProjects as project (project.repository)}
               {@const active = filterState.projects.has(project.repository)}
+              {@const count = unreadByProject.get(project.repository) ?? 0}
               <label
                 class="flex cursor-pointer items-center gap-2 rounded px-1.5 py-1 transition-colors hover:bg-secondary"
               >
@@ -187,10 +195,19 @@
                 <span
                   class="truncate text-[11px] {active
                     ? 'font-medium text-foreground'
-                    : 'text-muted-foreground'}"
+                    : count === 0
+                      ? 'text-muted-foreground/50'
+                      : 'text-muted-foreground'}"
                 >
                   {project.repository.split('/').slice(-2).join('/')}
                 </span>
+                {#if count > 0}
+                  <span
+                    class="ml-auto shrink-0 rounded-full bg-secondary px-1 py-px text-[9px] font-semibold leading-tight text-muted-foreground"
+                  >
+                    {count}
+                  </span>
+                {/if}
               </label>
             {/each}
           </div>
