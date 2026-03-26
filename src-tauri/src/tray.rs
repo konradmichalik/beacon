@@ -40,6 +40,12 @@ fn show_and_focus(window: &tauri::WebviewWindow) {
                 let panel = &*(ns_window as *const NSPanel);
                 panel.setFloatingPanel(true);
                 panel.setLevel(NSPopUpMenuWindowLevel);
+
+                // Make the webview content view the first responder so
+                // keyboard events reach JavaScript instead of triggering NSBeep.
+                if let Some(view) = panel.contentView() {
+                    let _: bool = objc2::msg_send![panel, makeFirstResponder: &*view];
+                }
             }
         }
     }
