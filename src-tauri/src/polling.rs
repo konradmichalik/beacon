@@ -34,8 +34,10 @@ struct Settings {
     notify_summary_minutes: u64,
     #[serde(default = "default_badge")]
     badge_mode: String,
-    #[serde(default = "default_dot")]
-    dot_color: String,
+    #[serde(default = "default_indicator_mode")]
+    indicator_mode: String,
+    #[serde(default = "default_indicator_color")]
+    indicator_color: String,
     #[serde(default)]
     debug_log: bool,
 }
@@ -58,7 +60,10 @@ fn default_summary_min() -> u64 {
 fn default_badge() -> String {
     "count".into()
 }
-fn default_dot() -> String {
+fn default_indicator_mode() -> String {
+    "none".into()
+}
+fn default_indicator_color() -> String {
     "blue".into()
 }
 
@@ -69,7 +74,8 @@ impl Default for Settings {
             notify_mode: NotifyMode::default(),
             notify_summary_minutes: default_summary_min(),
             badge_mode: default_badge(),
-            dot_color: default_dot(),
+            indicator_mode: default_indicator_mode(),
+            indicator_color: default_indicator_color(),
             debug_log: false,
         }
     }
@@ -707,7 +713,13 @@ async fn do_poll(app: &AppHandle) {
         process_new(app, &mut inner, &results, &settings);
     }
 
-    let _ = crate::update_tray_icon(app, unread, &settings.badge_mode, &settings.dot_color);
+    let _ = crate::update_tray_icon(
+        app,
+        unread,
+        &settings.badge_mode,
+        &settings.indicator_mode,
+        &settings.indicator_color,
+    );
 
     let _ = app.emit("notifications-updated", &results);
 }

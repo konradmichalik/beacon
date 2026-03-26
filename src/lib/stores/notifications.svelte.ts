@@ -227,7 +227,8 @@ async function updateTrayBadge(count: number): Promise<void> {
     await tauriInvoke('update_badge', {
       count,
       mode: settingsState.badgeMode,
-      dotColor: settingsState.dotColor
+      indicatorMode: settingsState.indicatorMode,
+      indicatorColor: settingsState.indicatorColor
     });
   } catch {
     // Badge update is best-effort

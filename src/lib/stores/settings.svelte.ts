@@ -4,7 +4,8 @@ const STORAGE_KEY = 'settings';
 
 export type BadgeMode = 'count' | 'hidden';
 export type NotifyMode = 'disabled' | 'instant' | 'summary';
-export type DotColor = 'none' | 'blue' | 'red' | 'yellow' | 'green';
+export type IndicatorMode = 'none' | 'dot' | 'waves';
+export type IndicatorColor = 'blue' | 'red' | 'yellow' | 'green';
 export const NOTIFY_SOUNDS = [
   'none',
   'bell',
@@ -30,7 +31,8 @@ interface Settings {
   pollingInterval: number; // in seconds
   theme: 'light' | 'dark' | 'system';
   badgeMode: BadgeMode;
-  dotColor: DotColor;
+  indicatorMode: IndicatorMode;
+  indicatorColor: IndicatorColor;
   notifyMode: NotifyMode;
   notifySummaryMinutes: number; // summary interval in minutes
   notifySound: NotifySound;
@@ -44,7 +46,8 @@ const defaultSettings: Settings = {
   pollingInterval: 300,
   theme: 'system',
   badgeMode: 'count',
-  dotColor: 'blue',
+  indicatorMode: 'none',
+  indicatorColor: 'blue',
   notifyMode: 'disabled',
   notifySummaryMinutes: 15,
   notifySound: 'none',
@@ -85,13 +88,42 @@ export function setDebugLogChangeCallback(callback: (enabled: boolean) => void):
 export async function initializeSettings(): Promise<void> {
   const stored = await getStorageItem<Settings>(STORAGE_KEY);
   if (stored) {
-    if ((stored as unknown as Record<string, unknown>).badgeMode === 'dot') {
+    const raw = stored as unknown as Record<string, unknown>;
+    const wasDotBadge = raw.badgeMode === 'dot';
+    const hadLegacyDotColor = 'dotColor' in raw;
+    let migrated = false;
+
+    // Legacy badgeMode: 'dot' migration
+    if (wasDotBadge) {
       stored.badgeMode = 'hidden';
-      if (!stored.dotColor || stored.dotColor === 'none') {
-        stored.dotColor = 'blue';
-      }
+      migrated = true;
     }
+
+    // Legacy dotColor migration
+    if (hadLegacyDotColor) {
+      const legacyDotColor = raw.dotColor as string;
+      if (legacyDotColor === 'none') {
+        stored.indicatorMode = 'none';
+        stored.indicatorColor = 'blue';
+      } else {
+        stored.indicatorMode = 'waves';
+        stored.indicatorColor = (legacyDotColor || 'blue') as IndicatorColor;
+      }
+      delete raw.dotColor;
+      migrated = true;
+    }
+
+    // Legacy badgeMode: 'dot' without dotColor
+    if (wasDotBadge && !hadLegacyDotColor && !stored.indicatorMode) {
+      stored.indicatorMode = 'waves';
+      stored.indicatorColor = 'blue';
+      migrated = true;
+    }
+
     Object.assign(settingsState, stored);
+    if (migrated) {
+      await setStorageItem(STORAGE_KEY, { ...settingsState });
+    }
   }
   // Allow URL param override (used by landing page demo)
   // eslint-disable-next-line svelte/prefer-svelte-reactivity -- one-shot URL check, not reactive state
@@ -116,7 +148,12 @@ export async function updateSettings(updates: Partial<Settings>): Promise<void> 
   if (pollingChanged && onPollingChange) {
     onPollingChange();
   }
-  if ((updates.badgeMode !== undefined || updates.dotColor !== undefined) && onBadgeModeChange) {
+  if (
+    (updates.badgeMode !== undefined ||
+      updates.indicatorMode !== undefined ||
+      updates.indicatorColor !== undefined) &&
+    onBadgeModeChange
+  ) {
     onBadgeModeChange();
   }
   if (
@@ -169,7 +206,11 @@ export async function listenForExternalSettingsChanges(): Promise<() => void> {
 
     if (updated.theme !== prev.theme) applyTheme();
     if (updated.pollingInterval !== prev.pollingInterval) onPollingChange?.();
-    if (updated.badgeMode !== prev.badgeMode || updated.dotColor !== prev.dotColor) {
+    if (
+      updated.badgeMode !== prev.badgeMode ||
+      updated.indicatorMode !== prev.indicatorMode ||
+      updated.indicatorColor !== prev.indicatorColor
+    ) {
       onBadgeModeChange?.();
     }
     if (
