@@ -90,14 +90,17 @@ export async function initializeSettings(): Promise<void> {
   if (stored) {
     const raw = stored as unknown as Record<string, unknown>;
     const wasDotBadge = raw.badgeMode === 'dot';
+    const hadLegacyDotColor = 'dotColor' in raw;
+    let migrated = false;
 
     // Legacy badgeMode: 'dot' migration
     if (wasDotBadge) {
       stored.badgeMode = 'hidden';
+      migrated = true;
     }
 
     // Legacy dotColor migration
-    if ('dotColor' in raw) {
+    if (hadLegacyDotColor) {
       const legacyDotColor = raw.dotColor as string;
       if (legacyDotColor === 'none') {
         stored.indicatorMode = 'none';
@@ -107,14 +110,20 @@ export async function initializeSettings(): Promise<void> {
         stored.indicatorColor = (legacyDotColor || 'blue') as IndicatorColor;
       }
       delete raw.dotColor;
+      migrated = true;
     }
 
     // Legacy badgeMode: 'dot' without dotColor
-    if (wasDotBadge && !('dotColor' in raw) && !stored.indicatorMode) {
+    if (wasDotBadge && !hadLegacyDotColor && !stored.indicatorMode) {
       stored.indicatorMode = 'waves';
       stored.indicatorColor = 'blue';
+      migrated = true;
     }
+
     Object.assign(settingsState, stored);
+    if (migrated) {
+      await setStorageItem(STORAGE_KEY, { ...settingsState });
+    }
   }
   // Allow URL param override (used by landing page demo)
   // eslint-disable-next-line svelte/prefer-svelte-reactivity -- one-shot URL check, not reactive state
