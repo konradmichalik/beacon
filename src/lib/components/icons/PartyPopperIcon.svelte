@@ -46,34 +46,49 @@
     opacity: 0;
     transform-box: view-box;
     transform-origin: 11px 12px;
+    animation: burst 0.35s ease-out forwards;
   }
 
   .confetti-1 {
-    animation: burst-1 0.35s 0.08s ease-out forwards;
+    --tx: 7px;
+    --ty: 9px;
+    animation-delay: 0.08s;
   }
   .confetti-2 {
-    animation: burst-2 0.35s 0.16s ease-out forwards;
+    --tx: -11px;
+    --ty: 4px;
+    animation-delay: 0.16s;
   }
   .confetti-3 {
-    animation: burst-3 0.35s 0.05s ease-out forwards;
+    --tx: -4px;
+    --ty: 10px;
+    animation-delay: 0.05s;
   }
   .confetti-4 {
-    animation: burst-4 0.35s 0.22s ease-out forwards;
+    --tx: -11px;
+    --ty: -8px;
+    animation-delay: 0.22s;
   }
   .confetti-5 {
-    animation: burst-5 0.35s 0.02s ease-out forwards;
+    --tx: -7px;
+    --ty: 6px;
+    animation-delay: 0.02s;
   }
   .confetti-6 {
-    animation: burst-6 0.35s 0.13s ease-out forwards;
+    --tx: -9px;
+    --ty: 0;
+    animation-delay: 0.13s;
   }
   .confetti-7 {
-    animation: burst-7 0.35s 0.1s ease-out forwards;
+    --tx: 1px;
+    --ty: 7px;
+    animation-delay: 0.1s;
   }
 
-  @keyframes burst-1 {
+  @keyframes burst {
     0% {
       opacity: 0;
-      translate: 7px 9px;
+      translate: var(--tx) var(--ty);
       scale: 0;
     }
     30% {
@@ -85,94 +100,11 @@
       scale: 1;
     }
   }
-  @keyframes burst-2 {
-    0% {
-      opacity: 0;
-      translate: -11px 4px;
-      scale: 0;
-    }
-    30% {
+
+  @media (prefers-reduced-motion: reduce) {
+    .confetti {
       opacity: 1;
-    }
-    100% {
-      opacity: 1;
-      translate: 0 0;
-      scale: 1;
-    }
-  }
-  @keyframes burst-3 {
-    0% {
-      opacity: 0;
-      translate: -4px 10px;
-      scale: 0;
-    }
-    30% {
-      opacity: 1;
-    }
-    100% {
-      opacity: 1;
-      translate: 0 0;
-      scale: 1;
-    }
-  }
-  @keyframes burst-4 {
-    0% {
-      opacity: 0;
-      translate: -11px -8px;
-      scale: 0;
-    }
-    30% {
-      opacity: 1;
-    }
-    100% {
-      opacity: 1;
-      translate: 0 0;
-      scale: 1;
-    }
-  }
-  @keyframes burst-5 {
-    0% {
-      opacity: 0;
-      translate: -7px 6px;
-      scale: 0;
-    }
-    30% {
-      opacity: 1;
-    }
-    100% {
-      opacity: 1;
-      translate: 0 0;
-      scale: 1;
-    }
-  }
-  @keyframes burst-6 {
-    0% {
-      opacity: 0;
-      translate: -9px 0;
-      scale: 0;
-    }
-    30% {
-      opacity: 1;
-    }
-    100% {
-      opacity: 1;
-      translate: 0 0;
-      scale: 1;
-    }
-  }
-  @keyframes burst-7 {
-    0% {
-      opacity: 0;
-      translate: 1px 7px;
-      scale: 0;
-    }
-    30% {
-      opacity: 1;
-    }
-    100% {
-      opacity: 1;
-      translate: 0 0;
-      scale: 1;
+      animation: none;
     }
   }
 </style>
