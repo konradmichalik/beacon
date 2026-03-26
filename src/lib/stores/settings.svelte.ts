@@ -4,7 +4,7 @@ const STORAGE_KEY = 'settings';
 
 export type BadgeMode = 'count' | 'hidden';
 export type NotifyMode = 'disabled' | 'instant' | 'summary';
-export type DotColor = 'none' | 'blue' | 'red';
+export type DotColor = 'none' | 'blue' | 'red' | 'yellow' | 'green';
 export const NOTIFY_SOUNDS = [
   'none',
   'bell',

@@ -121,7 +121,9 @@
   const dotColorOptions: { value: DotColor; label: string; color: string }[] = [
     { value: 'none', label: 'None', color: 'transparent' },
     { value: 'blue', label: 'Blue', color: '#5e81ac' },
-    { value: 'red', label: 'Red', color: '#ff786e' }
+    { value: 'red', label: 'Red', color: '#ff786e' },
+    { value: 'yellow', label: 'Yellow', color: '#ebcb8b' },
+    { value: 'green', label: 'Green', color: '#a3be8c' }
   ];
 
   const notifyOptions: { value: NotifyMode; label: string; icon: typeof Bell }[] = [
@@ -246,8 +248,8 @@
         </div>
         <p class="mt-1.5 text-[10px] text-muted-foreground">
           {settingsState.dotColor === 'none'
-            ? 'No colored dot on the menubar icon.'
-            : `Shows a ${settingsState.dotColor} dot on the icon when unread notifications are pending.`}
+            ? 'The icon dot stays white (default).'
+            : `Colors the icon dot ${settingsState.dotColor} when unread notifications are pending.`}
         </p>
       </section>
 
