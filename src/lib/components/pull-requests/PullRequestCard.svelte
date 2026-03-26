@@ -136,7 +136,12 @@
 </script>
 
 <!-- svelte-ignore a11y_no_static_element_interactions -->
-<div data-roving-item tabindex="-1" onkeydown={handleCardKeydown} class="border-b border-border/60 outline-none focus:bg-surface-hovered focus:shadow-[inset_3px_0_0_var(--ds-border-focused)]">
+<div
+  data-roving-item
+  tabindex="-1"
+  onkeydown={handleCardKeydown}
+  class="border-b border-border/60 outline-none focus:bg-surface-hovered focus:shadow-[inset_3px_0_0_var(--ds-border-focused)]"
+>
   <button
     type="button"
     tabindex={-1}

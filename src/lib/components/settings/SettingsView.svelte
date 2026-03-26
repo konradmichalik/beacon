@@ -288,7 +288,6 @@
           </button>
         </div>
       </section>
-
     </div>
 
     <hr class="border-border" />

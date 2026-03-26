@@ -41,12 +41,13 @@
     if (e.key !== 'ArrowLeft' && e.key !== 'ArrowRight') return;
     e.preventDefault();
     const currentIndex = tabs.findIndex((t) => t.id === activeView);
-    const next = e.key === 'ArrowRight'
-      ? tabs[(currentIndex + 1) % tabs.length]
-      : tabs[(currentIndex - 1 + tabs.length) % tabs.length];
+    const next =
+      e.key === 'ArrowRight'
+        ? tabs[(currentIndex + 1) % tabs.length]
+        : tabs[(currentIndex - 1 + tabs.length) % tabs.length];
     onTabChange(next.id);
     // Focus the newly active tab button
-    const container = (e.currentTarget as HTMLElement);
+    const container = e.currentTarget as HTMLElement;
     requestAnimationFrame(() => {
       container.querySelector<HTMLElement>('[aria-selected="true"]')?.focus();
     });
@@ -77,7 +78,11 @@
     <BeaconLogo height={18} class="text-foreground" />
   </div>
   <!-- svelte-ignore a11y_interactive_supports_focus -->
-  <div class="pointer-events-none absolute inset-x-0 bottom-0 flex justify-center gap-1" role="tablist" onkeydown={handleTabKeydown}>
+  <div
+    class="pointer-events-none absolute inset-x-0 bottom-0 flex justify-center gap-1"
+    role="tablist"
+    onkeydown={handleTabKeydown}
+  >
     {#each tabs as tab (tab.id)}
       {@const TabIcon = tab.icon}
       {@const count = tab.getCount()}

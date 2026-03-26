@@ -7,7 +7,12 @@
   import PRFilterBar from '../pull-requests/PRFilterBar.svelte';
   import SettingsView from '../settings/SettingsView.svelte';
   import { hasAnyServiceConfigured } from '$lib/stores/connections.svelte';
-  import { startPolling, markAllSeen, isDemoMode, refreshNotifications } from '$lib/stores/notifications.svelte';
+  import {
+    startPolling,
+    markAllSeen,
+    isDemoMode,
+    refreshNotifications
+  } from '$lib/stores/notifications.svelte';
   import { showToast } from '$lib/stores/toast.svelte';
   import { refreshPullRequests } from '$lib/stores/pull-requests.svelte';
   import { ArrowLeft, ArrowUp } from '@lucide/svelte';
@@ -108,7 +113,8 @@
 
     // When a list item is focused, let the roving action handle all arrow keys
     const active = document.activeElement as HTMLElement;
-    const inList = active?.hasAttribute('data-roving-item') || !!active?.closest('[data-roving-item]');
+    const inList =
+      active?.hasAttribute('data-roving-item') || !!active?.closest('[data-roving-item]');
 
     if (inList) return;
 
@@ -117,9 +123,10 @@
       e.preventDefault();
       const tabs: ViewTab[] = ['notifications', 'pull-requests'];
       const idx = tabs.indexOf(activeView);
-      activeView = e.key === 'ArrowRight'
-        ? tabs[(idx + 1) % tabs.length]
-        : tabs[(idx - 1 + tabs.length) % tabs.length];
+      activeView =
+        e.key === 'ArrowRight'
+          ? tabs[(idx + 1) % tabs.length]
+          : tabs[(idx - 1 + tabs.length) % tabs.length];
       return;
     }
 
