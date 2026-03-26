@@ -372,8 +372,7 @@
             role="switch"
             aria-label="Toggle PR grouping by role"
             aria-checked={settingsState.groupPullRequests}
-            onclick={() =>
-              updateSettings({ groupPullRequests: !settingsState.groupPullRequests })}
+            onclick={() => updateSettings({ groupPullRequests: !settingsState.groupPullRequests })}
             class="relative inline-flex h-5 w-9 shrink-0 items-center rounded-full transition-colors {settingsState.groupPullRequests
               ? 'bg-primary'
               : 'bg-secondary'}"
