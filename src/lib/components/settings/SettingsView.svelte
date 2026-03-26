@@ -149,7 +149,7 @@
 </script>
 
 <!-- Tab bar -->
-<div class="flex border-b border-border">
+<div class="sticky top-0 z-10 flex border-b border-border bg-popover">
   {#each tabs as tab (tab.value)}
     {@const Icon = tab.icon}
     <button
@@ -168,7 +168,7 @@
 
 <div class="space-y-6 p-4">
   {#if activeTab === 'connections'}
-    <div class="space-y-3">
+    <div class="space-y-4">
       <GitHubConnectionForm />
       <GitLabConnectionForm />
     </div>
@@ -483,9 +483,7 @@
   {:else if activeTab === 'alerts'}
     <!-- Notification Mode -->
     <section>
-      <h3 class="mb-3 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-        Desktop Notifications
-      </h3>
+      <h4 class="mb-2 text-xs font-medium text-foreground">Desktop Notifications</h4>
       <div class="flex gap-1.5">
         {#each notifyOptions as option (option.value)}
           {@const Icon = option.icon}
@@ -516,9 +514,7 @@
     {#if settingsState.notifyMode === 'summary'}
       <!-- Summary Interval -->
       <section>
-        <h3 class="mb-3 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-          Summary Interval
-        </h3>
+        <h4 class="mb-2 text-xs font-medium text-foreground">Summary Interval</h4>
         <div class="flex gap-1.5">
           {#each summaryIntervalOptions as option (option.value)}
             <button
@@ -539,12 +535,12 @@
     {#if settingsState.notifyMode !== 'disabled'}
       <!-- Notification Sound -->
       <section>
-        <h3
+        <h4
           id="notification-sound-heading"
-          class="mb-3 text-xs font-semibold uppercase tracking-wider text-muted-foreground"
+          class="mb-2 text-xs font-medium text-foreground"
         >
           Notification Sound
-        </h3>
+        </h4>
         <div class="inline-flex items-center gap-1.5">
           <div class="relative">
             <select
