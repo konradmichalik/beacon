@@ -64,6 +64,9 @@
   let countByDraft = $derived(getPRCountByDraft(sourceFilter));
   let countByCI = $derived(getPRCountByCI(sourceFilter));
   let countByProject = $derived(getPRCountByProject(sourceFilter));
+  let sourceScopedTotal = $derived(
+    sourceFilter === 'all' ? totalCount : sourceFilter === 'github' ? githubCount : gitlabCount
+  );
   let availableProjects = $derived.by(() => {
     const projects = getUniquePRProjectsWithSource();
     return [...projects].sort((a, b) => {
@@ -268,7 +271,7 @@
                 class="mb-1.5 block text-[10px] font-semibold uppercase tracking-wide text-muted-foreground"
                 >Role</span
               >
-              {@render filterChips(roleOptions, roleFilter, countByRole, totalCount, (v) =>
+              {@render filterChips(roleOptions, roleFilter, countByRole, sourceScopedTotal, (v) =>
                 onRoleChange(v as PRRoleFilter)
               )}
             </div>
@@ -287,7 +290,7 @@
                 ],
                 draftFilter,
                 countByDraft,
-                totalCount,
+                sourceScopedTotal,
                 (v) => onDraftChange(v as PRDraftFilter)
               )}
             </div>
@@ -307,7 +310,7 @@
                 ],
                 ciFilter,
                 countByCI,
-                totalCount,
+                sourceScopedTotal,
                 (v) => onCIChange(v as PRCIFilter)
               )}
             </div>
