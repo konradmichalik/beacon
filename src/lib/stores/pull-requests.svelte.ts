@@ -88,8 +88,8 @@ export function getPRCountByCI(
   // eslint-disable-next-line svelte/prefer-svelte-reactivity -- local counting map, not state
   const counts = new Map<PRCIFilter, number>();
   for (const pr of filtered) {
-    if (pr.ciStatus) {
-      counts.set(pr.ciStatus as PRCIFilter, (counts.get(pr.ciStatus as PRCIFilter) ?? 0) + 1);
+    if (pr.ciStatus === 'success' || pr.ciStatus === 'failure' || pr.ciStatus === 'pending') {
+      counts.set(pr.ciStatus, (counts.get(pr.ciStatus) ?? 0) + 1);
     }
   }
   return counts;
