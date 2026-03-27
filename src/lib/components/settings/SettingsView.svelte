@@ -367,6 +367,13 @@
                       {rule.status.charAt(0).toUpperCase() + rule.status.slice(1)}
                     </span>
                   {/if}
+                  {#if rule.author}
+                    <span
+                      class="rounded bg-secondary px-1.5 py-0.5 text-[10px] font-medium text-muted-foreground"
+                    >
+                      @{rule.author}
+                    </span>
+                  {/if}
                 </div>
                 <button
                   type="button"
