@@ -15,7 +15,8 @@
     getUniqueTypes,
     getUniqueProjectsWithSource,
     getUnreadCountByType,
-    getUnreadCountByProject
+    getUnreadCountByProject,
+    getUnreadCountByStatus
   } from '$lib/stores/notifications.svelte';
   import { NOTIFICATION_TYPE_LABELS } from '$lib/types';
   import GitHubIcon from '$lib/components/icons/GitHubIcon.svelte';
@@ -28,6 +29,7 @@
   let availableTypes = $derived(getUniqueTypes());
   let unreadByType = $derived(getUnreadCountByType(filterState.source));
   let unreadByProject = $derived(getUnreadCountByProject(filterState.source));
+  let unreadByStatus = $derived(getUnreadCountByStatus(filterState.source));
   let availableProjects = $derived.by(() => {
     const projects = getUniqueProjectsWithSource();
     return [...projects].sort((a, b) => {
@@ -145,15 +147,28 @@
           </button>
           {#each [{ value: 'open', label: 'Open' }, { value: 'closed', label: 'Closed / Merged' }] as status (status.value)}
             {@const active = filterState.statuses.has(status.value as StatusFilter)}
+            {@const count = unreadByStatus.get(status.value as StatusFilter) ?? 0}
             <button
               type="button"
               onclick={() => toggleStatusFilter(status.value as StatusFilter)}
-              class="rounded-md border px-2 py-0.5 text-[10px] font-medium transition-colors
+              class="flex items-center gap-1 rounded-md border px-2 py-0.5 text-[10px] font-medium transition-colors
                 {active
                 ? 'border-primary bg-primary text-primary-foreground'
-                : 'border-border text-muted-foreground hover:border-foreground/20 hover:text-foreground'}"
+                : count === 0
+                  ? 'border-border text-muted-foreground/50'
+                  : 'border-border text-muted-foreground hover:border-foreground/20 hover:text-foreground'}"
             >
               {status.label}
+              {#if count > 0}
+                <span
+                  class="rounded-full px-1 py-px text-[9px] font-semibold leading-tight
+                    {active
+                    ? 'bg-primary-foreground/20 text-primary-foreground'
+                    : 'bg-secondary text-muted-foreground'}"
+                >
+                  {count}
+                </span>
+              {/if}
             </button>
           {/each}
         </div>
