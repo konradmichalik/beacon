@@ -94,6 +94,7 @@ export interface MuteRule {
   readonly project?: string;
   readonly type?: NotificationType;
   readonly status?: SubjectState;
+  readonly author?: string;
   readonly createdAt: string;
 }
 
