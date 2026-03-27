@@ -12,8 +12,12 @@
   let includeProject = $state(true);
   let includeType = $state(true);
   let includeStatus = $state(untrack(() => notification.subjectState !== null));
+  let includeAuthor = $state(untrack(() => notification.author !== null));
   let hasStatus = $derived(notification.subjectState !== null);
-  let canConfirm = $derived(includeProject || includeType || (includeStatus && hasStatus));
+  let hasAuthor = $derived(notification.author !== null);
+  let canConfirm = $derived(
+    includeProject || includeType || (includeStatus && hasStatus) || (includeAuthor && hasAuthor)
+  );
 
   let statusLabel = $derived.by(() => {
     const s = notification.subjectState;
@@ -35,7 +39,8 @@
     const rule: Omit<MuteRule, 'id' | 'createdAt'> = {
       ...(includeProject && { project: notification.repository }),
       ...(includeType && { type: notification.type }),
-      ...(includeStatus && hasStatus && { status: notification.subjectState! })
+      ...(includeStatus && hasStatus && { status: notification.subjectState! }),
+      ...(includeAuthor && hasAuthor && { author: notification.author!.login })
     };
     await addMuteRule(rule);
     onClose();
@@ -131,6 +136,30 @@
             class="ml-auto shrink-0 rounded bg-secondary px-1.5 py-0.5 text-[10px] font-medium text-muted-foreground"
           >
             {statusLabel}
+          </span>
+        {:else}
+          <span class="ml-auto text-[10px] italic text-muted-foreground">n/a</span>
+        {/if}
+      </label>
+
+      <!-- Author -->
+      <label
+        class="flex items-center gap-2 rounded px-1.5 py-1.5 {hasAuthor
+          ? 'cursor-pointer hover:bg-secondary'
+          : 'cursor-not-allowed opacity-40'}"
+      >
+        <input
+          type="checkbox"
+          bind:checked={includeAuthor}
+          disabled={!hasAuthor}
+          class="h-3 w-3 rounded border-border accent-primary"
+        />
+        <span class="text-[11px] text-muted-foreground">Author</span>
+        {#if notification.author}
+          <span
+            class="ml-auto shrink-0 rounded bg-secondary px-1.5 py-0.5 text-[10px] font-medium text-muted-foreground"
+          >
+            {notification.author.login}
           </span>
         {:else}
           <span class="ml-auto text-[10px] italic text-muted-foreground">n/a</span>

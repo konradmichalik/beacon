@@ -11,6 +11,7 @@ interface FilterState {
   types: SvelteSet<NotificationType>;
   projects: SvelteSet<string>;
   statuses: SvelteSet<StatusFilter>;
+  authors: SvelteSet<string>;
 }
 
 export const filterState: FilterState = $state({
@@ -19,7 +20,8 @@ export const filterState: FilterState = $state({
   sort: 'date',
   types: new SvelteSet(),
   projects: new SvelteSet(),
-  statuses: new SvelteSet()
+  statuses: new SvelteSet(),
+  authors: new SvelteSet()
 });
 
 export function setSourceFilter(source: NotificationSource | 'all'): void {
@@ -71,15 +73,31 @@ export function clearStatusFilters(): void {
   filterState.statuses.clear();
 }
 
+export function toggleAuthorFilter(author: string): void {
+  if (filterState.authors.has(author)) {
+    filterState.authors.delete(author);
+  } else {
+    filterState.authors.add(author);
+  }
+}
+
+export function clearAuthorFilters(): void {
+  filterState.authors.clear();
+}
+
 export function clearAllFilters(): void {
   filterState.types.clear();
   filterState.projects.clear();
   filterState.statuses.clear();
+  filterState.authors.clear();
 }
 
 export function hasActiveFilters(): boolean {
   return (
-    filterState.types.size > 0 || filterState.projects.size > 0 || filterState.statuses.size > 0
+    filterState.types.size > 0 ||
+    filterState.projects.size > 0 ||
+    filterState.statuses.size > 0 ||
+    filterState.authors.size > 0
   );
 }
 
@@ -90,4 +108,5 @@ export function resetFilters(): void {
   filterState.types.clear();
   filterState.projects.clear();
   filterState.statuses.clear();
+  filterState.authors.clear();
 }

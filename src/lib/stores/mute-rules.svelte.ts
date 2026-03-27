@@ -15,7 +15,12 @@ async function persist(): Promise<void> {
 }
 
 function hasCriteria(rule: Omit<MuteRule, 'id' | 'createdAt'>): boolean {
-  return rule.project !== undefined || rule.type !== undefined || rule.status !== undefined;
+  return (
+    rule.project !== undefined ||
+    rule.type !== undefined ||
+    rule.status !== undefined ||
+    rule.author !== undefined
+  );
 }
 
 function isDuplicate(rule: Omit<MuteRule, 'id' | 'createdAt'>): boolean {
@@ -23,7 +28,8 @@ function isDuplicate(rule: Omit<MuteRule, 'id' | 'createdAt'>): boolean {
     (existing) =>
       existing.project === rule.project &&
       existing.type === rule.type &&
-      existing.status === rule.status
+      existing.status === rule.status &&
+      existing.author === rule.author
   );
 }
 
@@ -60,6 +66,7 @@ export function isNotificationMuted(notification: UnifiedNotification): boolean 
     if (rule.project !== undefined && rule.project !== notification.repository) return false;
     if (rule.type !== undefined && rule.type !== notification.type) return false;
     if (rule.status !== undefined && rule.status !== notification.subjectState) return false;
+    if (rule.author !== undefined && rule.author !== notification.author?.login) return false;
     return true;
   });
 }
@@ -70,7 +77,10 @@ function isValidMuteRule(value: unknown): value is MuteRule {
   return (
     typeof rule.id === 'string' &&
     typeof rule.createdAt === 'string' &&
-    (rule.project !== undefined || rule.type !== undefined || rule.status !== undefined)
+    (rule.project !== undefined ||
+      rule.type !== undefined ||
+      rule.status !== undefined ||
+      rule.author !== undefined)
   );
 }
 
