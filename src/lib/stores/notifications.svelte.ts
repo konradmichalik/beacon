@@ -175,6 +175,23 @@ export function getUnreadCountByType(
   return counts;
 }
 
+export function getUnreadCountByStatus(
+  sourceFilter: NotificationSource | 'all'
+): ReadonlyMap<StatusFilter, number> {
+  const sourceOk = sourceFilter === 'all';
+  const filtered = notifications.filter(
+    (n) => n.unread && !isNotificationMuted(n) && (sourceOk || n.source === sourceFilter)
+  );
+  // eslint-disable-next-line svelte/prefer-svelte-reactivity -- local counting map, not state
+  const counts = new Map<StatusFilter, number>();
+  for (const n of filtered) {
+    const key: StatusFilter =
+      n.subjectState === 'closed' || n.subjectState === 'merged' ? 'closed' : 'open';
+    counts.set(key, (counts.get(key) ?? 0) + 1);
+  }
+  return counts;
+}
+
 export function getUnreadCountByProject(
   sourceFilter: NotificationSource | 'all'
 ): ReadonlyMap<string, number> {
