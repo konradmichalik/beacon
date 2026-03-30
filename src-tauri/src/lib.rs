@@ -243,7 +243,12 @@ fn is_focus_mode_active() -> bool {
                 val.is_none()
             })
             .unwrap();
-        result.0.unwrap_or(false)
+        let active = result.0.unwrap_or(false);
+
+        // Release the service object to prevent memory leak
+        let _: () = objc2::msg_send![service, release];
+
+        active
     }
 }
 
