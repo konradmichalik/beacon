@@ -38,7 +38,8 @@
       filterState.sort,
       filterState.types,
       filterState.projects,
-      filterState.statuses
+      filterState.statuses,
+      filterState.authors
     )
   );
 

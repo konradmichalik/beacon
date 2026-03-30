@@ -64,7 +64,8 @@ export function getFilteredUnreadCount(): number {
     'date',
     filterState.types,
     filterState.projects,
-    filterState.statuses
+    filterState.statuses,
+    filterState.authors
   ).filter((n) => n.unread).length;
 }
 
@@ -79,7 +80,8 @@ export function getCountBySource(source: NotificationSource): number {
     'date',
     filterState.types,
     filterState.projects,
-    filterState.statuses
+    filterState.statuses,
+    filterState.authors
   ).filter((n) => n.unread).length;
 }
 
@@ -113,7 +115,9 @@ export function getFilteredNotifications(
   // eslint-disable-next-line svelte/prefer-svelte-reactivity -- default param, not state
   projectsFilter: ReadonlySet<string> = new Set(),
   // eslint-disable-next-line svelte/prefer-svelte-reactivity -- default param, not state
-  statusFilter: ReadonlySet<StatusFilter> = new Set()
+  statusFilter: ReadonlySet<StatusFilter> = new Set(),
+  // eslint-disable-next-line svelte/prefer-svelte-reactivity -- default param, not state
+  authorsFilter: ReadonlySet<string> = new Set()
 ): readonly UnifiedNotification[] {
   let filtered: UnifiedNotification[] = [...notifications];
 
@@ -140,6 +144,9 @@ export function getFilteredNotifications(
         return true;
       return false;
     });
+  }
+  if (authorsFilter.size > 0) {
+    filtered = filtered.filter((n) => n.author !== null && authorsFilter.has(n.author.login));
   }
   filtered = filtered.filter((n) => !isNotificationMuted(n));
 
@@ -203,6 +210,43 @@ export function getUnreadCountByProject(
   const counts = new Map<string, number>();
   for (const n of filtered) {
     counts.set(n.repository, (counts.get(n.repository) ?? 0) + 1);
+  }
+  return counts;
+}
+
+export interface AuthorInfo {
+  readonly login: string;
+  readonly avatarUrl: string;
+}
+
+export function getUniqueAuthors(): readonly AuthorInfo[] {
+  // eslint-disable-next-line svelte/prefer-svelte-reactivity -- local dedup map, not state
+  const seen = new Map<string, string>();
+  for (const n of notifications) {
+    if (n.author && !seen.has(n.author.login)) {
+      seen.set(n.author.login, n.author.avatarUrl);
+    }
+  }
+  return [...seen.entries()]
+    .map(([login, avatarUrl]) => ({ login, avatarUrl }))
+    .sort((a, b) => a.login.localeCompare(b.login));
+}
+
+export function getUnreadCountByAuthor(
+  sourceFilter: NotificationSource | 'all'
+): ReadonlyMap<string, number> {
+  const sourceOk = sourceFilter === 'all';
+  const filtered = notifications.filter(
+    (n) =>
+      n.unread &&
+      n.author !== null &&
+      !isNotificationMuted(n) &&
+      (sourceOk || n.source === sourceFilter)
+  );
+  // eslint-disable-next-line svelte/prefer-svelte-reactivity -- local counting map, not state
+  const counts = new Map<string, number>();
+  for (const n of filtered) {
+    counts.set(n.author!.login, (counts.get(n.author!.login) ?? 0) + 1);
   }
   return counts;
 }

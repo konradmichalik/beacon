@@ -4,9 +4,11 @@
     toggleTypeFilter,
     toggleProjectFilter,
     toggleStatusFilter,
+    toggleAuthorFilter,
     clearTypeFilters,
     clearProjectFilters,
     clearStatusFilters,
+    clearAuthorFilters,
     clearAllFilters,
     hasActiveFilters
   } from '$lib/stores/filters.svelte';
@@ -14,9 +16,11 @@
   import {
     getUniqueTypes,
     getUniqueProjectsWithSource,
+    getUniqueAuthors,
     getUnreadCountByType,
     getUnreadCountByProject,
-    getUnreadCountByStatus
+    getUnreadCountByStatus,
+    getUnreadCountByAuthor
   } from '$lib/stores/notifications.svelte';
   import { NOTIFICATION_TYPE_LABELS } from '$lib/types';
   import GitHubIcon from '$lib/components/icons/GitHubIcon.svelte';
@@ -27,9 +31,11 @@
   let { onClose }: { onClose: () => void } = $props();
 
   let availableTypes = $derived(getUniqueTypes());
+  let availableAuthors = $derived(getUniqueAuthors());
   let unreadByType = $derived(getUnreadCountByType(filterState.source));
   let unreadByProject = $derived(getUnreadCountByProject(filterState.source));
   let unreadByStatus = $derived(getUnreadCountByStatus(filterState.source));
+  let unreadByAuthor = $derived(getUnreadCountByAuthor(filterState.source));
   let availableProjects = $derived.by(() => {
     const projects = getUniqueProjectsWithSource();
     return [...projects].sort((a, b) => {
@@ -215,6 +221,59 @@
                       : 'text-muted-foreground'}"
                 >
                   {project.repository.split('/').slice(-2).join('/')}
+                </span>
+                {#if count > 0}
+                  <span
+                    class="ml-auto shrink-0 rounded-full bg-secondary px-1 py-px text-[9px] font-semibold leading-tight text-muted-foreground"
+                  >
+                    {count}
+                  </span>
+                {/if}
+              </label>
+            {/each}
+          </div>
+        </div>
+      {/if}
+
+      <!-- Author filter -->
+      {#if availableAuthors.length > 0}
+        <div>
+          <div class="mb-1.5 flex items-center justify-between">
+            <span class="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground"
+              >Author</span
+            >
+            {#if filterState.authors.size > 0}
+              <button
+                type="button"
+                onclick={clearAuthorFilters}
+                class="text-[10px] text-primary hover:underline">Clear</button
+              >
+            {/if}
+          </div>
+          <div class="max-h-28 space-y-0.5 overflow-y-auto">
+            {#each availableAuthors as author (author.login)}
+              {@const active = filterState.authors.has(author.login)}
+              {@const count = unreadByAuthor.get(author.login) ?? 0}
+              <label
+                class="flex cursor-pointer items-center gap-2 rounded px-1.5 py-1 transition-colors hover:bg-secondary"
+              >
+                <input
+                  type="checkbox"
+                  checked={active}
+                  onchange={() => toggleAuthorFilter(author.login)}
+                  class="h-3 w-3 rounded border-border accent-primary"
+                />
+                {#if author.avatarUrl}
+                  <img src={author.avatarUrl} alt="" class="h-4 w-4 shrink-0 rounded-full" />
+                {/if}
+                <span
+                  class="truncate text-[11px] {active
+                    ? 'font-medium text-foreground'
+                    : count === 0
+                      ? 'text-muted-foreground/50'
+                      : 'text-muted-foreground'}"
+                >
+                  {author.login}
                 </span>
                 {#if count > 0}
                   <span
