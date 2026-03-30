@@ -113,14 +113,21 @@ async function fetchReviewStatus(
   }
 }
 
-async function fetchHeadSha(token: string, repo: string, number: number): Promise<string | null> {
+async function fetchPRDetail(
+  token: string,
+  repo: string,
+  number: number
+): Promise<{ headSha: string; baseBranch: string } | null> {
   try {
     const response = await safeFetch(`${GITHUB_API}/repos/${repo}/pulls/${number}`, {
       headers: HEADERS(token)
     });
     if (!response.ok) return null;
-    const data = (await response.json()) as { head: { sha: string }; draft: boolean };
-    return data.head.sha;
+    const data = (await response.json()) as {
+      head: { sha: string };
+      base: { ref: string };
+    };
+    return { headSha: data.head.sha, baseBranch: data.base.ref };
   } catch {
     return null;
   }
@@ -196,15 +203,16 @@ export async function enrichGitHubPR(
   username: string
 ): Promise<UnifiedPullRequest> {
   const repo = pr.repository;
-  const sha = await fetchHeadSha(token, repo, pr.number);
+  const detail = await fetchPRDetail(token, repo, pr.number);
 
   const [ciStatus, reviewStatus] = await Promise.all([
-    sha ? fetchCheckStatus(token, repo, sha) : Promise.resolve('unknown' as CIStatus),
+    detail ? fetchCheckStatus(token, repo, detail.headSha) : Promise.resolve('unknown' as CIStatus),
     fetchReviewStatus(token, repo, pr.number, username)
   ]);
 
   return {
     ...pr,
+    baseBranch: detail?.baseBranch,
     ciStatus,
     reviewDecision: reviewStatus.reviewDecision,
     reviewedByMe: reviewStatus.reviewedByMe,

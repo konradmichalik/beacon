@@ -17,7 +17,8 @@
     ExternalLink,
     ClipboardCopy,
     CircleCheckBig,
-    Star
+    Star,
+    GitBranch
   } from '@lucide/svelte';
   import { isStarred, toggleStar } from '$lib/stores/starred-prs.svelte';
 
@@ -46,6 +47,12 @@
 
   let isPending = $derived(pullRequest.enrichment === 'pending');
   let isSkipped = $derived(pullRequest.enrichment === 'skipped');
+
+  let showBaseBranch = $derived(
+    pullRequest.baseBranch != null &&
+      pullRequest.baseBranch !== 'main' &&
+      pullRequest.baseBranch !== 'master'
+  );
 
   let ciInfo = $derived.by(() => {
     if (isSkipped && pullRequest.ciStatus === 'unknown') return null;
@@ -209,6 +216,16 @@
         >
           #{pullRequest.number}
         </span>
+
+        {#if showBaseBranch}
+          <span
+            class="flex shrink-0 items-center gap-0.5 truncate rounded bg-muted px-1.5 py-0.5 text-[10px] font-medium text-muted-foreground"
+            title="Target: {pullRequest.baseBranch}"
+          >
+            <GitBranch size={9} class="shrink-0" />
+            <span class="max-w-[80px] truncate">{pullRequest.baseBranch}</span>
+          </span>
+        {/if}
 
         {#if pullRequest.draft}
           <span

@@ -20,6 +20,7 @@ interface GitLabMergeRequest {
   readonly head_pipeline: {
     readonly status: string;
   } | null;
+  readonly target_branch: string;
   readonly source_project_id: number;
   readonly target_project_id: number;
   readonly references?: {
@@ -135,6 +136,7 @@ function mapBasicMR(mr: GitLabMergeRequest, reviewRequested: boolean): UnifiedPu
     reviewDecision: mapReviewDecision(mr),
     reviewRequestedFromMe: reviewRequested,
     reviewedByMe: false,
+    baseBranch: mr.target_branch,
     enrichment: 'pending',
     sourceMetadata: { projectId: mr.project_id }
   };

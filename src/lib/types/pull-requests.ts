@@ -22,6 +22,7 @@ export interface UnifiedPullRequest {
   readonly reviewDecision: ReviewDecision | null;
   readonly reviewRequestedFromMe: boolean;
   readonly reviewedByMe: boolean;
+  readonly baseBranch?: string;
   readonly enrichment: EnrichmentState;
   readonly sourceMetadata?: Readonly<Record<string, number | string>>;
 }

@@ -19,6 +19,7 @@ export const demoPullRequests: readonly UnifiedPullRequest[] = [
     reviewDecision: 'review_required',
     reviewRequestedFromMe: true,
     reviewedByMe: false,
+    baseBranch: 'develop',
     enrichment: 'enriched'
   },
   {
@@ -36,6 +37,7 @@ export const demoPullRequests: readonly UnifiedPullRequest[] = [
     reviewDecision: 'approved',
     reviewRequestedFromMe: true,
     reviewedByMe: true,
+    baseBranch: 'main',
     enrichment: 'enriched'
   },
   {
@@ -53,6 +55,7 @@ export const demoPullRequests: readonly UnifiedPullRequest[] = [
     reviewDecision: 'approved',
     reviewRequestedFromMe: false,
     reviewedByMe: false,
+    baseBranch: 'main',
     enrichment: 'enriched'
   },
   {
@@ -70,6 +73,7 @@ export const demoPullRequests: readonly UnifiedPullRequest[] = [
     reviewDecision: 'changes_requested',
     reviewRequestedFromMe: false,
     reviewedByMe: false,
+    baseBranch: 'release/2.1',
     enrichment: 'enriched'
   },
   {
@@ -87,6 +91,7 @@ export const demoPullRequests: readonly UnifiedPullRequest[] = [
     reviewDecision: 'review_required',
     reviewRequestedFromMe: false,
     reviewedByMe: false,
+    baseBranch: 'main',
     enrichment: 'enriched'
   }
 ];
