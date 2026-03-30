@@ -179,32 +179,77 @@ fn update_badge(
 }
 
 /// Check whether a macOS Focus mode (Do Not Disturb) is currently active.
-/// Reads the system assertions database; returns `true` when any focus session is running.
+/// Uses the private DoNotDisturbServer framework via XPC to query the current state.
 #[cfg(target_os = "macos")]
 fn is_focus_mode_active() -> bool {
-    let home = match std::env::var("HOME") {
-        Ok(h) => h,
-        Err(_) => return false,
-    };
-    let path = std::path::PathBuf::from(home).join("Library/DoNotDisturb/DB/Assertions.json");
-    let content = match std::fs::read_to_string(&path) {
-        Ok(c) => c,
-        Err(_) => return false,
-    };
-    let json: serde_json::Value = match serde_json::from_str(&content) {
-        Ok(v) => v,
-        Err(_) => return false,
-    };
-    json.get("data")
-        .and_then(|d| d.as_array())
-        .is_some_and(|arr| {
-            arr.iter().any(|entry| {
-                entry
-                    .get("storeAssertionRecords")
-                    .and_then(|r| r.as_array())
-                    .is_some_and(|records| !records.is_empty())
+    use block2::RcBlock;
+    use objc2::runtime::{AnyClass, AnyObject, Bool};
+    use objc2_foundation::NSString;
+    use std::sync::{Arc, Condvar, Mutex};
+
+    unsafe {
+        // Load private framework
+        let path =
+            NSString::from_str("/System/Library/PrivateFrameworks/DoNotDisturbServer.framework");
+        let bundle: *const AnyObject =
+            objc2::msg_send![objc2::class!(NSBundle), bundleWithPath: &*path];
+        if bundle.is_null() {
+            return false;
+        }
+        let loaded: Bool = objc2::msg_send![bundle, load];
+        if !loaded.as_bool() {
+            return false;
+        }
+
+        // Create DNDStateService instance
+        let cls = match AnyClass::get(c"DNDStateService") {
+            Some(c) => c,
+            None => return false,
+        };
+        let alloc: *mut AnyObject = objc2::msg_send![cls, alloc];
+        if alloc.is_null() {
+            return false;
+        }
+        let client_id = NSString::from_str("com.beacon.focus-check");
+        let service: *mut AnyObject =
+            objc2::msg_send![alloc, _initWithClientIdentifier: &*client_id];
+        if service.is_null() {
+            return false;
+        }
+
+        // Query current state via completion handler
+        let pair = Arc::new((Mutex::new(None::<bool>), Condvar::new()));
+        let pair_clone = Arc::clone(&pair);
+
+        let handler = RcBlock::new(move |state: *const AnyObject, _error: *const AnyObject| {
+            let active = if state.is_null() {
+                false
+            } else {
+                let val: Bool = objc2::msg_send![state, isActive];
+                val.as_bool()
+            };
+            let (lock, cvar) = &*pair_clone;
+            *lock.lock().unwrap() = Some(active);
+            cvar.notify_one();
+        });
+
+        let _: () = objc2::msg_send![service, queryCurrentStateWithCompletionHandler: &*handler];
+
+        // Wait up to 1 second for the XPC response
+        let (lock, cvar) = &*pair;
+        let guard = lock.lock().unwrap();
+        let result = cvar
+            .wait_timeout_while(guard, std::time::Duration::from_secs(1), |val| {
+                val.is_none()
             })
-        })
+            .unwrap();
+        let active = result.0.unwrap_or(false);
+
+        // Release the service object to prevent memory leak
+        let _: () = objc2::msg_send![service, release];
+
+        active
+    }
 }
 
 #[tauri::command]
