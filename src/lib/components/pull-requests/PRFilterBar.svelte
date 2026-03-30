@@ -4,7 +4,11 @@
     getPRCount,
     getPRCountBySource,
     getIsPRLoading,
-    getUniquePRProjectsWithSource
+    getUniquePRProjectsWithSource,
+    getPRCountByRole,
+    getPRCountByDraft,
+    getPRCountByCI,
+    getPRCountByProject
   } from '$lib/stores/pull-requests.svelte';
   import { isServiceConnected } from '$lib/stores/connections.svelte';
   import GitHubIcon from '$lib/components/icons/GitHubIcon.svelte';
@@ -56,7 +60,22 @@
   let sortOpen = $state(false);
   let sortBtnEl: HTMLButtonElement | undefined = $state();
 
-  let availableProjects = $derived(getUniquePRProjectsWithSource());
+  let countByRole = $derived(getPRCountByRole(sourceFilter));
+  let countByDraft = $derived(getPRCountByDraft(sourceFilter));
+  let countByCI = $derived(getPRCountByCI(sourceFilter));
+  let countByProject = $derived(getPRCountByProject(sourceFilter));
+  let sourceScopedTotal = $derived(
+    sourceFilter === 'all' ? totalCount : sourceFilter === 'github' ? githubCount : gitlabCount
+  );
+  let availableProjects = $derived.by(() => {
+    const projects = getUniquePRProjectsWithSource();
+    return [...projects].sort((a, b) => {
+      const countA = countByProject.get(a.repository) ?? 0;
+      const countB = countByProject.get(b.repository) ?? 0;
+      if (countB !== countA) return countB - countA;
+      return a.repository.localeCompare(b.repository);
+    });
+  });
 
   let hasActiveFilter = $derived(
     roleFilter !== 'all' || draftFilter !== 'all' || ciFilter !== 'all' || projectsFilter.size > 0
@@ -115,6 +134,37 @@
     sortOpen = false;
   }
 </script>
+
+{#snippet filterChips(
+  options: { value: string; label: string }[],
+  currentValue: string,
+  counts: ReadonlyMap<string, number>,
+  total: number,
+  onChange: (value: string) => void
+)}
+  <div class="flex flex-wrap gap-1">
+    {#each options as opt (opt.value)}
+      {@const count = opt.value === 'all' ? total : (counts.get(opt.value) ?? 0)}
+      {@const active = currentValue === opt.value}
+      <button
+        type="button"
+        onclick={() => onChange(opt.value)}
+        class="flex items-center gap-1 {chipBase} {active
+          ? chipActive
+          : opt.value !== 'all' && count === 0
+            ? 'border-border text-muted-foreground/50'
+            : chipInactive}"
+      >
+        {opt.label}
+        {#if count > 0}
+          <span class="{badgeBase} {active ? badgeActive : badgeInactive}">
+            {count}
+          </span>
+        {/if}
+      </button>
+    {/each}
+  </div>
+{/snippet}
 
 {#snippet badge(count: number, active: boolean)}
   {#if initialLoading}
@@ -221,17 +271,9 @@
                 class="mb-1.5 block text-[10px] font-semibold uppercase tracking-wide text-muted-foreground"
                 >Role</span
               >
-              <div class="flex flex-wrap gap-1">
-                {#each roleOptions as opt (opt.value)}
-                  <button
-                    type="button"
-                    onclick={() => onRoleChange(opt.value)}
-                    class="{chipBase} {roleFilter === opt.value ? chipActive : chipInactive}"
-                  >
-                    {opt.label}
-                  </button>
-                {/each}
-              </div>
+              {@render filterChips(roleOptions, roleFilter, countByRole, sourceScopedTotal, (v) =>
+                onRoleChange(v as PRRoleFilter)
+              )}
             </div>
 
             <!-- Status -->
@@ -240,17 +282,17 @@
                 class="mb-1.5 block text-[10px] font-semibold uppercase tracking-wide text-muted-foreground"
                 >Status</span
               >
-              <div class="flex flex-wrap gap-1">
-                {#each [{ value: 'all', label: 'All' }, { value: 'ready', label: 'Ready' }, { value: 'draft', label: 'Draft' }] as opt (opt.value)}
-                  <button
-                    type="button"
-                    onclick={() => onDraftChange(opt.value as PRDraftFilter)}
-                    class="{chipBase} {draftFilter === opt.value ? chipActive : chipInactive}"
-                  >
-                    {opt.label}
-                  </button>
-                {/each}
-              </div>
+              {@render filterChips(
+                [
+                  { value: 'all', label: 'All' },
+                  { value: 'ready', label: 'Ready' },
+                  { value: 'draft', label: 'Draft' }
+                ],
+                draftFilter,
+                countByDraft,
+                sourceScopedTotal,
+                (v) => onDraftChange(v as PRDraftFilter)
+              )}
             </div>
 
             <!-- CI -->
@@ -259,17 +301,18 @@
                 class="mb-1.5 block text-[10px] font-semibold uppercase tracking-wide text-muted-foreground"
                 >CI</span
               >
-              <div class="flex flex-wrap gap-1">
-                {#each [{ value: 'all', label: 'All' }, { value: 'success', label: 'Passed' }, { value: 'failure', label: 'Failed' }, { value: 'pending', label: 'Pending' }] as opt (opt.value)}
-                  <button
-                    type="button"
-                    onclick={() => onCIChange(opt.value as PRCIFilter)}
-                    class="{chipBase} {ciFilter === opt.value ? chipActive : chipInactive}"
-                  >
-                    {opt.label}
-                  </button>
-                {/each}
-              </div>
+              {@render filterChips(
+                [
+                  { value: 'all', label: 'All' },
+                  { value: 'success', label: 'Passed' },
+                  { value: 'failure', label: 'Failed' },
+                  { value: 'pending', label: 'Pending' }
+                ],
+                ciFilter,
+                countByCI,
+                sourceScopedTotal,
+                (v) => onCIChange(v as PRCIFilter)
+              )}
             </div>
 
             <!-- Project -->
@@ -291,6 +334,7 @@
                 <div class="max-h-28 space-y-0.5 overflow-y-auto">
                   {#each availableProjects as project (project.repository)}
                     {@const active = projectsFilter.has(project.repository)}
+                    {@const count = countByProject.get(project.repository) ?? 0}
                     <label
                       class="flex cursor-pointer items-center gap-2 rounded px-1.5 py-1 transition-colors hover:bg-secondary"
                     >
@@ -308,10 +352,19 @@
                       <span
                         class="truncate text-[11px] {active
                           ? 'font-medium text-foreground'
-                          : 'text-muted-foreground'}"
+                          : count === 0
+                            ? 'text-muted-foreground/50'
+                            : 'text-muted-foreground'}"
                       >
                         {project.repository.split('/').slice(-2).join('/')}
                       </span>
+                      {#if count > 0}
+                        <span
+                          class="ml-auto shrink-0 rounded-full bg-secondary px-1 py-px text-[9px] font-semibold leading-tight text-muted-foreground"
+                        >
+                          {count}
+                        </span>
+                      {/if}
                     </label>
                   {/each}
                 </div>

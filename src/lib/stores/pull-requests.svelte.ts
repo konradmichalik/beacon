@@ -52,6 +52,62 @@ export function getUniquePRProjectsWithSource(): readonly {
     .sort((a, b) => a.repository.localeCompare(b.repository));
 }
 
+export function getPRCountByRole(
+  sourceFilter: NotificationSource | 'all'
+): ReadonlyMap<PRRoleFilter, number> {
+  const filtered =
+    sourceFilter === 'all' ? pullRequests : pullRequests.filter((pr) => pr.source === sourceFilter);
+  // eslint-disable-next-line svelte/prefer-svelte-reactivity -- local counting map, not state
+  const counts = new Map<PRRoleFilter, number>();
+  for (const pr of filtered) {
+    const key: PRRoleFilter = pr.reviewRequestedFromMe ? 'review_requested' : 'authored';
+    counts.set(key, (counts.get(key) ?? 0) + 1);
+  }
+  return counts;
+}
+
+export function getPRCountByDraft(
+  sourceFilter: NotificationSource | 'all'
+): ReadonlyMap<PRDraftFilter, number> {
+  const filtered =
+    sourceFilter === 'all' ? pullRequests : pullRequests.filter((pr) => pr.source === sourceFilter);
+  // eslint-disable-next-line svelte/prefer-svelte-reactivity -- local counting map, not state
+  const counts = new Map<PRDraftFilter, number>();
+  for (const pr of filtered) {
+    const key: PRDraftFilter = pr.draft ? 'draft' : 'ready';
+    counts.set(key, (counts.get(key) ?? 0) + 1);
+  }
+  return counts;
+}
+
+export function getPRCountByCI(
+  sourceFilter: NotificationSource | 'all'
+): ReadonlyMap<PRCIFilter, number> {
+  const filtered =
+    sourceFilter === 'all' ? pullRequests : pullRequests.filter((pr) => pr.source === sourceFilter);
+  // eslint-disable-next-line svelte/prefer-svelte-reactivity -- local counting map, not state
+  const counts = new Map<PRCIFilter, number>();
+  for (const pr of filtered) {
+    if (pr.ciStatus === 'success' || pr.ciStatus === 'failure' || pr.ciStatus === 'pending') {
+      counts.set(pr.ciStatus, (counts.get(pr.ciStatus) ?? 0) + 1);
+    }
+  }
+  return counts;
+}
+
+export function getPRCountByProject(
+  sourceFilter: NotificationSource | 'all'
+): ReadonlyMap<string, number> {
+  const filtered =
+    sourceFilter === 'all' ? pullRequests : pullRequests.filter((pr) => pr.source === sourceFilter);
+  // eslint-disable-next-line svelte/prefer-svelte-reactivity -- local counting map, not state
+  const counts = new Map<string, number>();
+  for (const pr of filtered) {
+    counts.set(pr.repository, (counts.get(pr.repository) ?? 0) + 1);
+  }
+  return counts;
+}
+
 export function getFilteredPRs(
   sourceFilter: NotificationSource | 'all',
   roleFilter: PRRoleFilter = 'all',
