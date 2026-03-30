@@ -1,4 +1,5 @@
 use std::sync::Mutex;
+use std::time::Instant;
 use tauri::{
     image::Image,
     menu::{MenuBuilder, MenuItemBuilder},
@@ -14,6 +15,14 @@ type TrayRect = (PhysicalPosition<i32>, (u32, u32));
 /// Last known tray icon position + size, used to position the window on activation.
 pub static LAST_TRAY_RECT: Mutex<Option<TrayRect>> = Mutex::new(None);
 
+/// Timestamp of the last show_and_focus call. Used to suppress auto-hide monitors
+/// that fire spuriously when opening the panel above a fullscreen app (macOS may
+/// briefly report a space change in that scenario).
+pub static LAST_SHOWN_AT: Mutex<Option<Instant>> = Mutex::new(None);
+
+/// Grace period after showing the panel during which auto-hide is suppressed.
+const SHOW_GRACE_MS: u128 = 600;
+
 /// Position a window centered below the tray icon using the stored tray rect.
 pub fn position_window_at_tray(window: &tauri::WebviewWindow) {
     let rect = LAST_TRAY_RECT.lock().unwrap();
@@ -26,8 +35,18 @@ pub fn position_window_at_tray(window: &tauri::WebviewWindow) {
     }
 }
 
+/// Returns `true` if the panel was shown recently enough that auto-hide should
+/// be suppressed (prevents space-change notifications from closing it immediately).
+pub fn is_within_show_grace() -> bool {
+    LAST_SHOWN_AT
+        .lock()
+        .unwrap()
+        .is_some_and(|t| t.elapsed().as_millis() < SHOW_GRACE_MS)
+}
+
 /// Show + position the main window (used by notification activation and global shortcut).
 fn show_and_focus(window: &tauri::WebviewWindow) {
+    *LAST_SHOWN_AT.lock().unwrap() = Some(Instant::now());
     position_window_at_tray(window);
     let _ = window.show();
     let _ = window.set_focus();

@@ -462,8 +462,22 @@ pub fn run() {
                         ];
                     }
 
-                    // Auto-hide: workspace notification for space/desktop changes
-                    let space_block = make_hide_block(app.handle().clone());
+                    // Auto-hide: workspace notification for space/desktop changes.
+                    // Uses a grace period to avoid hiding the panel when it was just
+                    // shown above a fullscreen app (macOS fires a spurious space-change
+                    // notification in that scenario).
+                    let space_app_handle = app.handle().clone();
+                    let space_block =
+                        block2::RcBlock::new(move |_: std::ptr::NonNull<AnyObject>| {
+                            if tray::is_within_show_grace() {
+                                return;
+                            }
+                            if let Some(w) = space_app_handle.get_webview_window("main") {
+                                if w.is_visible().unwrap_or(false) {
+                                    let _ = w.hide();
+                                }
+                            }
+                        });
                     unsafe {
                         let workspace: *const AnyObject = objc2::msg_send![
                             AnyClass::get(c"NSWorkspace").unwrap(),
