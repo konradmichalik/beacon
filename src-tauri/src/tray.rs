@@ -44,12 +44,131 @@ pub fn is_within_show_grace() -> bool {
         .is_some_and(|t| t.elapsed().as_millis() < SHOW_GRACE_MS)
 }
 
+/// Re-apply all NSPanel properties that can drift after macOS system events
+/// (sleep/wake, display reconfiguration, space changes).
+///
+/// Properties addressed:
+/// - `hidesOnDeactivate`: NSPanel defaults to `true`; with Accessory activation
+///   policy the app is mostly "inactive" and the panel silently auto-hides.
+/// - `floatingPanel` + `level`: WindowServer can reset these after display changes.
+/// - `collectionBehavior`: Space membership can be lost on reconfiguration.
+/// - `_setPreventsActivation`: The WindowServer tag (kCGSPreventsActivationTagBit)
+///   can desynchronize from AppKit's internal state after style-mask changes
+///   triggered internally by AppKit (FB16484811).
+#[cfg(target_os = "macos")]
+fn ensure_panel_config(window: &tauri::WebviewWindow) {
+    use objc2_app_kit::{NSPanel, NSPopUpMenuWindowLevel, NSWindowCollectionBehavior};
+    if let Ok(ns_window) = window.ns_window() {
+        unsafe {
+            let panel = &*(ns_window as *const NSPanel);
+            panel.setHidesOnDeactivate(false);
+            panel.setFloatingPanel(true);
+            panel.setLevel(NSPopUpMenuWindowLevel);
+            panel.setCollectionBehavior(
+                NSWindowCollectionBehavior::CanJoinAllSpaces
+                    | NSWindowCollectionBehavior::Stationary
+                    | NSWindowCollectionBehavior::FullScreenAuxiliary
+                    | NSWindowCollectionBehavior::IgnoresCycle,
+            );
+            // Re-sync the prevents-activation tag with WindowServer.
+            let _: () = objc2::msg_send![panel, _setPreventsActivation: true];
+        }
+    }
+}
+
+/// Public entry point for system-event observers (sleep/wake, display changes)
+/// that need to re-apply panel configuration from outside this module.
+#[cfg(target_os = "macos")]
+pub fn reconfigure_panel(app: &tauri::AppHandle) {
+    if let Some(window) = app.get_webview_window("main") {
+        ensure_panel_config(&window);
+    }
+}
+
 /// Show + position the main window (used by notification activation and global shortcut).
+///
+/// Reliability strategy (addresses multiple macOS edge cases):
+/// 1. If AppKit thinks the panel is visible but it's actually stuck (ghost state),
+///    cycle through `orderOut` to fully reset WindowServer's tracking.
+/// 2. Re-apply all panel properties that may have drifted since last show.
+/// 3. Show via Tauri (triggers `orderWindow:relativeTo:` which restarts the
+///    WKWebView compositor — unlike `orderFrontRegardless` alone).
+/// 4. `orderFrontRegardless` as final insurance to bypass activation checks.
 fn show_and_focus(window: &tauri::WebviewWindow) {
     *LAST_SHOWN_AT.lock().unwrap() = Some(Instant::now());
     position_window_at_tray(window);
+
+    #[cfg(target_os = "macos")]
+    {
+        use objc2_app_kit::NSPanel;
+        if let Ok(ns_window) = window.ns_window() {
+            unsafe {
+                let panel = &*(ns_window as *const NSPanel);
+
+                // If the panel is in a stale "visible" state (AppKit says visible
+                // but WindowServer lost track of it), cycle through orderOut to
+                // fully reset. This ensures the subsequent show() triggers a
+                // proper orderWindow:relativeTo: which restarts the WKWebView
+                // compositor — orderFrontRegardless alone does NOT do this
+                // (Electron #45427).
+                if panel.isVisible() {
+                    let null: *const objc2::runtime::AnyObject = std::ptr::null();
+                    let _: () = objc2::msg_send![panel, orderOut: null];
+                }
+            }
+        }
+
+        ensure_panel_config(window);
+    }
+
     let _ = window.show();
     let _ = window.set_focus();
+
+    #[cfg(target_os = "macos")]
+    if let Ok(ns_window) = window.ns_window() {
+        use objc2_app_kit::NSPanel;
+        unsafe {
+            let panel = &*(ns_window as *const NSPanel);
+
+            // Final fallback: order front regardless of activation state.
+            panel.orderFrontRegardless();
+
+            // Make the WKWebView the first responder so keyboard events
+            // reach JavaScript. The content view itself is a container;
+            // the actual WKWebView is its first subview.
+            if let Some(content) = panel.contentView() {
+                use objc2::runtime::AnyObject;
+                let subviews = content.subviews();
+                let target: &AnyObject = if !subviews.is_empty() {
+                    let first: *const AnyObject =
+                        objc2::msg_send![&*subviews, objectAtIndex: 0usize];
+                    &*first
+                } else {
+                    let ptr: *const AnyObject = &*content as *const _ as *const AnyObject;
+                    &*ptr
+                };
+                let _: bool = objc2::msg_send![panel, makeFirstResponder: target];
+            }
+        }
+    }
+}
+
+/// Check whether the panel is truly visible and functional on screen.
+///
+/// Tauri's `is_visible()` can return `true` even when the panel is in a ghost
+/// state (e.g. after sleep/wake or display reconfiguration). We cross-check
+/// with AppKit's own `isVisible()` and verify the window level hasn't been
+/// reset — a level below `NSPopUpMenuWindowLevel` means the panel is rendered
+/// behind other windows and effectively invisible.
+///
+/// Note: we deliberately do NOT check `isOnActiveSpace()` because it is
+/// unreliable for windows with `CanJoinAllSpaces` collection behavior — macOS
+/// can return `false` after space reconfigurations even though the window
+/// should be on every space.
+fn is_panel_showing(window: &tauri::WebviewWindow) -> bool {
+    if !window.is_visible().unwrap_or(false) {
+        return false;
+    }
 
     #[cfg(target_os = "macos")]
     {
@@ -57,35 +176,26 @@ fn show_and_focus(window: &tauri::WebviewWindow) {
         if let Ok(ns_window) = window.ns_window() {
             unsafe {
                 let panel = &*(ns_window as *const NSPanel);
-                panel.setFloatingPanel(true);
-                panel.setLevel(NSPopUpMenuWindowLevel);
-
-                // Make the WKWebView the first responder so keyboard events
-                // reach JavaScript. The content view itself is a container;
-                // the actual WKWebView is its first subview.
-                if let Some(content) = panel.contentView() {
-                    use objc2::runtime::AnyObject;
-                    let subviews = content.subviews();
-                    let target: &AnyObject = if !subviews.is_empty() {
-                        let first: *const AnyObject =
-                            objc2::msg_send![&*subviews, objectAtIndex: 0usize];
-                        &*first
-                    } else {
-                        // Fall back to content view itself
-                        let ptr: *const AnyObject = &*content as *const _ as *const AnyObject;
-                        &*ptr
-                    };
-                    let _: bool = objc2::msg_send![panel, makeFirstResponder: target];
+                if !panel.isVisible() {
+                    return false;
+                }
+                // If the window level was reset below popup-menu level (e.g.
+                // after a display reconfiguration), the panel is hidden behind
+                // other windows and effectively invisible to the user.
+                if panel.level() < NSPopUpMenuWindowLevel {
+                    return false;
                 }
             }
         }
     }
+
+    true
 }
 
 /// Toggle the main window: hide if visible, show if hidden.
 pub fn toggle_main_window(app: &tauri::AppHandle) {
     if let Some(window) = app.get_webview_window("main") {
-        if window.is_visible().unwrap_or(false) {
+        if is_panel_showing(&window) {
             let _ = window.hide();
         } else {
             show_and_focus(&window);
@@ -128,9 +238,12 @@ pub fn create_tray(app: &App) -> Result<(), Box<dyn std::error::Error>> {
             } = event
             {
                 let app = tray.app_handle();
-                // Update tray rect before toggling so position_window_at_tray works
+                // Update tray rect before toggling so position_window_at_tray works.
+                // Use is_panel_showing (not is_visible) so the rect is also updated
+                // when the panel is in a ghost-visible state — otherwise show_and_focus
+                // would re-show at a stale position.
                 if let Some(window) = app.get_webview_window("main") {
-                    if !window.is_visible().unwrap_or(false) {
+                    if !is_panel_showing(&window) {
                         let scale = window.scale_factor().unwrap_or(1.0);
                         let pos = rect.position.to_physical::<i32>(scale);
                         let size = rect.size.to_physical::<u32>(scale);
