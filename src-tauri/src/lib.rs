@@ -398,10 +398,7 @@ pub fn run() {
                 // NSPanel has special macOS treatment for auxiliary/floating windows.
                 if let Some(window) = app.get_webview_window("main") {
                     use objc2::runtime::{AnyClass, AnyObject};
-                    use objc2_app_kit::{
-                        NSPanel, NSPopUpMenuWindowLevel, NSWindowCollectionBehavior,
-                        NSWindowStyleMask,
-                    };
+                    use objc2_app_kit::{NSPanel, NSWindowStyleMask};
 
                     if let Ok(ns_window) = window.ns_window() {
                         unsafe {
@@ -420,38 +417,26 @@ pub fn run() {
                             mask |= NSWindowStyleMask::NonactivatingPanel;
                             panel.setStyleMask(mask);
 
-                            // Resynchronize the prevents-activation state with WindowServer.
-                            // macOS fails to call this when the style mask changes post-init,
-                            // causing key events to be dropped (FB16484811).
-                            let _: () = objc2::msg_send![panel, _setPreventsActivation: true];
-
-                            panel.setFloatingPanel(true);
+                            // One-time setup: allow the panel to become key
+                            // without requiring the user to click it first.
                             panel.setBecomesKeyOnlyIfNeeded(false);
-
-                            panel.setCollectionBehavior(
-                                NSWindowCollectionBehavior::CanJoinAllSpaces
-                                    | NSWindowCollectionBehavior::Stationary
-                                    | NSWindowCollectionBehavior::FullScreenAuxiliary
-                                    | NSWindowCollectionBehavior::IgnoresCycle,
-                            );
-
-                            panel.setLevel(NSPopUpMenuWindowLevel);
                         }
                     }
 
-                    // Shared hide-if-visible logic for both monitors
-                    let make_hide_block = |app_handle: tauri::AppHandle| {
+                    // Apply all driftable panel properties (level, floating,
+                    // collection behavior, hidesOnDeactivate, _setPreventsActivation).
+                    tray::reconfigure_panel(app.handle());
+
+                    // Auto-hide: global event monitor for clicks outside the panel
+                    let click_app_handle = app.handle().clone();
+                    let click_block =
                         block2::RcBlock::new(move |_: std::ptr::NonNull<AnyObject>| {
-                            if let Some(w) = app_handle.get_webview_window("main") {
+                            if let Some(w) = click_app_handle.get_webview_window("main") {
                                 if w.is_visible().unwrap_or(false) {
                                     let _ = w.hide();
                                 }
                             }
-                        })
-                    };
-
-                    // Auto-hide: global event monitor for clicks outside the panel
-                    let click_block = make_hide_block(app.handle().clone());
+                        });
                     unsafe {
                         // NSEventMask: LeftMouseDown (1<<1) | RightMouseDown (1<<3)
                         let mask: u64 = (1 << 1) | (1 << 3);
@@ -522,6 +507,58 @@ pub fn run() {
                             object: null,
                             queue: null,
                             usingBlock: &*activation_block
+                        ];
+                    }
+
+                    // Re-apply panel configuration after system events that can
+                    // cause WindowServer to reset window properties (level,
+                    // collection behavior, prevents-activation tag).
+                    let make_reconfig_block = |app_handle: tauri::AppHandle| {
+                        block2::RcBlock::new(move |_: std::ptr::NonNull<AnyObject>| {
+                            tray::reconfigure_panel(&app_handle);
+                        })
+                    };
+
+                    // Sleep/wake: WindowServer can lose track of floating panel
+                    // properties after the display hardware is reinitialized.
+                    let wake_block = make_reconfig_block(app.handle().clone());
+                    unsafe {
+                        let workspace: *const AnyObject = objc2::msg_send![
+                            AnyClass::get(c"NSWorkspace").unwrap(),
+                            sharedWorkspace
+                        ];
+                        let center: *const AnyObject =
+                            objc2::msg_send![workspace, notificationCenter];
+                        let name =
+                            objc2_foundation::NSString::from_str("NSWorkspaceDidWakeNotification");
+                        let null: *const AnyObject = std::ptr::null();
+                        let _: *const AnyObject = objc2::msg_send![
+                            center,
+                            addObserverForName: &*name,
+                            object: null,
+                            queue: null,
+                            usingBlock: &*wake_block
+                        ];
+                    }
+
+                    // Display reconfiguration (monitor connect/disconnect, lid
+                    // close/open): can reset window level and space membership.
+                    let screen_block = make_reconfig_block(app.handle().clone());
+                    unsafe {
+                        let center: *const AnyObject = objc2::msg_send![
+                            AnyClass::get(c"NSNotificationCenter").unwrap(),
+                            defaultCenter
+                        ];
+                        let name = objc2_foundation::NSString::from_str(
+                            "NSApplicationDidChangeScreenParametersNotification",
+                        );
+                        let null: *const AnyObject = std::ptr::null();
+                        let _: *const AnyObject = objc2::msg_send![
+                            center,
+                            addObserverForName: &*name,
+                            object: null,
+                            queue: null,
+                            usingBlock: &*screen_block
                         ];
                     }
                 }
