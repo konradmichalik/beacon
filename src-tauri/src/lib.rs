@@ -376,6 +376,16 @@ pub fn run() {
         .setup(|app| {
             use tauri::Manager;
             debug_log::init(app);
+
+            // Install a panic hook that writes to the debug log before abort.
+            // With `panic = "abort"` the process dies immediately after the hook,
+            // so this is our only chance to capture crash context.
+            std::panic::set_hook(Box::new(|info| {
+                let msg = format!("{info}");
+                debug_log::write_always("PANIC", "runtime", &msg);
+                eprintln!("PANIC: {msg}");
+            }));
+
             app.manage(std::sync::Arc::new(polling::Poller::new()));
             tray::create_tray(app)?;
 
@@ -570,10 +580,17 @@ pub fn run() {
                     // 60 seconds to recover from silent WindowServer state drift
                     // that doesn't trigger any notification (e.g. WindowServer
                     // internal restarts, GPU resets, or undocumented resets).
+                    //
+                    // IMPORTANT: AppKit is not thread-safe — all NSPanel property
+                    // mutations must happen on the main thread. We sleep on a
+                    // background thread but dispatch the actual work to main.
                     let health_app_handle = app.handle().clone();
                     std::thread::spawn(move || loop {
                         std::thread::sleep(std::time::Duration::from_secs(60));
-                        tray::reconfigure_panel(&health_app_handle);
+                        let handle = health_app_handle.clone();
+                        let _ = health_app_handle.run_on_main_thread(move || {
+                            tray::reconfigure_panel(&handle);
+                        });
                     });
                 }
             }
