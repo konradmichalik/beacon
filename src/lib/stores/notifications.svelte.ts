@@ -453,6 +453,11 @@ export function markAllAsRead(ids?: ReadonlySet<string>): void {
   const unreadCount = notifications.filter((n) => n.unread).length;
   updateTrayBadge(unreadCount);
 
+  // Play ripple sound when all notifications are cleared
+  if (unreadCount === 0) {
+    playNotificationSound('ripple');
+  }
+
   // Mark on servers (best-effort)
   markOnServers(unread, { totalGhUnread, totalGlUnread }).catch(() => {});
 
@@ -483,6 +488,11 @@ export function markAsRead(id: string): void {
   notifications = notifications.map((n) => (n.id === id ? { ...n, unread: false } : n));
   const unreadCount = notifications.filter((n) => n.unread).length;
   updateTrayBadge(unreadCount);
+
+  // Play ripple sound when this was the last unread notification
+  if (unreadCount === 0) {
+    playNotificationSound('ripple');
+  }
 
   markOnServers([notification], { totalGhUnread, totalGlUnread }).catch(() => {});
 
