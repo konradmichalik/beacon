@@ -427,12 +427,16 @@ pub fn run() {
                     // collection behavior, hidesOnDeactivate, _setPreventsActivation).
                     tray::reconfigure_panel(app.handle());
 
-                    // Auto-hide: global event monitor for clicks outside the panel
+                    // Auto-hide: global event monitor for clicks outside the panel.
+                    // Uses is_panel_showing() instead of is_visible() to avoid
+                    // hiding a panel that's already in a ghost state — calling
+                    // hide() on a ghost panel can further desync Tauri's internal
+                    // visibility tracking from AppKit's actual state.
                     let click_app_handle = app.handle().clone();
                     let click_block =
                         block2::RcBlock::new(move |_: std::ptr::NonNull<AnyObject>| {
                             if let Some(w) = click_app_handle.get_webview_window("main") {
-                                if w.is_visible().unwrap_or(false) {
+                                if tray::is_panel_showing(&w) {
                                     let _ = w.hide();
                                 }
                             }
@@ -458,7 +462,7 @@ pub fn run() {
                                 return;
                             }
                             if let Some(w) = space_app_handle.get_webview_window("main") {
-                                if w.is_visible().unwrap_or(false) {
+                                if tray::is_panel_showing(&w) {
                                     let _ = w.hide();
                                 }
                             }
@@ -561,6 +565,16 @@ pub fn run() {
                             usingBlock: &*screen_block
                         ];
                     }
+
+                    // Periodic health-check: re-apply panel configuration every
+                    // 60 seconds to recover from silent WindowServer state drift
+                    // that doesn't trigger any notification (e.g. WindowServer
+                    // internal restarts, GPU resets, or undocumented resets).
+                    let health_app_handle = app.handle().clone();
+                    std::thread::spawn(move || loop {
+                        std::thread::sleep(std::time::Duration::from_secs(60));
+                        tray::reconfigure_panel(&health_app_handle);
+                    });
                 }
             }
 

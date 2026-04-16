@@ -88,8 +88,9 @@ pub fn reconfigure_panel(app: &tauri::AppHandle) {
 /// Show + position the main window (used by notification activation and global shortcut).
 ///
 /// Reliability strategy (addresses multiple macOS edge cases):
-/// 1. If AppKit thinks the panel is visible but it's actually stuck (ghost state),
-///    cycle through `orderOut` to fully reset WindowServer's tracking.
+/// 1. Always cycle through `orderOut` to fully reset WindowServer's tracking,
+///    regardless of current visibility state — this prevents ghost states where
+///    AppKit and WindowServer disagree.
 /// 2. Re-apply all panel properties that may have drifted since last show.
 /// 3. Show via Tauri (triggers `orderWindow:relativeTo:` which restarts the
 ///    WKWebView compositor — unlike `orderFrontRegardless` alone).
@@ -105,16 +106,15 @@ fn show_and_focus(window: &tauri::WebviewWindow) {
             unsafe {
                 let panel = &*(ns_window as *const NSPanel);
 
-                // If the panel is in a stale "visible" state (AppKit says visible
-                // but WindowServer lost track of it), cycle through orderOut to
-                // fully reset. This ensures the subsequent show() triggers a
-                // proper orderWindow:relativeTo: which restarts the WKWebView
+                // Unconditionally cycle through orderOut to guarantee a clean
+                // slate with WindowServer. This handles both ghost-visible states
+                // (AppKit says visible but nothing renders) AND states where
+                // Tauri/AppKit disagree on visibility. The subsequent show()
+                // triggers orderWindow:relativeTo: which restarts the WKWebView
                 // compositor — orderFrontRegardless alone does NOT do this
                 // (Electron #45427).
-                if panel.isVisible() {
-                    let null: *const objc2::runtime::AnyObject = std::ptr::null();
-                    let _: () = objc2::msg_send![panel, orderOut: null];
-                }
+                let null: *const objc2::runtime::AnyObject = std::ptr::null();
+                let _: () = objc2::msg_send![panel, orderOut: null];
             }
         }
 
@@ -165,7 +165,7 @@ fn show_and_focus(window: &tauri::WebviewWindow) {
 /// unreliable for windows with `CanJoinAllSpaces` collection behavior — macOS
 /// can return `false` after space reconfigurations even though the window
 /// should be on every space.
-fn is_panel_showing(window: &tauri::WebviewWindow) -> bool {
+pub fn is_panel_showing(window: &tauri::WebviewWindow) -> bool {
     if !window.is_visible().unwrap_or(false) {
         return false;
     }
