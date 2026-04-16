@@ -54,7 +54,17 @@ fn timestamp() -> String {
 
 /// Append a single log line. No-op when logging is disabled.
 pub fn write(level: &str, source: &str, message: &str) {
-    if !is_enabled() {
+    write_inner(level, source, message, false);
+}
+
+/// Append a log line unconditionally, even when debug logging is disabled.
+/// Reserved for panic hooks and critical crash context.
+pub fn write_always(level: &str, source: &str, message: &str) {
+    write_inner(level, source, message, true);
+}
+
+fn write_inner(level: &str, source: &str, message: &str, force: bool) {
+    if !force && !is_enabled() {
         return;
     }
     let Some(path) = log_path() else { return };
