@@ -31,6 +31,12 @@ objc2 = "0.6.4"
 objc2-app-kit = { version = "0.3", features = ["NSWindow", "NSPanel", "NSSound", "NSEvent", "NSResponder", "NSView"] }
 objc2-foundation = { version = "0.3", features = ["NSUserDefaults", "NSString"] }
 block2 = "0.6"
+# Direct dep so we can call set_icon_with_as_template atomically via
+# Tauri's with_inner_tray_icon. Tauri's split set_icon / set_icon_as_template
+# has a known race condition that leaves the icon stuck non-template
+# (tauri-apps/tauri#9332). Version must match what Tauri pulls in
+# transitively (currently 0.21.x).
+tray-icon = { version = "0.21", default-features = false }
 
 [profile.release]
 panic = "abort"
