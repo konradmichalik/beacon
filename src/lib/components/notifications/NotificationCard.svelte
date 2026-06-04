@@ -219,7 +219,7 @@
   let unreadIdsByAuthor = $derived.by(() => {
     const login = notification.author?.login;
     if (!login) return null;
-    const ids = getUnreadIdsByAuthor(login);
+    const ids = getUnreadIdsByAuthor(login, notification.source);
     return ids.size > 1 ? ids : null;
   });
 
