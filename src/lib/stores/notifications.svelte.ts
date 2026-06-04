@@ -251,6 +251,17 @@ export function getUnreadCountByAuthor(
   return counts;
 }
 
+export function getUnreadIdsByAuthor(login: string): ReadonlySet<string> {
+  // eslint-disable-next-line svelte/prefer-svelte-reactivity -- local lookup set, not state
+  const ids = new Set<string>();
+  for (const n of notifications) {
+    if (n.unread && n.author?.login === login && !isNotificationMuted(n)) {
+      ids.add(n.id);
+    }
+  }
+  return ids;
+}
+
 export function getGroupedNotifications(
   sourceFilter: NotificationSource | 'all',
   projectFilter: string | null
