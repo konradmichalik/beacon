@@ -4,7 +4,7 @@ import type {
   NotificationType,
   NotificationGroup
 } from '$lib/types';
-import type { SortMode, StatusFilter } from './filters.svelte';
+import type { SortMode, StatusFilter, NotificationDraftFilter } from './filters.svelte';
 import { filterState } from './filters.svelte';
 import { settingsState } from './settings.svelte';
 import { isNotificationMuted } from './mute-rules.svelte';
@@ -65,7 +65,8 @@ export function getFilteredUnreadCount(): number {
     filterState.types,
     filterState.projects,
     filterState.statuses,
-    filterState.authors
+    filterState.authors,
+    filterState.draftFilter
   ).filter((n) => n.unread).length;
 }
 
@@ -81,7 +82,8 @@ export function getCountBySource(source: NotificationSource): number {
     filterState.types,
     filterState.projects,
     filterState.statuses,
-    filterState.authors
+    filterState.authors,
+    filterState.draftFilter
   ).filter((n) => n.unread).length;
 }
 
@@ -117,7 +119,8 @@ export function getFilteredNotifications(
   // eslint-disable-next-line svelte/prefer-svelte-reactivity -- default param, not state
   statusFilter: ReadonlySet<StatusFilter> = new Set(),
   // eslint-disable-next-line svelte/prefer-svelte-reactivity -- default param, not state
-  authorsFilter: ReadonlySet<string> = new Set()
+  authorsFilter: ReadonlySet<string> = new Set(),
+  draftFilter: NotificationDraftFilter = 'all'
 ): readonly UnifiedNotification[] {
   let filtered: UnifiedNotification[] = [...notifications];
 
@@ -147,6 +150,11 @@ export function getFilteredNotifications(
   }
   if (authorsFilter.size > 0) {
     filtered = filtered.filter((n) => n.author !== null && authorsFilter.has(n.author.login));
+  }
+  if (draftFilter === 'ready') {
+    filtered = filtered.filter((n) => n.draft === false);
+  } else if (draftFilter === 'draft') {
+    filtered = filtered.filter((n) => n.draft === true);
   }
   filtered = filtered.filter((n) => !isNotificationMuted(n));
 
@@ -195,6 +203,25 @@ export function getUnreadCountByStatus(
     const key: StatusFilter =
       n.subjectState === 'closed' || n.subjectState === 'merged' ? 'closed' : 'open';
     counts.set(key, (counts.get(key) ?? 0) + 1);
+  }
+  return counts;
+}
+
+export function getUnreadCountByDraft(
+  sourceFilter: NotificationSource | 'all'
+): ReadonlyMap<NotificationDraftFilter, number> {
+  const sourceOk = sourceFilter === 'all';
+  const filtered = notifications.filter(
+    (n) => n.unread && !isNotificationMuted(n) && (sourceOk || n.source === sourceFilter)
+  );
+  // eslint-disable-next-line svelte/prefer-svelte-reactivity -- local counting map, not state
+  const counts = new Map<NotificationDraftFilter, number>();
+  for (const n of filtered) {
+    if (n.draft === true) {
+      counts.set('draft', (counts.get('draft') ?? 0) + 1);
+    } else if (n.draft === false) {
+      counts.set('ready', (counts.get('ready') ?? 0) + 1);
+    }
   }
   return counts;
 }

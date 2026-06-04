@@ -5,6 +5,7 @@
     toggleProjectFilter,
     toggleStatusFilter,
     toggleAuthorFilter,
+    setDraftFilter,
     clearTypeFilters,
     clearProjectFilters,
     clearStatusFilters,
@@ -12,7 +13,7 @@
     clearAllFilters,
     hasActiveFilters
   } from '$lib/stores/filters.svelte';
-  import type { StatusFilter } from '$lib/stores/filters.svelte';
+  import type { StatusFilter, NotificationDraftFilter } from '$lib/stores/filters.svelte';
   import {
     getUniqueTypes,
     getUniqueProjectsWithSource,
@@ -20,6 +21,7 @@
     getUnreadCountByType,
     getUnreadCountByProject,
     getUnreadCountByStatus,
+    getUnreadCountByDraft,
     getUnreadCountByAuthor
   } from '$lib/stores/notifications.svelte';
   import { NOTIFICATION_TYPE_LABELS } from '$lib/types';
@@ -35,6 +37,7 @@
   let unreadByType = $derived(getUnreadCountByType(filterState.source));
   let unreadByProject = $derived(getUnreadCountByProject(filterState.source));
   let unreadByStatus = $derived(getUnreadCountByStatus(filterState.source));
+  let unreadByDraft = $derived(getUnreadCountByDraft(filterState.source));
   let unreadByAuthor = $derived(getUnreadCountByAuthor(filterState.source));
   let availableProjects = $derived.by(() => {
     const projects = getUniqueProjectsWithSource();
@@ -166,6 +169,42 @@
             >
               {status.label}
               {#if count > 0}
+                <span
+                  class="rounded-full px-1 py-px text-[9px] font-semibold leading-tight
+                    {active
+                    ? 'bg-primary-foreground/20 text-primary-foreground'
+                    : 'bg-secondary text-muted-foreground'}"
+                >
+                  {count}
+                </span>
+              {/if}
+            </button>
+          {/each}
+        </div>
+      </div>
+
+      <!-- Draft filter -->
+      <div>
+        <span
+          class="mb-1.5 block text-[10px] font-semibold uppercase tracking-wide text-muted-foreground"
+          >Draft</span
+        >
+        <div class="flex flex-wrap gap-1">
+          {#each [{ value: 'all', label: 'All' }, { value: 'ready', label: 'Ready' }, { value: 'draft', label: 'Draft' }] as opt (opt.value)}
+            {@const active = filterState.draftFilter === opt.value}
+            {@const count = unreadByDraft.get(opt.value as NotificationDraftFilter) ?? 0}
+            <button
+              type="button"
+              onclick={() => setDraftFilter(opt.value as NotificationDraftFilter)}
+              class="flex items-center gap-1 rounded-md border px-2 py-0.5 text-[10px] font-medium transition-colors
+                {active
+                ? 'border-primary bg-primary text-primary-foreground'
+                : opt.value !== 'all' && count === 0
+                  ? 'border-border text-muted-foreground/50'
+                  : 'border-border text-muted-foreground hover:border-foreground/20 hover:text-foreground'}"
+            >
+              {opt.label}
+              {#if opt.value !== 'all' && count > 0}
                 <span
                   class="rounded-full px-1 py-px text-[9px] font-semibold leading-tight
                     {active

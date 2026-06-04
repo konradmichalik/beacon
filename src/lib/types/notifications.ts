@@ -41,6 +41,7 @@ export interface UnifiedNotification {
   readonly createdAt: string;
   readonly author: NotificationAuthor | null;
   readonly subjectState: SubjectState;
+  readonly draft?: boolean;
 }
 
 export interface GitHubNotification {

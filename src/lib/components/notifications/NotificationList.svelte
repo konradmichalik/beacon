@@ -19,7 +19,8 @@
       filterState.types,
       filterState.projects,
       filterState.statuses,
-      filterState.authors
+      filterState.authors,
+      filterState.draftFilter
     )
   );
   let isLoading = $derived(getIsLoading());

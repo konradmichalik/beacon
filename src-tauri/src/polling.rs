@@ -113,6 +113,7 @@ struct GHDetail {
     state: Option<String>,
     #[serde(default)]
     merged: bool,
+    draft: Option<bool>,
     user: Option<GHUser>,
 }
 
@@ -189,6 +190,7 @@ struct UnifiedNotification {
     created_at: String,
     author: Option<Author>,
     subject_state: Option<String>,
+    draft: Option<bool>,
 }
 
 #[derive(Serialize, Clone)]
@@ -398,6 +400,11 @@ async fn fetch_github(client: &reqwest::Client, config: &GitHubConfig) -> Vec<Un
             };
 
             let url = detail.html_url.clone().unwrap_or_else(|| gh_url(&n));
+            let draft = if n.subject.subject_type == "PullRequest" {
+                detail.draft
+            } else {
+                None
+            };
             Some(UnifiedNotification {
                 id: format!("github-{}", n.id),
                 source: "github".into(),
@@ -411,6 +418,7 @@ async fn fetch_github(client: &reqwest::Client, config: &GitHubConfig) -> Vec<Un
                 updated_at: n.updated_at,
                 author,
                 subject_state: state,
+                draft,
             })
         }));
     }
@@ -470,6 +478,12 @@ fn gl_state(s: Option<&str>) -> Option<String> {
         Some("opened") => Some("open".into()),
         _ => None,
     }
+}
+
+fn is_gitlab_draft_title(title: &str) -> bool {
+    let trimmed = title.trim_start();
+    let lower = trimmed.to_ascii_lowercase();
+    lower.starts_with("draft:") || lower.starts_with("wip:")
 }
 
 async fn fetch_gitlab(client: &reqwest::Client, config: &GitLabConfig) -> Vec<UnifiedNotification> {
@@ -561,6 +575,16 @@ async fn fetch_gitlab(client: &reqwest::Client, config: &GitLabConfig) -> Vec<Un
                 Some(target_ts) if target_ts.as_str() > t.updated_at.as_str() => target_ts.clone(),
                 _ => t.updated_at,
             };
+            let draft = if t.target_type == "MergeRequest" {
+                let title = t.target.title.trim();
+                if title.is_empty() {
+                    None
+                } else {
+                    Some(is_gitlab_draft_title(title))
+                }
+            } else {
+                None
+            };
             UnifiedNotification {
                 id: format!("gitlab-{}", t.id),
                 source: "gitlab".into(),
@@ -577,6 +601,7 @@ async fn fetch_gitlab(client: &reqwest::Client, config: &GitLabConfig) -> Vec<Un
                     avatar_url: t.author.avatar_url,
                 }),
                 subject_state: gl_state(t.target.state.as_deref()),
+                draft,
             }
         })
         .collect()
@@ -942,5 +967,34 @@ mod tests {
     fn gl_state_returns_none_for_unknown() {
         assert_eq!(gl_state(None), None);
         assert_eq!(gl_state(Some("locked")), None);
+    }
+
+    // ── GitLab draft title detection ──────────────────────────────
+
+    #[test]
+    fn is_gitlab_draft_title_recognises_draft_prefix() {
+        assert!(is_gitlab_draft_title("Draft: add foo"));
+        assert!(is_gitlab_draft_title("draft: add foo"));
+        assert!(is_gitlab_draft_title("DRAFT: add foo"));
+    }
+
+    #[test]
+    fn is_gitlab_draft_title_recognises_wip_prefix() {
+        assert!(is_gitlab_draft_title("WIP: refactor bar"));
+        assert!(is_gitlab_draft_title("wip: refactor bar"));
+    }
+
+    #[test]
+    fn is_gitlab_draft_title_tolerates_leading_whitespace() {
+        assert!(is_gitlab_draft_title("   Draft: trim me"));
+        assert!(is_gitlab_draft_title("\tWIP: tab me"));
+    }
+
+    #[test]
+    fn is_gitlab_draft_title_rejects_non_prefixed_titles() {
+        assert!(!is_gitlab_draft_title("Drafting a release"));
+        assert!(!is_gitlab_draft_title("WIPing the floor"));
+        assert!(!is_gitlab_draft_title("Add Draft: to title middle"));
+        assert!(!is_gitlab_draft_title(""));
     }
 }

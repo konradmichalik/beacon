@@ -39,7 +39,8 @@
       filterState.types,
       filterState.projects,
       filterState.statuses,
-      filterState.authors
+      filterState.authors,
+      filterState.draftFilter
     )
   );
 
@@ -48,9 +49,13 @@
   let closedMergedIds = $derived(
     new Set(
       filteredNotifications
-        .filter((n) => n.subjectState === 'closed' || n.subjectState === 'merged')
+        .filter((n) => n.unread && (n.subjectState === 'closed' || n.subjectState === 'merged'))
         .map((n) => n.id)
     )
+  );
+
+  let draftIds = $derived(
+    new Set(filteredNotifications.filter((n) => n.unread && n.draft === true).map((n) => n.id))
   );
 
   let filtersActive = $derived(hasActiveFilters());
@@ -196,6 +201,17 @@
           class="flex w-full items-center px-3 py-1.5 text-[11px] font-medium text-muted-foreground transition-colors hover:bg-secondary hover:text-foreground disabled:opacity-30"
         >
           Closed & Merged
+        </button>
+        <button
+          type="button"
+          disabled={draftIds.size === 0}
+          onclick={() => {
+            markAllAsRead(draftIds);
+            markReadOpen = false;
+          }}
+          class="flex w-full items-center px-3 py-1.5 text-[11px] font-medium text-muted-foreground transition-colors hover:bg-secondary hover:text-foreground disabled:opacity-30"
+        >
+          Drafts
         </button>
       </div>
     {/if}

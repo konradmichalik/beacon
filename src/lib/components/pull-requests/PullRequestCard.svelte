@@ -229,9 +229,10 @@
 
         {#if pullRequest.draft}
           <span
-            class="flex shrink-0 items-center gap-0.5 text-[10px] font-medium text-muted-foreground"
+            title="Draft — work in progress"
+            class="flex shrink-0 items-center gap-0.5 rounded border border-warning/30 bg-warning/15 px-1.5 py-0.5 text-[10px] font-medium text-warning"
           >
-            <FileEdit size={9} />
+            <FileEdit size={9} class="shrink-0" />
             Draft
           </span>
         {/if}
