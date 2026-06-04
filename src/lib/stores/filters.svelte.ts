@@ -3,6 +3,7 @@ import type { NotificationSource, NotificationType } from '$lib/types';
 
 export type SortMode = 'date' | 'project';
 export type StatusFilter = 'open' | 'closed';
+export type NotificationDraftFilter = 'all' | 'ready' | 'draft';
 
 interface FilterState {
   source: NotificationSource | 'all';
@@ -12,6 +13,7 @@ interface FilterState {
   projects: SvelteSet<string>;
   statuses: SvelteSet<StatusFilter>;
   authors: SvelteSet<string>;
+  draftFilter: NotificationDraftFilter;
 }
 
 export const filterState: FilterState = $state({
@@ -21,7 +23,8 @@ export const filterState: FilterState = $state({
   types: new SvelteSet(),
   projects: new SvelteSet(),
   statuses: new SvelteSet(),
-  authors: new SvelteSet()
+  authors: new SvelteSet(),
+  draftFilter: 'all'
 });
 
 export function setSourceFilter(source: NotificationSource | 'all'): void {
@@ -85,11 +88,16 @@ export function clearAuthorFilters(): void {
   filterState.authors.clear();
 }
 
+export function setDraftFilter(filter: NotificationDraftFilter): void {
+  filterState.draftFilter = filter;
+}
+
 export function clearAllFilters(): void {
   filterState.types.clear();
   filterState.projects.clear();
   filterState.statuses.clear();
   filterState.authors.clear();
+  filterState.draftFilter = 'all';
 }
 
 export function hasActiveFilters(): boolean {
@@ -97,7 +105,8 @@ export function hasActiveFilters(): boolean {
     filterState.types.size > 0 ||
     filterState.projects.size > 0 ||
     filterState.statuses.size > 0 ||
-    filterState.authors.size > 0
+    filterState.authors.size > 0 ||
+    filterState.draftFilter !== 'all'
   );
 }
 
@@ -109,4 +118,5 @@ export function resetFilters(): void {
   filterState.projects.clear();
   filterState.statuses.clear();
   filterState.authors.clear();
+  filterState.draftFilter = 'all';
 }
