@@ -1,6 +1,12 @@
 <script lang="ts">
   import type { UnifiedNotification } from '$lib/types';
-  import { markAsRead, markAsUnread, getLastSeenAt } from '$lib/stores/notifications.svelte';
+  import {
+    markAsRead,
+    markAsUnread,
+    markAllAsRead,
+    getLastSeenAt,
+    getUnreadIdsByAuthor
+  } from '$lib/stores/notifications.svelte';
   import { timeAgo } from '$lib/utils/time';
   import { isTauri } from '$lib/utils/storage';
   import { clampMenuPosition, menuPositionFromElement } from '$lib/utils/context-menu';
@@ -167,7 +173,7 @@
 
   function handleContextMenu(event: MouseEvent): void {
     event.preventDefault();
-    contextMenu = clampMenuPosition(event, { width: 160, height: 140 });
+    contextMenu = clampMenuPosition(event, { width: 240, height: 170 });
 
     function close() {
       contextMenu = null;
@@ -210,11 +216,25 @@
     closeContextMenu(() => (showMuteModal = true));
   }
 
+  let unreadIdsByAuthor = $derived.by(() => {
+    const login = notification.author?.login;
+    if (!login) return null;
+    const ids = getUnreadIdsByAuthor(login, notification.source);
+    return ids.size > 1 ? ids : null;
+  });
+
+  function handleContextMarkAllByAuthor(): void {
+    closeContextMenu(() => {
+      if (!unreadIdsByAuthor) return;
+      markAllAsRead(unreadIdsByAuthor);
+    });
+  }
+
   function handleCardKeydown(e: KeyboardEvent): void {
     if (e.key === 'F10' && e.shiftKey) {
       e.preventDefault();
       const rect = (e.currentTarget as HTMLElement).getBoundingClientRect();
-      contextMenu = menuPositionFromElement(rect, { width: 160, height: 140 });
+      contextMenu = menuPositionFromElement(rect, { width: 240, height: 170 });
       function close() {
         contextMenu = null;
         window.removeEventListener('click', close);
@@ -393,6 +413,16 @@
       >
         <CircleDashed size={12} />
         Mark as unread
+      </button>
+    {/if}
+    {#if unreadIdsByAuthor && notification.author}
+      <button
+        type="button"
+        onclick={handleContextMarkAllByAuthor}
+        class="flex w-full items-center gap-2 px-3 py-1.5 text-left text-xs text-foreground hover:bg-secondary"
+      >
+        <CheckCheck size={12} />
+        Mark all from @{notification.author.login} as read ({unreadIdsByAuthor.size})
       </button>
     {/if}
   </div>
