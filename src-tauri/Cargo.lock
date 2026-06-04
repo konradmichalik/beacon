@@ -339,6 +339,7 @@ dependencies = [
  "tauri-plugin-store",
  "time",
  "tokio",
+ "tray-icon",
 ]
 
 [[package]]

@@ -157,10 +157,23 @@ pub(crate) fn update_tray_icon(
             };
 
             let (rgba, w, h) = create_tray_icon(indicator_mode, active, rgb);
-            let icon = tauri::image::Image::new_owned(rgba, w, h);
-            tray.set_icon(Some(icon)).map_err(|e| e.to_string())?;
-            tray.set_icon_as_template(indicator_mode == "none" || !active)
-                .map_err(|e| e.to_string())?;
+            let as_template = indicator_mode == "none" || !active;
+
+            // Set icon + template flag atomically on the main thread via the
+            // inner tray-icon API. Tauri's separate `set_icon` /
+            // `set_icon_as_template` calls each post their own main-thread
+            // task and `set_icon` hardcodes `icon_is_template = false`, so a
+            // render pass can interleave between them with template=false and
+            // cache a non-template rendering — leaving the icon stuck white
+            // on light wallpapers (tauri-apps/tauri#9332).
+            tray.with_inner_tray_icon(move |inner| -> Result<(), String> {
+                let icon = tray_icon::Icon::from_rgba(rgba, w, h).map_err(|e| e.to_string())?;
+                inner
+                    .set_icon_with_as_template(Some(icon), as_template)
+                    .map_err(|e| e.to_string())
+            })
+            .map_err(|e| e.to_string())??;
+
             tray.set_title(Some(&title)).map_err(|e| e.to_string())?;
         }
     }
