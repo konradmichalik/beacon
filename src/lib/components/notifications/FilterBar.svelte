@@ -58,12 +58,26 @@
     new Set(filteredNotifications.filter((n) => n.unread && n.draft === true).map((n) => n.id))
   );
 
+  const OTHER_TYPES = new Set(['pipeline', 'release', 'discussion', 'other']);
+  let otherIds = $derived(
+    new Set(
+      filteredNotifications.filter((n) => n.unread && OTHER_TYPES.has(n.type)).map((n) => n.id)
+    )
+  );
+
   let filtersActive = $derived(hasActiveFilters());
   let popoverOpen = $state(false);
   let markReadOpen = $state(false);
   let markReadBtnEl: HTMLButtonElement | undefined = $state();
   let sortOpen = $state(false);
   let sortBtnEl: HTMLButtonElement | undefined = $state();
+
+  let markReadOptions = $derived([
+    { label: 'All', ids: filteredIds },
+    { label: 'Drafts', ids: draftIds },
+    { label: 'Other / CI Activities', ids: otherIds },
+    { label: 'Closed & Merged', ids: closedMergedIds }
+  ]);
 
   const sortOptions: { value: SortMode; label: string }[] = [
     { value: 'date', label: 'Date' },
@@ -181,38 +195,19 @@
         style="position:fixed;top:{rect.bottom + 4}px;right:{window.innerWidth - rect.right}px;"
         class="z-50 min-w-[160px] rounded-lg border border-border bg-card py-1 shadow-lg"
       >
-        <button
-          type="button"
-          onclick={() => {
-            markAllAsRead(filteredIds);
-            markReadOpen = false;
-          }}
-          class="flex w-full items-center px-3 py-1.5 text-[11px] font-medium text-muted-foreground transition-colors hover:bg-secondary hover:text-foreground"
-        >
-          All
-        </button>
-        <button
-          type="button"
-          disabled={closedMergedIds.size === 0}
-          onclick={() => {
-            markAllAsRead(closedMergedIds);
-            markReadOpen = false;
-          }}
-          class="flex w-full items-center px-3 py-1.5 text-[11px] font-medium text-muted-foreground transition-colors hover:bg-secondary hover:text-foreground disabled:opacity-30"
-        >
-          Closed & Merged
-        </button>
-        <button
-          type="button"
-          disabled={draftIds.size === 0}
-          onclick={() => {
-            markAllAsRead(draftIds);
-            markReadOpen = false;
-          }}
-          class="flex w-full items-center px-3 py-1.5 text-[11px] font-medium text-muted-foreground transition-colors hover:bg-secondary hover:text-foreground disabled:opacity-30"
-        >
-          Drafts
-        </button>
+        {#each markReadOptions as opt, i (opt.label)}
+          <button
+            type="button"
+            disabled={i > 0 && opt.ids.size === 0}
+            onclick={() => {
+              markAllAsRead(opt.ids);
+              markReadOpen = false;
+            }}
+            class="flex w-full items-center px-3 py-1.5 text-[11px] font-medium text-muted-foreground transition-colors hover:bg-secondary hover:text-foreground disabled:opacity-30"
+          >
+            {opt.label}
+          </button>
+        {/each}
       </div>
     {/if}
 
