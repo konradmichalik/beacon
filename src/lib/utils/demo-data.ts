@@ -16,13 +16,14 @@ export const demoNotifications: readonly UnifiedNotification[] = [
     updatedAt: ago(3),
     createdAt: ago(120),
     author: { login: 'sarah-chen', avatarUrl: '' },
-    subjectState: 'open'
+    subjectState: 'open',
+    draft: false
   },
   {
     id: 'gitlab-demo-2',
     source: 'gitlab',
     type: 'merge_request',
-    title: 'fix: resolve race condition in webhook processor',
+    title: 'Draft: fix: resolve race condition in webhook processor',
     repository: 'platform/event-bus',
     url: 'https://gitlab.com/platform/event-bus/-/merge_requests/87',
     reason: 'mention',
@@ -30,7 +31,8 @@ export const demoNotifications: readonly UnifiedNotification[] = [
     updatedAt: ago(8),
     createdAt: ago(240),
     author: { login: 'mwilliams', avatarUrl: '' },
-    subjectState: 'open'
+    subjectState: 'open',
+    draft: true
   },
   {
     id: 'github-demo-3',
@@ -58,7 +60,8 @@ export const demoNotifications: readonly UnifiedNotification[] = [
     updatedAt: ago(25),
     createdAt: ago(480),
     author: { login: 'elena-v', avatarUrl: '' },
-    subjectState: 'open'
+    subjectState: 'open',
+    draft: true
   },
   {
     id: 'gitlab-demo-5',
@@ -72,7 +75,8 @@ export const demoNotifications: readonly UnifiedNotification[] = [
     updatedAt: ago(45),
     createdAt: ago(600),
     author: { login: 'tgraham', avatarUrl: '' },
-    subjectState: 'merged'
+    subjectState: 'merged',
+    draft: false
   },
   {
     id: 'github-demo-6',
@@ -86,7 +90,8 @@ export const demoNotifications: readonly UnifiedNotification[] = [
     updatedAt: ago(60),
     createdAt: ago(720),
     author: { login: 'danield', avatarUrl: '' },
-    subjectState: 'closed'
+    subjectState: 'closed',
+    draft: false
   },
   {
     id: 'github-demo-7',
@@ -142,6 +147,7 @@ export const demoNotifications: readonly UnifiedNotification[] = [
     updatedAt: ago(200),
     createdAt: ago(3000),
     author: { login: 'mwilliams', avatarUrl: '' },
-    subjectState: 'open'
+    subjectState: 'open',
+    draft: false
   }
 ];
