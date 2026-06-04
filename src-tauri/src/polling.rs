@@ -113,8 +113,7 @@ struct GHDetail {
     state: Option<String>,
     #[serde(default)]
     merged: bool,
-    #[serde(default)]
-    draft: bool,
+    draft: Option<bool>,
     user: Option<GHUser>,
 }
 
@@ -402,7 +401,7 @@ async fn fetch_github(client: &reqwest::Client, config: &GitHubConfig) -> Vec<Un
 
             let url = detail.html_url.clone().unwrap_or_else(|| gh_url(&n));
             let draft = if n.subject.subject_type == "PullRequest" {
-                Some(detail.draft)
+                detail.draft
             } else {
                 None
             };
@@ -577,7 +576,12 @@ async fn fetch_gitlab(client: &reqwest::Client, config: &GitLabConfig) -> Vec<Un
                 _ => t.updated_at,
             };
             let draft = if t.target_type == "MergeRequest" {
-                Some(is_gitlab_draft_title(&t.target.title))
+                let title = t.target.title.trim();
+                if title.is_empty() {
+                    None
+                } else {
+                    Some(is_gitlab_draft_title(title))
+                }
             } else {
                 None
             };

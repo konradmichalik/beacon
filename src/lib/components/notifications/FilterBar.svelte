@@ -49,13 +49,13 @@
   let closedMergedIds = $derived(
     new Set(
       filteredNotifications
-        .filter((n) => n.subjectState === 'closed' || n.subjectState === 'merged')
+        .filter((n) => n.unread && (n.subjectState === 'closed' || n.subjectState === 'merged'))
         .map((n) => n.id)
     )
   );
 
   let draftIds = $derived(
-    new Set(filteredNotifications.filter((n) => n.draft === true).map((n) => n.id))
+    new Set(filteredNotifications.filter((n) => n.unread && n.draft === true).map((n) => n.id))
   );
 
   let filtersActive = $derived(hasActiveFilters());
