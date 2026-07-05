@@ -1,4 +1,4 @@
-use std::collections::HashSet;
+use std::collections::{HashMap, HashSet};
 use std::sync::Arc;
 
 use serde::{Deserialize, Serialize};
@@ -123,6 +123,17 @@ struct GHUser {
     avatar_url: String,
 }
 
+/// Detail-derived fields for one notification, cached across polls keyed by
+/// `(notification id, updated_at)`. These come from the per-notification detail
+/// request; list-level fields (`unread`, `title`, …) are always taken fresh.
+#[derive(Clone)]
+struct CachedDetail {
+    author: Option<Author>,
+    state: Option<String>,
+    html_url: Option<String>,
+    draft: Option<bool>,
+}
+
 // ── GitLab API types ────────────────────────────────────────────
 
 #[derive(Deserialize)]
@@ -219,6 +230,9 @@ struct PollerInner {
     /// Normalized GitHub notifications from the previous poll, reused verbatim
     /// on a 304 so no detail requests are re-issued.
     gh_last_results: Vec<UnifiedNotification>,
+    /// Detail-request results keyed by `(id, updated_at)`, so unchanged
+    /// notifications skip their detail fetch on the next poll.
+    gh_detail_cache: HashMap<(String, String), CachedDetail>,
 }
 
 impl Poller {
@@ -236,6 +250,7 @@ impl Poller {
                 task_handle: None,
                 gh_last_modified: None,
                 gh_last_results: Vec::new(),
+                gh_detail_cache: HashMap::new(),
             }),
         }
     }
@@ -353,6 +368,7 @@ enum GhFetch {
     Modified {
         last_modified: Option<String>,
         items: Vec<UnifiedNotification>,
+        detail_cache: HashMap<(String, String), CachedDetail>,
     },
 }
 
@@ -360,6 +376,7 @@ async fn fetch_github(
     client: &reqwest::Client,
     config: &GitHubConfig,
     if_modified_since: Option<&str>,
+    cache: &HashMap<(String, String), CachedDetail>,
 ) -> GhFetch {
     let since = thirty_days_ago_iso();
     let url =
@@ -399,6 +416,7 @@ async fn fetch_github(
             return GhFetch::Modified {
                 last_modified: None,
                 items: vec![],
+                detail_cache: HashMap::new(),
             };
         }
         Err(e) => {
@@ -406,71 +424,92 @@ async fn fetch_github(
             return GhFetch::Modified {
                 last_modified: None,
                 items: vec![],
+                detail_cache: HashMap::new(),
             };
         }
     };
 
     let mut handles = Vec::with_capacity(notifications.len());
     for n in notifications {
+        let key = (n.id.clone(), n.updated_at.clone());
+        // Reuse the cached detail when this exact (id, updated_at) was already
+        // fetched; only genuinely new or changed notifications hit the network.
+        let cached = cache.get(&key).cloned();
         let c = client.clone();
         let token = config.token.clone();
         let username = config.username.clone();
         handles.push(tokio::spawn(async move {
-            let detail = match n.subject.url {
-                Some(ref url) => gh_detail(&c, url, &token).await,
-                None => GHDetail::default(),
+            let detail = match cached {
+                Some(d) => d,
+                None => {
+                    let raw = match n.subject.url {
+                        Some(ref url) => gh_detail(&c, url, &token).await,
+                        None => GHDetail::default(),
+                    };
+                    let author = raw.user.map(|u| Author {
+                        login: u.login,
+                        avatar_url: u.avatar_url,
+                    });
+                    let state = match (raw.state.as_deref(), raw.merged) {
+                        (Some("closed"), true) => Some("merged".into()),
+                        (Some("closed"), false) => Some("closed".into()),
+                        (Some("open"), _) => Some("open".into()),
+                        _ => None,
+                    };
+                    CachedDetail {
+                        author,
+                        state,
+                        html_url: raw.html_url,
+                        draft: raw.draft,
+                    }
+                }
             };
 
-            let author = detail.user.map(|u| Author {
-                login: u.login,
-                avatar_url: u.avatar_url,
-            });
-
-            // Filter out own notifications
-            if author.as_ref().is_some_and(|a| a.login == username) {
-                return None;
-            }
-
-            let state = match (detail.state.as_deref(), detail.merged) {
-                (Some("closed"), true) => Some("merged".into()),
-                (Some("closed"), false) => Some("closed".into()),
-                (Some("open"), _) => Some("open".into()),
-                _ => None,
-            };
-
-            let url = detail.html_url.clone().unwrap_or_else(|| gh_url(&n));
-            let draft = if n.subject.subject_type == "PullRequest" {
-                detail.draft
-            } else {
+            // Filter out own notifications, but keep the detail cached so it is
+            // not re-fetched next poll.
+            let item = if detail.author.as_ref().is_some_and(|a| a.login == username) {
                 None
+            } else {
+                let url = detail.html_url.clone().unwrap_or_else(|| gh_url(&n));
+                let draft = if n.subject.subject_type == "PullRequest" {
+                    detail.draft
+                } else {
+                    None
+                };
+                Some(UnifiedNotification {
+                    id: format!("github-{}", n.id),
+                    source: "github".into(),
+                    kind: gh_type(&n.subject.subject_type).into(),
+                    title: n.subject.title.clone(),
+                    repository: n.repository.full_name.clone(),
+                    url,
+                    reason: n.reason.clone(),
+                    unread: n.unread,
+                    created_at: n.updated_at.clone(),
+                    updated_at: n.updated_at.clone(),
+                    author: detail.author.clone(),
+                    subject_state: detail.state.clone(),
+                    draft,
+                })
             };
-            Some(UnifiedNotification {
-                id: format!("github-{}", n.id),
-                source: "github".into(),
-                kind: gh_type(&n.subject.subject_type).into(),
-                title: n.subject.title,
-                repository: n.repository.full_name,
-                url,
-                reason: n.reason,
-                unread: n.unread,
-                created_at: n.updated_at.clone(),
-                updated_at: n.updated_at,
-                author,
-                subject_state: state,
-                draft,
-            })
+            (key, detail, item)
         }));
     }
 
     let mut results = Vec::new();
+    let mut detail_cache: HashMap<(String, String), CachedDetail> = HashMap::new();
     for h in handles {
-        if let Ok(Some(n)) = h.await {
-            results.push(n);
+        if let Ok((key, detail, item)) = h.await {
+            detail_cache.insert(key, detail);
+            if let Some(n) = item {
+                results.push(n);
+            }
         }
     }
     GhFetch::Modified {
         last_modified,
         items: results,
+        detail_cache,
     }
 }
 
@@ -748,17 +787,26 @@ async fn do_poll(app: &AppHandle) {
         ),
     );
 
-    let if_modified_since = {
+    let (if_modified_since, detail_cache) = {
         let inner = poller.inner.lock().await;
-        inner.gh_last_modified.clone()
+        (
+            inner.gh_last_modified.clone(),
+            inner.gh_detail_cache.clone(),
+        )
     };
 
     let (gh_fetch, gl) = tokio::join!(
         async {
             match gh_config {
-                Some(ref c) => {
-                    Some(fetch_github(&poller.client, c, if_modified_since.as_deref()).await)
-                }
+                Some(ref c) => Some(
+                    fetch_github(
+                        &poller.client,
+                        c,
+                        if_modified_since.as_deref(),
+                        &detail_cache,
+                    )
+                    .await,
+                ),
                 None => None,
             }
         },
@@ -778,15 +826,18 @@ async fn do_poll(app: &AppHandle) {
             None => {
                 inner.gh_last_modified = None;
                 inner.gh_last_results = Vec::new();
+                inner.gh_detail_cache = HashMap::new();
                 Vec::new()
             }
             Some(GhFetch::NotModified) => inner.gh_last_results.clone(),
             Some(GhFetch::Modified {
                 last_modified,
                 items,
+                detail_cache,
             }) => {
                 inner.gh_last_modified = last_modified;
                 inner.gh_last_results = items.clone();
+                inner.gh_detail_cache = detail_cache;
                 items
             }
         };
@@ -849,6 +900,7 @@ pub async fn start_polling(app: AppHandle) -> Result<(), String> {
     inner.last_summary_flush = std::time::Instant::now();
     inner.gh_last_modified = None;
     inner.gh_last_results = Vec::new();
+    inner.gh_detail_cache = HashMap::new();
 
     inner.task_handle = Some(spawn_loop(app.clone()));
     Ok(())
