@@ -7,6 +7,7 @@ import type {
   ServiceId
 } from '$lib/types';
 import { getStorageItem, setStorageItem, removeStorageItem } from '$lib/utils/storage';
+import { normalizeGitLabBaseUrl } from '$lib/utils/gitlab-url';
 
 const STORAGE_KEYS = {
   GITHUB_CONFIG: 'github-config',
@@ -82,15 +83,33 @@ export async function connectGitHubWithPAT(token: string): Promise<void> {
 
 export async function connectGitLabWithPAT(token: string, baseUrl: string): Promise<void> {
   connectionsState.gitlab = { status: 'connecting', error: null, lastChecked: null };
+
+  let normalizedBaseUrl: string;
   try {
-    const url = `${baseUrl.replace(/\/$/, '')}/api/v4/user`;
+    normalizedBaseUrl = normalizeGitLabBaseUrl(baseUrl);
+  } catch (error) {
+    connectionsState.gitlab = {
+      status: 'error',
+      error: error instanceof Error ? error.message : 'Invalid GitLab URL',
+      lastChecked: null
+    };
+    return;
+  }
+
+  try {
+    const url = `${normalizedBaseUrl}/api/v4/user`;
     const response = await safeFetch(url, {
       headers: { Authorization: `Bearer ${token}` }
     });
     if (!response.ok) throw new Error(`GitLab auth failed: ${response.status}`);
 
     const user = (await response.json()) as { username: string };
-    const config: GitLabConnectionConfig = { type: 'pat', token, baseUrl, username: user.username };
+    const config: GitLabConnectionConfig = {
+      type: 'pat',
+      token,
+      baseUrl: normalizedBaseUrl,
+      username: user.username
+    };
     gitlabConfig = config;
     await setStorageItem(STORAGE_KEYS.GITLAB_CONFIG, config);
     connectionsState.gitlab = {
