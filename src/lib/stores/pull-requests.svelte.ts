@@ -11,6 +11,7 @@ import { fetchGitLabMergeRequestsBasic, enrichGitLabMR } from '$lib/services/git
 import { settingsState } from './settings.svelte';
 import { isDemoMode } from './notifications.svelte';
 import { demoPullRequests } from '$lib/utils/demo-data-prs';
+import { mergeCachedEnrichment } from '$lib/utils/pr-enrichment-cache';
 
 let pullRequests: UnifiedPullRequest[] = $state([]);
 let isLoading = $state(false);
@@ -210,6 +211,9 @@ export async function refreshPullRequests(): Promise<void> {
     enrichmentController = null;
   }
 
+  // Snapshot the previous (enriched) list so unchanged PRs can reuse it.
+  const previousPRs = pullRequests;
+
   try {
     const results: UnifiedPullRequest[] = [];
     const promises: Promise<void>[] = [];
@@ -250,17 +254,19 @@ export async function refreshPullRequests(): Promise<void> {
     // eslint-disable-next-line svelte/prefer-svelte-reactivity -- date parsing for sort comparison
     results.sort((a, b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime());
 
-    // Phase 1: Display immediately
-    pullRequests = results;
+    // Phase 1: Display immediately, reusing enrichment from the previous poll
+    // for PRs that have not changed so unchanged PRs are not re-fetched.
+    pullRequests = mergeCachedEnrichment(results, previousPRs);
   } finally {
     isLoading = false;
     hasLoadedOnce = true;
   }
 
-  // Phase 2: Enrich in background (if enabled)
+  // Phase 2: Enrich in background (if enabled), only the PRs still pending
   if (settingsState.enrichPullRequests) {
     enrichmentController = new AbortController();
-    enrichAllPRs(pullRequests, enrichmentController.signal).catch(() => {});
+    const pending = pullRequests.filter((pr) => pr.enrichment === 'pending');
+    enrichAllPRs(pending, enrichmentController.signal).catch(() => {});
   } else {
     pullRequests = pullRequests.map((pr) => ({ ...pr, enrichment: 'skipped' as const }));
   }
