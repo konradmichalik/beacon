@@ -361,6 +361,9 @@ fn thirty_days_ago_iso() -> String {
         .unwrap_or_default()
 }
 
+/// Maximum number of GitHub detail requests issued concurrently per poll.
+const MAX_CONCURRENT_DETAIL_FETCHES: usize = 5;
+
 /// Outcome of a GitHub notifications fetch. `NotModified` (HTTP 304) lets the
 /// caller reuse the previous poll's results without re-issuing detail requests.
 enum GhFetch {
@@ -429,6 +432,10 @@ async fn fetch_github(
         }
     };
 
+    // Cap concurrent detail requests so a large batch cannot fire dozens of
+    // simultaneous requests at GitHub (a known trigger for secondary rate
+    // limits). Cache hits do not acquire a permit — only real network fetches.
+    let semaphore = Arc::new(tokio::sync::Semaphore::new(MAX_CONCURRENT_DETAIL_FETCHES));
     let mut handles = Vec::with_capacity(notifications.len());
     for n in notifications {
         let key = (n.id.clone(), n.updated_at.clone());
@@ -438,10 +445,12 @@ async fn fetch_github(
         let c = client.clone();
         let token = config.token.clone();
         let username = config.username.clone();
+        let semaphore = semaphore.clone();
         handles.push(tokio::spawn(async move {
             let detail = match cached {
                 Some(d) => d,
                 None => {
+                    let _permit = semaphore.acquire_owned().await;
                     let raw = match n.subject.url {
                         Some(ref url) => gh_detail(&c, url, &token).await,
                         None => GHDetail::default(),
