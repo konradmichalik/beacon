@@ -292,10 +292,25 @@ fn is_focus_mode_active() -> bool {
     }
 }
 
+/// A sound name is safe to interpolate into a file path only if it contains no
+/// path separators or traversal sequences. Restrict it to a simple identifier.
+fn is_valid_sound_name(name: &str) -> bool {
+    !name.is_empty()
+        && name
+            .chars()
+            .all(|c| c.is_ascii_alphanumeric() || c == '-' || c == '_')
+}
+
 #[tauri::command]
 fn play_sound(app: tauri::AppHandle, sound: String) -> Result<(), String> {
     if sound == "none" {
         return Ok(());
+    }
+
+    // The name is used to build a filesystem path; reject anything that could
+    // escape the bundled sounds directory.
+    if !is_valid_sound_name(&sound) {
+        return Err(format!("Invalid sound name: {sound}"));
     }
 
     #[cfg(target_os = "macos")]
@@ -654,4 +669,25 @@ pub fn run() {
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
+}
+
+#[cfg(test)]
+mod tests {
+    use super::is_valid_sound_name;
+
+    #[test]
+    fn accepts_plain_sound_names() {
+        assert!(is_valid_sound_name("ping"));
+        assert!(is_valid_sound_name("soft-chime"));
+        assert!(is_valid_sound_name("alert_2"));
+    }
+
+    #[test]
+    fn rejects_path_traversal_and_separators() {
+        assert!(!is_valid_sound_name("../../../etc/passwd"));
+        assert!(!is_valid_sound_name("foo/bar"));
+        assert!(!is_valid_sound_name("foo.bar"));
+        assert!(!is_valid_sound_name(".."));
+        assert!(!is_valid_sound_name(""));
+    }
 }
