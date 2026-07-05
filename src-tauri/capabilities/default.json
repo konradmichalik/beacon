@@ -17,7 +17,7 @@
         { "url": "https://api.github.com/**" },
         { "url": "https://github.com/**" },
         { "url": "https://*.gitlab.com/**" },
-        { "url": "https://**" }
+        { "url": "https://**/api/v4/**" }
       ]
     }
   ]
