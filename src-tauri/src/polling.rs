@@ -233,6 +233,9 @@ struct PollerInner {
     /// Detail-request results keyed by `(id, updated_at)`, so unchanged
     /// notifications skip their detail fetch on the next poll.
     gh_detail_cache: HashMap<(String, String), CachedDetail>,
+    /// When GitHub reports a rate limit, the earliest instant the next poll may
+    /// run. The poll loop waits at least until this point.
+    backoff_until: Option<std::time::Instant>,
 }
 
 impl Poller {
@@ -251,6 +254,7 @@ impl Poller {
                 gh_last_modified: None,
                 gh_last_results: Vec::new(),
                 gh_detail_cache: HashMap::new(),
+                backoff_until: None,
             }),
         }
     }
@@ -368,11 +372,56 @@ const MAX_CONCURRENT_DETAIL_FETCHES: usize = 5;
 /// caller reuse the previous poll's results without re-issuing detail requests.
 enum GhFetch {
     NotModified,
+    RateLimited {
+        retry_after: std::time::Duration,
+    },
     Modified {
         last_modified: Option<String>,
         items: Vec<UnifiedNotification>,
         detail_cache: HashMap<(String, String), CachedDetail>,
     },
+}
+
+/// Upper bound on how long we honor a rate-limit backoff, so a bogus header can
+/// never stall polling indefinitely.
+const MAX_BACKOFF_SECS: u64 = 3600;
+
+/// Derive how long to wait after a GitHub rate-limit response, from the
+/// `Retry-After` (delta seconds) or `X-RateLimit-Reset` (epoch seconds) header,
+/// falling back to one minute.
+fn rate_limit_backoff(headers: &reqwest::header::HeaderMap) -> std::time::Duration {
+    if let Some(secs) = headers
+        .get(reqwest::header::RETRY_AFTER)
+        .and_then(|v| v.to_str().ok())
+        .and_then(|s| s.trim().parse::<u64>().ok())
+    {
+        return std::time::Duration::from_secs(secs.min(MAX_BACKOFF_SECS));
+    }
+    if let Some(reset) = headers
+        .get("x-ratelimit-reset")
+        .and_then(|v| v.to_str().ok())
+        .and_then(|s| s.trim().parse::<i64>().ok())
+    {
+        let now = time::OffsetDateTime::now_utc().unix_timestamp();
+        if reset > now {
+            let wait = (reset - now) as u64;
+            return std::time::Duration::from_secs(wait.min(MAX_BACKOFF_SECS));
+        }
+    }
+    std::time::Duration::from_secs(60)
+}
+
+/// Distinguish a genuine rate-limit response (429, or 403 with rate-limit
+/// headers) from an ordinary 403 such as a revoked token, so only the former
+/// triggers a backoff.
+fn is_rate_limited(headers: &reqwest::header::HeaderMap) -> bool {
+    if headers.contains_key(reqwest::header::RETRY_AFTER) {
+        return true;
+    }
+    headers
+        .get("x-ratelimit-remaining")
+        .and_then(|v| v.to_str().ok())
+        .is_some_and(|s| s.trim() == "0")
 }
 
 async fn fetch_github(
@@ -413,6 +462,22 @@ async fn fetch_github(
                 &format!("received {} notifications (HTTP {})", data.len(), status),
             );
             (last_modified, data)
+        }
+        Ok(r)
+            if (r.status() == reqwest::StatusCode::FORBIDDEN
+                || r.status() == reqwest::StatusCode::TOO_MANY_REQUESTS)
+                && is_rate_limited(r.headers()) =>
+        {
+            let retry_after = rate_limit_backoff(r.headers());
+            crate::debug_log::warn(
+                "github",
+                &format!(
+                    "rate limited (HTTP {}), backing off {}s",
+                    r.status(),
+                    retry_after.as_secs()
+                ),
+            );
+            return GhFetch::RateLimited { retry_after };
         }
         Ok(r) => {
             crate::debug_log::error("github", &format!("API error: HTTP {}", r.status()));
@@ -836,9 +901,19 @@ async fn do_poll(app: &AppHandle) {
                 inner.gh_last_modified = None;
                 inner.gh_last_results = Vec::new();
                 inner.gh_detail_cache = HashMap::new();
+                inner.backoff_until = None;
                 Vec::new()
             }
-            Some(GhFetch::NotModified) => inner.gh_last_results.clone(),
+            // Rate limited: keep showing the previous results and defer the
+            // next poll until the backoff window elapses.
+            Some(GhFetch::RateLimited { retry_after }) => {
+                inner.backoff_until = Some(std::time::Instant::now() + retry_after);
+                inner.gh_last_results.clone()
+            }
+            Some(GhFetch::NotModified) => {
+                inner.backoff_until = None;
+                inner.gh_last_results.clone()
+            }
             Some(GhFetch::Modified {
                 last_modified,
                 items,
@@ -847,6 +922,7 @@ async fn do_poll(app: &AppHandle) {
                 inner.gh_last_modified = last_modified;
                 inner.gh_last_results = items.clone();
                 inner.gh_detail_cache = detail_cache;
+                inner.backoff_until = None;
                 items
             }
         };
@@ -886,7 +962,17 @@ fn spawn_loop(app: AppHandle) -> tokio::task::JoinHandle<()> {
         loop {
             let (_, _, settings) = read_store(&app);
             let interval = std::time::Duration::from_secs(settings.polling_interval);
-            tokio::time::sleep(interval).await;
+            // Wait at least the configured interval, but longer if GitHub asked
+            // us to back off after a rate limit.
+            let backoff = {
+                let poller = app.state::<Arc<Poller>>();
+                let inner = poller.inner.lock().await;
+                inner
+                    .backoff_until
+                    .and_then(|t| t.checked_duration_since(std::time::Instant::now()))
+                    .unwrap_or_default()
+            };
+            tokio::time::sleep(interval.max(backoff)).await;
             do_poll(&app).await;
         }
     })
@@ -910,6 +996,7 @@ pub async fn start_polling(app: AppHandle) -> Result<(), String> {
     inner.gh_last_modified = None;
     inner.gh_last_results = Vec::new();
     inner.gh_detail_cache = HashMap::new();
+    inner.backoff_until = None;
 
     inner.task_handle = Some(spawn_loop(app.clone()));
     Ok(())
@@ -1127,5 +1214,79 @@ mod tests {
         assert!(!is_gitlab_draft_title("WIPing the floor"));
         assert!(!is_gitlab_draft_title("Add Draft: to title middle"));
         assert!(!is_gitlab_draft_title(""));
+    }
+
+    // ── Rate-limit backoff ───────────────────────────────────────
+
+    use reqwest::header::{HeaderMap, HeaderName, HeaderValue, RETRY_AFTER};
+
+    #[test]
+    fn rate_limit_backoff_reads_retry_after() {
+        let mut headers = HeaderMap::new();
+        headers.insert(RETRY_AFTER, HeaderValue::from_static("120"));
+        assert_eq!(
+            rate_limit_backoff(&headers),
+            std::time::Duration::from_secs(120)
+        );
+    }
+
+    #[test]
+    fn rate_limit_backoff_caps_at_max() {
+        let mut headers = HeaderMap::new();
+        headers.insert(RETRY_AFTER, HeaderValue::from_static("99999"));
+        assert_eq!(
+            rate_limit_backoff(&headers),
+            std::time::Duration::from_secs(MAX_BACKOFF_SECS)
+        );
+    }
+
+    #[test]
+    fn rate_limit_backoff_defaults_to_one_minute() {
+        assert_eq!(
+            rate_limit_backoff(&HeaderMap::new()),
+            std::time::Duration::from_secs(60)
+        );
+    }
+
+    #[test]
+    fn rate_limit_backoff_ignores_reset_in_the_past() {
+        let mut headers = HeaderMap::new();
+        // Epoch 100 is decades in the past, so the reset header is ignored.
+        headers.insert(
+            HeaderName::from_static("x-ratelimit-reset"),
+            HeaderValue::from_static("100"),
+        );
+        assert_eq!(
+            rate_limit_backoff(&headers),
+            std::time::Duration::from_secs(60)
+        );
+    }
+
+    #[test]
+    fn is_rate_limited_detects_retry_after() {
+        let mut headers = HeaderMap::new();
+        headers.insert(RETRY_AFTER, HeaderValue::from_static("30"));
+        assert!(is_rate_limited(&headers));
+    }
+
+    #[test]
+    fn is_rate_limited_detects_zero_remaining() {
+        let mut headers = HeaderMap::new();
+        headers.insert(
+            HeaderName::from_static("x-ratelimit-remaining"),
+            HeaderValue::from_static("0"),
+        );
+        assert!(is_rate_limited(&headers));
+    }
+
+    #[test]
+    fn is_rate_limited_false_for_ordinary_forbidden() {
+        let mut headers = HeaderMap::new();
+        headers.insert(
+            HeaderName::from_static("x-ratelimit-remaining"),
+            HeaderValue::from_static("42"),
+        );
+        assert!(!is_rate_limited(&headers));
+        assert!(!is_rate_limited(&HeaderMap::new()));
     }
 }
