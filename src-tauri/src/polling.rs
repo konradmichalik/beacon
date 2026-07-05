@@ -236,6 +236,9 @@ struct PollerInner {
     /// When GitHub reports a rate limit, the earliest instant the next poll may
     /// run. The poll loop waits at least until this point.
     backoff_until: Option<std::time::Instant>,
+    /// Fingerprint of the last emitted result set, used to skip re-emitting an
+    /// unchanged list to the frontend.
+    last_emit_fingerprint: Option<u64>,
 }
 
 impl Poller {
@@ -255,6 +258,7 @@ impl Poller {
                 gh_last_results: Vec::new(),
                 gh_detail_cache: HashMap::new(),
                 backoff_until: None,
+                last_emit_fingerprint: None,
             }),
         }
     }
@@ -882,7 +886,27 @@ fn process_new(
 
 // ── Core poll ───────────────────────────────────────────────────
 
-async fn do_poll(app: &AppHandle) {
+/// Fingerprint of the display-relevant fields of a result set. Two polls that
+/// produce the same fingerprint render identically, so the second emit can be
+/// skipped.
+fn results_fingerprint(items: &[UnifiedNotification]) -> u64 {
+    use std::hash::{Hash, Hasher};
+    let mut hasher = std::collections::hash_map::DefaultHasher::new();
+    items.len().hash(&mut hasher);
+    for n in items {
+        n.id.hash(&mut hasher);
+        n.updated_at.hash(&mut hasher);
+        n.unread.hash(&mut hasher);
+        n.title.hash(&mut hasher);
+        n.url.hash(&mut hasher);
+        n.reason.hash(&mut hasher);
+        n.subject_state.hash(&mut hasher);
+        n.draft.hash(&mut hasher);
+    }
+    hasher.finish()
+}
+
+async fn do_poll(app: &AppHandle, force_emit: bool) {
     let poller = app.state::<Arc<Poller>>();
     let (gh_config, gl_config, settings) = read_store(app);
 
@@ -931,7 +955,7 @@ async fn do_poll(app: &AppHandle) {
         }
     );
 
-    let (results, unread) = {
+    let (results, unread, should_emit) = {
         let mut inner = poller.inner.lock().await;
 
         let gh = match gh_fetch {
@@ -978,7 +1002,14 @@ async fn do_poll(app: &AppHandle) {
         );
 
         process_new(app, &mut inner, &results, &settings);
-        (results, unread)
+
+        // Skip re-emitting an unchanged list to the frontend (unless the caller
+        // forces it, e.g. a manual refresh or the initial load).
+        let fingerprint = results_fingerprint(&results);
+        let should_emit = force_emit || inner.last_emit_fingerprint != Some(fingerprint);
+        inner.last_emit_fingerprint = Some(fingerprint);
+
+        (results, unread, should_emit)
     };
 
     let _ = crate::update_tray_icon(
@@ -989,14 +1020,19 @@ async fn do_poll(app: &AppHandle) {
         &settings.indicator_color,
     );
 
-    let _ = app.emit("notifications-updated", &results);
+    if should_emit {
+        let _ = app.emit("notifications-updated", &results);
+    } else {
+        crate::debug_log::info("poll", "results unchanged, skipping frontend emit");
+    }
 }
 
 // ── Poll loop ───────────────────────────────────────────────────
 
 fn spawn_loop(app: AppHandle) -> tokio::task::JoinHandle<()> {
     tokio::spawn(async move {
-        do_poll(&app).await;
+        // Force the initial emit so the frontend is populated on startup.
+        do_poll(&app, true).await;
 
         loop {
             let (_, _, settings) = read_store(&app);
@@ -1012,7 +1048,7 @@ fn spawn_loop(app: AppHandle) -> tokio::task::JoinHandle<()> {
                     .unwrap_or_default()
             };
             tokio::time::sleep(interval.max(backoff)).await;
-            do_poll(&app).await;
+            do_poll(&app, false).await;
         }
     })
 }
@@ -1036,6 +1072,7 @@ pub async fn start_polling(app: AppHandle) -> Result<(), String> {
     inner.gh_last_results = Vec::new();
     inner.gh_detail_cache = HashMap::new();
     inner.backoff_until = None;
+    inner.last_emit_fingerprint = None;
 
     inner.task_handle = Some(spawn_loop(app.clone()));
     Ok(())
@@ -1053,7 +1090,8 @@ pub async fn stop_polling(app: AppHandle) -> Result<(), String> {
 
 #[tauri::command]
 pub async fn trigger_poll(app: AppHandle) -> Result<(), String> {
-    do_poll(&app).await;
+    // A manual refresh always emits so the requesting frontend gets fresh data.
+    do_poll(&app, true).await;
     Ok(())
 }
 
@@ -1327,5 +1365,60 @@ mod tests {
         );
         assert!(!is_rate_limited(&headers));
         assert!(!is_rate_limited(&HeaderMap::new()));
+    }
+
+    // ── Result fingerprint ───────────────────────────────────────
+
+    fn make_unified(id: &str, unread: bool) -> UnifiedNotification {
+        UnifiedNotification {
+            id: id.into(),
+            source: "github".into(),
+            kind: "pull_request".into(),
+            title: "Test".into(),
+            repository: "owner/repo".into(),
+            url: "https://github.com/owner/repo/pull/1".into(),
+            reason: "review_requested".into(),
+            unread,
+            updated_at: "2026-03-17T12:00:00Z".into(),
+            created_at: "2026-03-17T12:00:00Z".into(),
+            author: None,
+            subject_state: Some("open".into()),
+            draft: Some(false),
+        }
+    }
+
+    #[test]
+    fn fingerprint_is_stable_for_identical_lists() {
+        let a = vec![
+            make_unified("github-1", true),
+            make_unified("github-2", false),
+        ];
+        let b = vec![
+            make_unified("github-1", true),
+            make_unified("github-2", false),
+        ];
+        assert_eq!(results_fingerprint(&a), results_fingerprint(&b));
+    }
+
+    #[test]
+    fn fingerprint_changes_when_unread_flips() {
+        let a = vec![make_unified("github-1", true)];
+        let b = vec![make_unified("github-1", false)];
+        assert_ne!(results_fingerprint(&a), results_fingerprint(&b));
+    }
+
+    #[test]
+    fn fingerprint_changes_when_item_added() {
+        let a = vec![make_unified("github-1", true)];
+        let b = vec![
+            make_unified("github-1", true),
+            make_unified("github-2", true),
+        ];
+        assert_ne!(results_fingerprint(&a), results_fingerprint(&b));
+    }
+
+    #[test]
+    fn fingerprint_of_empty_list_is_stable() {
+        assert_eq!(results_fingerprint(&[]), results_fingerprint(&[]));
     }
 }
