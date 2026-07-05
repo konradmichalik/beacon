@@ -213,6 +213,12 @@ struct PollerInner {
     summary_buffer: Vec<UnifiedNotification>,
     last_summary_flush: std::time::Instant,
     task_handle: Option<tokio::task::JoinHandle<()>>,
+    /// `Last-Modified` value from the previous GitHub notifications response,
+    /// replayed as `If-Modified-Since` so unchanged polls return 304.
+    gh_last_modified: Option<String>,
+    /// Normalized GitHub notifications from the previous poll, reused verbatim
+    /// on a 304 so no detail requests are re-issued.
+    gh_last_results: Vec<UnifiedNotification>,
 }
 
 impl Poller {
@@ -228,6 +234,8 @@ impl Poller {
                 summary_buffer: Vec::new(),
                 last_summary_flush: std::time::Instant::now(),
                 task_handle: None,
+                gh_last_modified: None,
+                gh_last_results: Vec::new(),
             }),
         }
     }
@@ -338,41 +346,72 @@ fn thirty_days_ago_iso() -> String {
         .unwrap_or_default()
 }
 
-async fn fetch_github(client: &reqwest::Client, config: &GitHubConfig) -> Vec<UnifiedNotification> {
+/// Outcome of a GitHub notifications fetch. `NotModified` (HTTP 304) lets the
+/// caller reuse the previous poll's results without re-issuing detail requests.
+enum GhFetch {
+    NotModified,
+    Modified {
+        last_modified: Option<String>,
+        items: Vec<UnifiedNotification>,
+    },
+}
+
+async fn fetch_github(
+    client: &reqwest::Client,
+    config: &GitHubConfig,
+    if_modified_since: Option<&str>,
+) -> GhFetch {
     let since = thirty_days_ago_iso();
     let url =
         format!("https://api.github.com/notifications?participating=false&all=false&since={since}");
     crate::debug_log::info("github", &format!("fetching notifications since {since}"));
-    let resp = client
+    let mut request = client
         .get(&url)
         .header("Authorization", format!("Bearer {}", config.token))
         .header("Accept", "application/vnd.github+json")
-        .header("X-GitHub-Api-Version", "2022-11-28")
-        .send()
-        .await;
+        .header("X-GitHub-Api-Version", "2022-11-28");
+    if let Some(value) = if_modified_since {
+        request = request.header(reqwest::header::IF_MODIFIED_SINCE, value);
+    }
+    let resp = request.send().await;
 
-    let items: Vec<GHNotification> = match resp {
+    let (last_modified, notifications): (Option<String>, Vec<GHNotification>) = match resp {
+        Ok(r) if r.status() == reqwest::StatusCode::NOT_MODIFIED => {
+            crate::debug_log::info("github", "notifications unchanged (HTTP 304)");
+            return GhFetch::NotModified;
+        }
         Ok(r) if r.status().is_success() => {
             let status = r.status();
+            let last_modified = r
+                .headers()
+                .get(reqwest::header::LAST_MODIFIED)
+                .and_then(|v| v.to_str().ok())
+                .map(str::to_owned);
             let data: Vec<GHNotification> = r.json().await.unwrap_or_default();
             crate::debug_log::info(
                 "github",
                 &format!("received {} notifications (HTTP {})", data.len(), status),
             );
-            data
+            (last_modified, data)
         }
         Ok(r) => {
             crate::debug_log::error("github", &format!("API error: HTTP {}", r.status()));
-            return vec![];
+            return GhFetch::Modified {
+                last_modified: None,
+                items: vec![],
+            };
         }
         Err(e) => {
             crate::debug_log::error("github", &format!("request failed: {e}"));
-            return vec![];
+            return GhFetch::Modified {
+                last_modified: None,
+                items: vec![],
+            };
         }
     };
 
-    let mut handles = Vec::with_capacity(items.len());
-    for n in items {
+    let mut handles = Vec::with_capacity(notifications.len());
+    for n in notifications {
         let c = client.clone();
         let token = config.token.clone();
         let username = config.username.clone();
@@ -429,7 +468,10 @@ async fn fetch_github(client: &reqwest::Client, config: &GitHubConfig) -> Vec<Un
             results.push(n);
         }
     }
-    results
+    GhFetch::Modified {
+        last_modified,
+        items: results,
+    }
 }
 
 // ── GitLab fetching ─────────────────────────────────────────────
@@ -706,11 +748,18 @@ async fn do_poll(app: &AppHandle) {
         ),
     );
 
-    let (gh, gl) = tokio::join!(
+    let if_modified_since = {
+        let inner = poller.inner.lock().await;
+        inner.gh_last_modified.clone()
+    };
+
+    let (gh_fetch, gl) = tokio::join!(
         async {
             match gh_config {
-                Some(ref c) => fetch_github(&poller.client, c).await,
-                None => vec![],
+                Some(ref c) => {
+                    Some(fetch_github(&poller.client, c, if_modified_since.as_deref()).await)
+                }
+                None => None,
             }
         },
         async {
@@ -721,22 +770,41 @@ async fn do_poll(app: &AppHandle) {
         }
     );
 
-    let mut results = Vec::with_capacity(gh.len() + gl.len());
-    results.extend(gh);
-    results.extend(gl);
-
-    results.sort_by(|a, b| b.updated_at.cmp(&a.updated_at));
-
-    let unread = results.iter().filter(|n| n.unread).count() as u32;
-    crate::debug_log::info(
-        "poll",
-        &format!("poll complete: {} total, {} unread", results.len(), unread),
-    );
-
-    {
+    let (results, unread) = {
         let mut inner = poller.inner.lock().await;
+
+        let gh = match gh_fetch {
+            // GitHub not configured — drop any cached results.
+            None => {
+                inner.gh_last_modified = None;
+                inner.gh_last_results = Vec::new();
+                Vec::new()
+            }
+            Some(GhFetch::NotModified) => inner.gh_last_results.clone(),
+            Some(GhFetch::Modified {
+                last_modified,
+                items,
+            }) => {
+                inner.gh_last_modified = last_modified;
+                inner.gh_last_results = items.clone();
+                items
+            }
+        };
+
+        let mut results = Vec::with_capacity(gh.len() + gl.len());
+        results.extend(gh);
+        results.extend(gl);
+        results.sort_by(|a, b| b.updated_at.cmp(&a.updated_at));
+
+        let unread = results.iter().filter(|n| n.unread).count() as u32;
+        crate::debug_log::info(
+            "poll",
+            &format!("poll complete: {} total, {} unread", results.len(), unread),
+        );
+
         process_new(app, &mut inner, &results, &settings);
-    }
+        (results, unread)
+    };
 
     let _ = crate::update_tray_icon(
         app,
@@ -779,6 +847,8 @@ pub async fn start_polling(app: AppHandle) -> Result<(), String> {
     inner.first_run = true;
     inner.summary_buffer.clear();
     inner.last_summary_flush = std::time::Instant::now();
+    inner.gh_last_modified = None;
+    inner.gh_last_results = Vec::new();
 
     inner.task_handle = Some(spawn_loop(app.clone()));
     Ok(())
