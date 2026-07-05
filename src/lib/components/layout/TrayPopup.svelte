@@ -152,9 +152,8 @@
       if (document.hidden) {
         markAllSeen();
       } else {
-        // Refresh PRs when popup becomes visible (PR polling runs in frontend
-        // and may be throttled while the webview is hidden)
-        refreshPullRequests();
+        // PR polling (paused while hidden) resumes and refreshes in the store's
+        // own visibilitychange handler; here we only restore keyboard focus.
 
         // Ensure the webview accepts keyboard input after the panel becomes visible.
         // NSPanel with NonactivatingPanel may not route key events to the webview

@@ -18,6 +18,12 @@ let isLoading = $state(false);
 let hasLoadedOnce = $state(false);
 let pollingTimer: ReturnType<typeof setInterval> | null = null;
 let enrichmentController: AbortController | null = null;
+let visibilityListener: (() => void) | null = null;
+let lastVisibilityRefresh = 0;
+
+// Minimum gap between refreshes triggered by the popover becoming visible, so
+// rapid open/close toggling does not spam the API.
+const SHOW_REFRESH_MIN_GAP_MS = 30_000;
 
 export function getPRCount(): number {
   return pullRequests.length;
@@ -272,10 +278,45 @@ export async function refreshPullRequests(): Promise<void> {
   }
 }
 
+function startPRInterval(): void {
+  if (!pollingTimer) {
+    pollingTimer = setInterval(refreshPullRequests, settingsState.pollingInterval * 1000);
+  }
+}
+
+function pausePRInterval(): void {
+  if (pollingTimer) {
+    clearInterval(pollingTimer);
+    pollingTimer = null;
+  }
+}
+
+// PR data feeds neither the tray badge nor desktop notifications, so there is
+// no reason to keep polling while the popover is hidden. Pause the interval on
+// hide and resume (with a throttled refresh) on show.
+function handlePRVisibility(): void {
+  if (typeof document === 'undefined') return;
+  if (document.hidden) {
+    pausePRInterval();
+    return;
+  }
+  startPRInterval();
+  const now = Date.now();
+  if (now - lastVisibilityRefresh > SHOW_REFRESH_MIN_GAP_MS) {
+    lastVisibilityRefresh = now;
+    refreshPullRequests();
+  }
+}
+
 export function startPRPolling(): void {
   stopPRPolling();
+  lastVisibilityRefresh = Date.now();
   refreshPullRequests();
-  pollingTimer = setInterval(refreshPullRequests, settingsState.pollingInterval * 1000);
+  startPRInterval();
+  if (typeof document !== 'undefined' && !visibilityListener) {
+    visibilityListener = handlePRVisibility;
+    document.addEventListener('visibilitychange', visibilityListener);
+  }
 }
 
 export function stopPRPolling(): void {
@@ -283,9 +324,10 @@ export function stopPRPolling(): void {
     enrichmentController.abort();
     enrichmentController = null;
   }
-  if (pollingTimer) {
-    clearInterval(pollingTimer);
-    pollingTimer = null;
+  pausePRInterval();
+  if (visibilityListener && typeof document !== 'undefined') {
+    document.removeEventListener('visibilitychange', visibilityListener);
+    visibilityListener = null;
   }
 }
 
