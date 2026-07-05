@@ -8,7 +8,7 @@
     getUnreadIdsByAuthor
   } from '$lib/stores/notifications.svelte';
   import { timeAgo } from '$lib/utils/time';
-  import { isTauri } from '$lib/utils/storage';
+  import { openExternalUrl } from '$lib/utils/open-url';
   import { clampMenuPosition, menuPositionFromElement } from '$lib/utils/context-menu';
   import { focusTrap } from '$lib/actions/focusTrap';
   import GitHubIcon from '$lib/components/icons/GitHubIcon.svelte';
@@ -152,12 +152,7 @@
   });
 
   async function openUrl(): Promise<void> {
-    if (isTauri()) {
-      const { open } = await import('@tauri-apps/plugin-shell');
-      await open(notification.url);
-    } else {
-      window.open(notification.url, '_blank');
-    }
+    await openExternalUrl(notification.url);
   }
 
   function handleClick(event?: MouseEvent): void {

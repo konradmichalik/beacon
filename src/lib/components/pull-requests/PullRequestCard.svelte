@@ -1,7 +1,7 @@
 <script lang="ts">
   import type { UnifiedPullRequest } from '$lib/types';
   import { timeAgo } from '$lib/utils/time';
-  import { isTauri } from '$lib/utils/storage';
+  import { openExternalUrl } from '$lib/utils/open-url';
   import { clampMenuPosition, menuPositionFromElement } from '$lib/utils/context-menu';
   import { focusTrap } from '$lib/actions/focusTrap';
   import GitHubIcon from '$lib/components/icons/GitHubIcon.svelte';
@@ -92,12 +92,7 @@
   });
 
   async function openUrl(): Promise<void> {
-    if (isTauri()) {
-      const { open } = await import('@tauri-apps/plugin-shell');
-      await open(pullRequest.url);
-    } else {
-      window.open(pullRequest.url, '_blank');
-    }
+    await openExternalUrl(pullRequest.url);
   }
 
   let starred = $derived(isStarred(pullRequest.id));
