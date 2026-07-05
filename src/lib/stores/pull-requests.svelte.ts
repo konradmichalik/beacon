@@ -25,6 +25,24 @@ let lastVisibilityRefresh = 0;
 // rapid open/close toggling does not spam the API.
 const SHOW_REFRESH_MIN_GAP_MS = 30_000;
 
+// How many PRs are rendered initially and how many more each "Load more" adds.
+// The full list is still fetched/enriched; this only bounds what is rendered.
+const INITIAL_PR_DISPLAY = 30;
+const PR_DISPLAY_STEP = 30;
+let prDisplayLimit = $state(INITIAL_PR_DISPLAY);
+
+export function getPRDisplayLimit(): number {
+  return prDisplayLimit;
+}
+
+export function loadMorePRs(): void {
+  prDisplayLimit += PR_DISPLAY_STEP;
+}
+
+export function resetPRDisplayLimit(): void {
+  prDisplayLimit = INITIAL_PR_DISPLAY;
+}
+
 export function getPRCount(): number {
   return pullRequests.length;
 }

@@ -154,11 +154,11 @@ export async function fetchGitLabMergeRequestsBasic(
 
   const [authoredRes, reviewRes] = await Promise.all([
     safeFetch(
-      `${api}/merge_requests?state=opened&author_username=${encodeURIComponent(username)}&scope=all&per_page=30&order_by=updated_at`,
+      `${api}/merge_requests?state=opened&author_username=${encodeURIComponent(username)}&scope=all&per_page=50&order_by=updated_at`,
       { headers }
     ).catch(() => null),
     safeFetch(
-      `${api}/merge_requests?state=opened&reviewer_username=${encodeURIComponent(username)}&scope=all&per_page=30&order_by=updated_at`,
+      `${api}/merge_requests?state=opened&reviewer_username=${encodeURIComponent(username)}&scope=all&per_page=50&order_by=updated_at`,
       { headers }
     ).catch(() => null)
   ]);
