@@ -264,8 +264,7 @@
         </div>
         <h3>Private by Design</h3>
         <p>
-          Tokens stored locally in an encrypted store. Nothing is sent anywhere except GitHub and
-          GitLab.
+          Tokens are stored locally on your Mac and never sent anywhere except GitHub and GitLab.
         </p>
       </div>
 
