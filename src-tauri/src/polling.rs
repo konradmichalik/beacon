@@ -431,71 +431,110 @@ async fn fetch_github(
     cache: &HashMap<(String, String), CachedDetail>,
 ) -> GhFetch {
     let since = thirty_days_ago_iso();
-    let url =
+    let base_url =
         format!("https://api.github.com/notifications?participating=false&all=false&since={since}");
     crate::debug_log::info("github", &format!("fetching notifications since {since}"));
-    let mut request = client
-        .get(&url)
-        .header("Authorization", format!("Bearer {}", config.token))
-        .header("Accept", "application/vnd.github+json")
-        .header("X-GitHub-Api-Version", "2022-11-28");
-    if let Some(value) = if_modified_since {
-        request = request.header(reqwest::header::IF_MODIFIED_SINCE, value);
-    }
-    let resp = request.send().await;
 
-    let (last_modified, notifications): (Option<String>, Vec<GHNotification>) = match resp {
-        Ok(r) if r.status() == reqwest::StatusCode::NOT_MODIFIED => {
-            crate::debug_log::info("github", "notifications unchanged (HTTP 304)");
-            return GhFetch::NotModified;
+    const PER_PAGE: u32 = 100;
+    const MAX_PAGES: u32 = 5;
+
+    let mut notifications: Vec<GHNotification> = Vec::new();
+    let mut last_modified: Option<String> = None;
+    let mut page: u32 = 1;
+
+    loop {
+        let page_url = format!("{base_url}&per_page={PER_PAGE}&page={page}");
+        let mut request = client
+            .get(&page_url)
+            .header("Authorization", format!("Bearer {}", config.token))
+            .header("Accept", "application/vnd.github+json")
+            .header("X-GitHub-Api-Version", "2022-11-28");
+        // Only the first page carries the conditional header; a 304 there means
+        // nothing changed and short-circuits the whole poll.
+        if page == 1 {
+            if let Some(value) = if_modified_since {
+                request = request.header(reqwest::header::IF_MODIFIED_SINCE, value);
+            }
         }
-        Ok(r) if r.status().is_success() => {
-            let status = r.status();
-            let last_modified = r
-                .headers()
-                .get(reqwest::header::LAST_MODIFIED)
-                .and_then(|v| v.to_str().ok())
-                .map(str::to_owned);
-            let data: Vec<GHNotification> = r.json().await.unwrap_or_default();
-            crate::debug_log::info(
-                "github",
-                &format!("received {} notifications (HTTP {})", data.len(), status),
-            );
-            (last_modified, data)
+
+        let batch: Vec<GHNotification> = match request.send().await {
+            Ok(r) if page == 1 && r.status() == reqwest::StatusCode::NOT_MODIFIED => {
+                crate::debug_log::info("github", "notifications unchanged (HTTP 304)");
+                return GhFetch::NotModified;
+            }
+            Ok(r)
+                if (r.status() == reqwest::StatusCode::FORBIDDEN
+                    || r.status() == reqwest::StatusCode::TOO_MANY_REQUESTS)
+                    && is_rate_limited(r.headers()) =>
+            {
+                let retry_after = rate_limit_backoff(r.headers());
+                crate::debug_log::warn(
+                    "github",
+                    &format!(
+                        "rate limited (HTTP {}), backing off {}s",
+                        r.status(),
+                        retry_after.as_secs()
+                    ),
+                );
+                return GhFetch::RateLimited { retry_after };
+            }
+            Ok(r) if r.status().is_success() => {
+                if page == 1 {
+                    last_modified = r
+                        .headers()
+                        .get(reqwest::header::LAST_MODIFIED)
+                        .and_then(|v| v.to_str().ok())
+                        .map(str::to_owned);
+                }
+                r.json().await.unwrap_or_default()
+            }
+            Ok(r) => {
+                crate::debug_log::error("github", &format!("API error: HTTP {}", r.status()));
+                if page == 1 {
+                    return GhFetch::Modified {
+                        last_modified: None,
+                        items: vec![],
+                        detail_cache: HashMap::new(),
+                    };
+                }
+                break;
+            }
+            Err(e) => {
+                crate::debug_log::error("github", &format!("request failed: {e}"));
+                if page == 1 {
+                    return GhFetch::Modified {
+                        last_modified: None,
+                        items: vec![],
+                        detail_cache: HashMap::new(),
+                    };
+                }
+                break;
+            }
+        };
+
+        let is_last = batch.len() < PER_PAGE as usize;
+        notifications.extend(batch);
+        page += 1;
+
+        if is_last {
+            break;
         }
-        Ok(r)
-            if (r.status() == reqwest::StatusCode::FORBIDDEN
-                || r.status() == reqwest::StatusCode::TOO_MANY_REQUESTS)
-                && is_rate_limited(r.headers()) =>
-        {
-            let retry_after = rate_limit_backoff(r.headers());
+        if page > MAX_PAGES {
             crate::debug_log::warn(
                 "github",
                 &format!(
-                    "rate limited (HTTP {}), backing off {}s",
-                    r.status(),
-                    retry_after.as_secs()
+                    "reached page cap ({MAX_PAGES}); notifications beyond {} may be omitted",
+                    MAX_PAGES * PER_PAGE
                 ),
             );
-            return GhFetch::RateLimited { retry_after };
+            break;
         }
-        Ok(r) => {
-            crate::debug_log::error("github", &format!("API error: HTTP {}", r.status()));
-            return GhFetch::Modified {
-                last_modified: None,
-                items: vec![],
-                detail_cache: HashMap::new(),
-            };
-        }
-        Err(e) => {
-            crate::debug_log::error("github", &format!("request failed: {e}"));
-            return GhFetch::Modified {
-                last_modified: None,
-                items: vec![],
-                detail_cache: HashMap::new(),
-            };
-        }
-    };
+    }
+
+    crate::debug_log::info(
+        "github",
+        &format!("received {} notifications total", notifications.len()),
+    );
 
     // Cap concurrent detail requests so a large batch cannot fire dozens of
     // simultaneous requests at GitHub (a known trigger for secondary rate
