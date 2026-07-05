@@ -23,8 +23,22 @@ async function writeToFile(level: LogLevel, source: string, message: string): Pr
   }
 }
 
+// Credential shapes that must never be persisted to the debug log, in case a
+// token ever ends up in a logged value (e.g. a stray `console.log(config)`).
+const SECRET_PATTERNS: readonly RegExp[] = [
+  /Bearer\s+[A-Za-z0-9._~+/=-]+/gi,
+  /gh[posu]_[A-Za-z0-9]{20,}/g,
+  /github_pat_[A-Za-z0-9_]{20,}/g,
+  /glpat-[A-Za-z0-9_-]{20,}/g
+];
+
+/** Replace anything that looks like a token with a placeholder. */
+export function redact(text: string): string {
+  return SECRET_PATTERNS.reduce((acc, pattern) => acc.replace(pattern, '[REDACTED]'), text);
+}
+
 function formatArgs(args: unknown[]): string {
-  return args
+  const joined = args
     .map((a) => {
       if (typeof a === 'string') return a;
       if (a instanceof Error) return a.stack ?? `${a.name}: ${a.message}`;
@@ -35,6 +49,7 @@ function formatArgs(args: unknown[]): string {
       }
     })
     .join(' ');
+  return redact(joined);
 }
 
 // ── Public API ──────────────────────────────────────────────────
