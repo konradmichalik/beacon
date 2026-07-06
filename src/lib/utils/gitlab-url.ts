@@ -26,6 +26,6 @@ export function normalizeGitLabBaseUrl(input: string): string {
     throw new Error('GitLab URL must use HTTPS');
   }
 
-  const path = url.pathname.replace(/\/$/, '');
+  const path = url.pathname.replace(/\/+$/, '');
   return `${url.origin}${path}`;
 }

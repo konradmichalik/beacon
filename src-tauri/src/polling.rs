@@ -379,6 +379,10 @@ enum GhFetch {
     RateLimited {
         retry_after: std::time::Duration,
     },
+    /// A transient HTTP error or request failure on page 1. The caller keeps
+    /// showing the previous results rather than treating this as "no
+    /// notifications".
+    Failed,
     Modified {
         last_modified: Option<String>,
         items: Vec<UnifiedNotification>,
@@ -495,22 +499,14 @@ async fn fetch_github(
             Ok(r) => {
                 crate::debug_log::error("github", &format!("API error: HTTP {}", r.status()));
                 if page == 1 {
-                    return GhFetch::Modified {
-                        last_modified: None,
-                        items: vec![],
-                        detail_cache: HashMap::new(),
-                    };
+                    return GhFetch::Failed;
                 }
                 break;
             }
             Err(e) => {
                 crate::debug_log::error("github", &format!("request failed: {e}"));
                 if page == 1 {
-                    return GhFetch::Modified {
-                        last_modified: None,
-                        items: vec![],
-                        detail_cache: HashMap::new(),
-                    };
+                    return GhFetch::Failed;
                 }
                 break;
             }
@@ -973,6 +969,9 @@ async fn do_poll(app: &AppHandle, force_emit: bool) {
                 inner.backoff_until = Some(std::time::Instant::now() + retry_after);
                 inner.gh_last_results.clone()
             }
+            // Transient error: keep showing the previous results and retry on
+            // the next regular poll.
+            Some(GhFetch::Failed) => inner.gh_last_results.clone(),
             Some(GhFetch::NotModified) => {
                 inner.backoff_until = None;
                 inner.gh_last_results.clone()

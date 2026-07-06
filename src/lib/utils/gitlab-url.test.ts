@@ -20,6 +20,12 @@ describe('normalizeGitLabBaseUrl', () => {
     );
   });
 
+  it('strips multiple trailing slashes', () => {
+    expect(normalizeGitLabBaseUrl('https://example.com/gitlab//')).toBe(
+      'https://example.com/gitlab'
+    );
+  });
+
   it('drops query string and hash', () => {
     expect(normalizeGitLabBaseUrl('https://gitlab.com/?foo=bar#x')).toBe('https://gitlab.com');
   });
