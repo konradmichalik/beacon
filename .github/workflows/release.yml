@@ -74,8 +74,8 @@ jobs:
       - name: Wait for release assets
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          TAG: ${{ github.ref_name }}
         run: |
-          TAG="${{ github.ref_name }}"
           echo "Waiting for DMG assets on release ${TAG}..."
           for i in $(seq 1 30); do
             ASSETS=$(gh release view "$TAG" --json assets --jq '[.assets[].name | select(endswith(".dmg"))] | length')
@@ -92,8 +92,8 @@ jobs:
       - name: Download DMGs and compute SHA256
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          TAG: ${{ github.ref_name }}
         run: |
-          TAG="${{ github.ref_name }}"
           gh release download "$TAG" --pattern "*_aarch64.dmg" --dir /tmp/dmg
           gh release download "$TAG" --pattern "*_x64.dmg" --dir /tmp/dmg
 
