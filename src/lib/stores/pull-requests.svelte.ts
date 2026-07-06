@@ -157,8 +157,10 @@ export function getFilteredPRs(
   return filtered;
 }
 
-function updatePR(updated: UnifiedPullRequest): void {
-  pullRequests = pullRequests.map((pr) => (pr.id === updated.id ? updated : pr));
+function updatePRs(updated: readonly UnifiedPullRequest[]): void {
+  if (updated.length === 0) return;
+  const byId = new Map(updated.map((pr) => [pr.id, pr]));
+  pullRequests = pullRequests.map((pr) => byId.get(pr.id) ?? pr);
 }
 
 const ENRICHMENT_BATCH_SIZE = 3;
@@ -198,9 +200,7 @@ async function enrichAllPRs(
     );
 
     if (signal.aborted) return;
-    for (const pr of enriched) {
-      if (pr) updatePR(pr);
-    }
+    updatePRs(enriched.filter((pr): pr is UnifiedPullRequest => pr !== null));
   }
 }
 
