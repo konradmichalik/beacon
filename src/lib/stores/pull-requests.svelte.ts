@@ -179,14 +179,15 @@ async function enrichAllPRs(
         if (signal.aborted) return null;
         try {
           if (pr.source === 'github' && githubConfig) {
-            return await enrichGitHubPR(githubConfig.token, pr, githubConfig.username);
+            return await enrichGitHubPR(githubConfig.token, pr, githubConfig.username, signal);
           }
           if (pr.source === 'gitlab' && gitlabConfig) {
             return await enrichGitLabMR(
               gitlabConfig.token,
               gitlabConfig.baseUrl,
               pr,
-              gitlabConfig.username
+              gitlabConfig.username,
+              signal
             );
           }
           return { ...pr, enrichment: 'skipped' as const };

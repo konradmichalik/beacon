@@ -77,11 +77,16 @@ export function hasUserReviewed(reviews: readonly GitHubReview[], username: stri
   );
 }
 
-async function fetchCheckStatus(token: string, repo: string, ref: string): Promise<CIStatus> {
+async function fetchCheckStatus(
+  token: string,
+  repo: string,
+  ref: string,
+  signal?: AbortSignal
+): Promise<CIStatus> {
   try {
     const response = await safeFetch(
       `${GITHUB_API}/repos/${repo}/commits/${ref}/check-runs?per_page=100`,
-      { headers: HEADERS(token) }
+      { headers: HEADERS(token), signal }
     );
     if (!response.ok) return 'unknown';
     const data = (await response.json()) as { check_runs: GitHubCheckRun[] };
@@ -95,12 +100,13 @@ async function fetchReviewStatus(
   token: string,
   repo: string,
   number: number,
-  username: string
+  username: string,
+  signal?: AbortSignal
 ): Promise<{ reviewDecision: ReviewDecision | null; reviewedByMe: boolean }> {
   try {
     const response = await safeFetch(
       `${GITHUB_API}/repos/${repo}/pulls/${number}/reviews?per_page=100`,
-      { headers: HEADERS(token) }
+      { headers: HEADERS(token), signal }
     );
     if (!response.ok) return { reviewDecision: null, reviewedByMe: false };
     const data = (await response.json()) as GitHubReview[];
@@ -116,11 +122,13 @@ async function fetchReviewStatus(
 async function fetchPRDetail(
   token: string,
   repo: string,
-  number: number
+  number: number,
+  signal?: AbortSignal
 ): Promise<{ headSha: string; baseBranch: string } | null> {
   try {
     const response = await safeFetch(`${GITHUB_API}/repos/${repo}/pulls/${number}`, {
-      headers: HEADERS(token)
+      headers: HEADERS(token),
+      signal
     });
     if (!response.ok) return null;
     const data = (await response.json()) as {
@@ -200,14 +208,17 @@ export async function fetchGitHubPullRequestsBasic(
 export async function enrichGitHubPR(
   token: string,
   pr: UnifiedPullRequest,
-  username: string
+  username: string,
+  signal?: AbortSignal
 ): Promise<UnifiedPullRequest> {
   const repo = pr.repository;
-  const detail = await fetchPRDetail(token, repo, pr.number);
+  const detail = await fetchPRDetail(token, repo, pr.number, signal);
 
   const [ciStatus, reviewStatus] = await Promise.all([
-    detail ? fetchCheckStatus(token, repo, detail.headSha) : Promise.resolve('unknown' as CIStatus),
-    fetchReviewStatus(token, repo, pr.number, username)
+    detail
+      ? fetchCheckStatus(token, repo, detail.headSha, signal)
+      : Promise.resolve('unknown' as CIStatus),
+    fetchReviewStatus(token, repo, pr.number, username, signal)
   ]);
 
   return {

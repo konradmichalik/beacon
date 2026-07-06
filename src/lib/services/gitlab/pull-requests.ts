@@ -78,13 +78,14 @@ async function fetchApprovals(
   token: string,
   baseUrl: string,
   projectId: number,
-  mrIid: number
+  mrIid: number,
+  signal?: AbortSignal
 ): Promise<readonly GitLabApproval[] | null> {
   try {
     const api = baseUrl.replace(/\/$/, '');
     const response = await safeFetch(
       `${api}/api/v4/projects/${projectId}/merge_requests/${mrIid}/approvals`,
-      { headers: { Authorization: `Bearer ${token}` } }
+      { headers: { Authorization: `Bearer ${token}` }, signal }
     );
     if (!response.ok) return null;
     const data = (await response.json()) as GitLabApprovalsResponse;
@@ -100,7 +101,8 @@ const projectPathCache = new Map<number, string>();
 async function fetchProjectPath(
   token: string,
   baseUrl: string,
-  projectId: number
+  projectId: number,
+  signal?: AbortSignal
 ): Promise<string> {
   const cached = projectPathCache.get(projectId);
   if (cached) return cached;
@@ -108,7 +110,7 @@ async function fetchProjectPath(
   try {
     const response = await safeFetch(
       `${baseUrl.replace(/\/$/, '')}/api/v4/projects/${projectId}?simple=true`,
-      { headers: { Authorization: `Bearer ${token}` } }
+      { headers: { Authorization: `Bearer ${token}` }, signal }
     );
     if (!response.ok) return `project/${projectId}`;
     const data = (await response.json()) as GitLabProject;
@@ -190,15 +192,16 @@ export async function enrichGitLabMR(
   token: string,
   baseUrl: string,
   pr: UnifiedPullRequest,
-  username: string
+  username: string,
+  signal?: AbortSignal
 ): Promise<UnifiedPullRequest> {
   const projectId = (pr.sourceMetadata?.projectId as number) ?? 0;
   if (!projectId) return { ...pr, enrichment: 'enriched' };
 
   const [repository, approvalsResult] = await Promise.all([
-    fetchProjectPath(token, baseUrl, projectId),
+    fetchProjectPath(token, baseUrl, projectId, signal),
     pr.reviewRequestedFromMe
-      ? fetchApprovals(token, baseUrl, projectId, pr.number)
+      ? fetchApprovals(token, baseUrl, projectId, pr.number, signal)
       : Promise.resolve(null)
   ]);
 
