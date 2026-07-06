@@ -50,7 +50,7 @@ On first launch, open **Settings** via the gear icon or the tray context menu an
 > GitLab supports self-hosted instances — set your instance's base URL in the GitLab settings panel.
 
 > [!NOTE]
-> Tokens are stored locally using Tauri's encrypted store. Nothing is sent to any server other than GitHub and GitLab.
+> Tokens are stored locally on your Mac, in the app's private application-support directory. Nothing is sent to any server other than GitHub and GitLab.
 
 ## 💎 Credits
 
