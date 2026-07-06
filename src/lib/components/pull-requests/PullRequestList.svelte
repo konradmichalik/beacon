@@ -1,11 +1,25 @@
 <script lang="ts">
-  import { getFilteredPRs, getIsPRLoading } from '$lib/stores/pull-requests.svelte';
+  import {
+    getFilteredPRs,
+    getIsPRLoading,
+    getPRDisplayLimit,
+    loadMorePRs,
+    resetPRDisplayLimit
+  } from '$lib/stores/pull-requests.svelte';
   import type { PRSortMode } from '$lib/stores/pull-requests.svelte';
   import { hasAnyServiceConfigured } from '$lib/stores/connections.svelte';
   import PullRequestCard from './PullRequestCard.svelte';
   import EmptyState from '../notifications/EmptyState.svelte';
   import PartyPopperIcon from '$lib/components/icons/PartyPopperIcon.svelte';
-  import { Inbox, ChevronRight, Star, GitPullRequest, Eye, CircleCheckBig } from '@lucide/svelte';
+  import {
+    Inbox,
+    ChevronRight,
+    ChevronDown,
+    Star,
+    GitPullRequest,
+    Eye,
+    CircleCheckBig
+  } from '@lucide/svelte';
   import type { NotificationSource, PRRoleFilter, PRDraftFilter, PRCIFilter } from '$lib/types';
   import { getStarredIds } from '$lib/stores/starred-prs.svelte';
   import { settingsState } from '$lib/stores/settings.svelte';
@@ -33,7 +47,7 @@
     collapsed = { ...collapsed, [section]: !collapsed[section] };
   }
 
-  let items = $derived(
+  let allItems = $derived(
     getFilteredPRs(sourceFilter, roleFilter, sort, draftFilter, ciFilter, projectsFilter)
   );
   let isLoading = $derived(getIsPRLoading());
@@ -41,9 +55,24 @@
 
   let starredIds = $derived(getStarredIds());
 
-  // Starred PRs (shown at top, excluded from other sections)
-  let starred = $derived(items.filter((pr) => starredIds.has(pr.id)));
-  let unstarred = $derived(items.filter((pr) => !starredIds.has(pr.id)));
+  // Starred PRs always show at the top; the display window only bounds the rest.
+  let starred = $derived(allItems.filter((pr) => starredIds.has(pr.id)));
+  let unstarredAll = $derived(allItems.filter((pr) => !starredIds.has(pr.id)));
+  let unstarred = $derived(unstarredAll.slice(0, getPRDisplayLimit()));
+  let hasMore = $derived(unstarredAll.length > unstarred.length);
+  let remaining = $derived(unstarredAll.length - unstarred.length);
+
+  // Restart the display window whenever the active filters change.
+  let filterKey = $derived(
+    `${sourceFilter}|${roleFilter}|${draftFilter}|${ciFilter}|${[...projectsFilter].sort().join(',')}`
+  );
+  let lastFilterKey = '';
+  $effect(() => {
+    if (filterKey !== lastFilterKey) {
+      lastFilterKey = filterKey;
+      resetPRDisplayLimit();
+    }
+  });
 
   // Section splits (only unstarred PRs)
   let authored = $derived(
@@ -75,7 +104,7 @@
     title="No services connected"
     description="Open Settings to connect GitHub or GitLab."
   />
-{:else if isLoading && items.length === 0}
+{:else if isLoading && allItems.length === 0}
   <div class="divide-y divide-border">
     {#each [0, 1, 2, 3, 4] as i (i)}
       <div class="flex gap-3 px-4 py-3">
@@ -87,7 +116,7 @@
       </div>
     {/each}
   </div>
-{:else if items.length === 0}
+{:else if allItems.length === 0}
   <EmptyState
     icon={PartyPopperIcon}
     title="All clear"
@@ -187,6 +216,17 @@
       {#each unstarred as pr (pr.id)}
         <PullRequestCard pullRequest={pr} />
       {/each}
+    {/if}
+
+    {#if hasMore}
+      <button
+        type="button"
+        onclick={loadMorePRs}
+        class="flex w-full items-center justify-center gap-1.5 border-t border-border px-4 py-2.5 text-[11px] font-medium text-muted-foreground transition-colors hover:bg-secondary/40 hover:text-foreground"
+      >
+        <ChevronDown size={12} class="shrink-0" />
+        Load more ({remaining})
+      </button>
     {/if}
   </div>
 {/if}

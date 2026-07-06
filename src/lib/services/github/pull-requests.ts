@@ -167,11 +167,11 @@ export async function fetchGitHubPullRequestsBasic(
 ): Promise<UnifiedPullRequest[]> {
   const [authoredRes, reviewRes] = await Promise.all([
     fetch(
-      `${GITHUB_API}/search/issues?q=type:pr+state:open+author:${encodeURIComponent(username)}&per_page=30&sort=updated`,
+      `${GITHUB_API}/search/issues?q=type:pr+state:open+author:${encodeURIComponent(username)}&per_page=50&sort=updated`,
       { headers: HEADERS(token) }
     ),
     fetch(
-      `${GITHUB_API}/search/issues?q=type:pr+state:open+review-requested:${encodeURIComponent(username)}&per_page=30&sort=updated`,
+      `${GITHUB_API}/search/issues?q=type:pr+state:open+review-requested:${encodeURIComponent(username)}&per_page=50&sort=updated`,
       { headers: HEADERS(token) }
     )
   ]);
@@ -200,8 +200,8 @@ export async function fetchGitHubPullRequestsBasic(
   const reviewOnly = reviewRequested.items.filter((i) => !authoredIds.has(i.id));
 
   return [
-    ...authored.items.slice(0, 15).map((item) => mapBasicPR(item, false)),
-    ...reviewOnly.slice(0, 15).map((item) => mapBasicPR(item, true))
+    ...authored.items.slice(0, 50).map((item) => mapBasicPR(item, false)),
+    ...reviewOnly.slice(0, 50).map((item) => mapBasicPR(item, true))
   ];
 }
 
