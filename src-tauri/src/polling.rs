@@ -467,9 +467,9 @@ async fn fetch_github(
                 return GhFetch::NotModified;
             }
             Ok(r)
-                if (r.status() == reqwest::StatusCode::FORBIDDEN
-                    || r.status() == reqwest::StatusCode::TOO_MANY_REQUESTS)
-                    && is_rate_limited(r.headers()) =>
+                if r.status() == reqwest::StatusCode::TOO_MANY_REQUESTS
+                    || (r.status() == reqwest::StatusCode::FORBIDDEN
+                        && is_rate_limited(r.headers())) =>
             {
                 let retry_after = rate_limit_backoff(r.headers());
                 crate::debug_log::warn(
@@ -501,6 +501,7 @@ async fn fetch_github(
                         detail_cache: HashMap::new(),
                     };
                 }
+                last_modified = None;
                 break;
             }
             Err(e) => {
@@ -512,6 +513,7 @@ async fn fetch_github(
                         detail_cache: HashMap::new(),
                     };
                 }
+                last_modified = None;
                 break;
             }
         };

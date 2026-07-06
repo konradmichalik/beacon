@@ -124,6 +124,18 @@ fn create_tray_icon(mode: &str, active: bool, rgb: [u8; 3]) -> (Vec<u8>, u32, u3
     (canvas.into_raw(), w, h)
 }
 
+/// `(count, badge_mode, indicator_mode, indicator_color)` last rendered to the
+/// tray.
+type TrayState = (u32, String, String, String);
+
+/// An identical update can skip the icon re-render and the main-thread tray
+/// mutations entirely, so the last-rendered state is cached here.
+fn last_tray_state() -> &'static std::sync::Mutex<Option<TrayState>> {
+    static STATE: std::sync::OnceLock<std::sync::Mutex<Option<TrayState>>> =
+        std::sync::OnceLock::new();
+    STATE.get_or_init(|| std::sync::Mutex::new(None))
+}
+
 pub(crate) fn update_tray_icon(
     app: &tauri::AppHandle,
     count: u32,
@@ -132,6 +144,19 @@ pub(crate) fn update_tray_icon(
     indicator_color: &str,
 ) -> Result<(), String> {
     if let Some(tray) = app.tray_by_id(tray::TRAY_ID) {
+        // Skip when nothing that affects the tray has changed since the last
+        // render (both the poll loop and the frontend `update_badge` command
+        // reach this, often with the same values).
+        let tray_key = (
+            count,
+            mode.to_string(),
+            indicator_mode.to_string(),
+            indicator_color.to_string(),
+        );
+        if last_tray_state().lock().unwrap().as_ref() == Some(&tray_key) {
+            return Ok(());
+        }
+
         let tooltip = if count > 0 {
             format!("Beacon — {} unread", count)
         } else {
@@ -176,6 +201,8 @@ pub(crate) fn update_tray_icon(
 
             tray.set_title(Some(&title)).map_err(|e| e.to_string())?;
         }
+
+        *last_tray_state().lock().unwrap() = Some(tray_key);
     }
     Ok(())
 }
