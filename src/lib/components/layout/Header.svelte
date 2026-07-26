@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { Settings, RefreshCw, Power, Inbox, GitPullRequest } from '@lucide/svelte';
+  import { Settings, RefreshCw, Power, Inbox, GitPullRequest, CircleDot } from '@lucide/svelte';
   import { isTauri } from '$lib/utils/storage';
   import BeaconLogo from '$lib/components/icons/BeaconLogo.svelte';
   import {
@@ -14,6 +14,13 @@
     refreshPullRequests,
     getPRCount
   } from '$lib/stores/pull-requests.svelte';
+  import {
+    getIsIssueLoading,
+    getIssueHasLoadedOnce,
+    refreshIssues,
+    getIssueCount
+  } from '$lib/stores/issues.svelte';
+  import { settingsState } from '$lib/stores/settings.svelte';
   import type { ViewTab } from '$lib/types';
 
   let {
@@ -28,16 +35,27 @@
     onTabChange: (tab: ViewTab) => void;
   } = $props();
 
-  let isLoading = $derived(activeView === 'notifications' ? getIsLoading() : getIsPRLoading());
+  let isLoading = $derived.by(() => {
+    if (activeView === 'notifications') return getIsLoading();
+    if (activeView === 'issues') return getIsIssueLoading();
+    return getIsPRLoading();
+  });
   let unreadCount = $derived(getFilteredUnreadCount());
   let prCount = $derived(getPRCount());
+  let issueCount = $derived(getIssueCount());
   let notificationsLoading = $derived(getIsLoading());
   let prsLoading = $derived(getIsPRLoading());
+  let issuesLoading = $derived(getIsIssueLoading());
 
-  const tabs: { id: ViewTab; label: string; icon: typeof Inbox; getCount: () => number }[] = [
-    { id: 'notifications', label: 'Inbox', icon: Inbox, getCount: () => unreadCount },
-    { id: 'pull-requests', label: 'My PRs', icon: GitPullRequest, getCount: () => prCount }
-  ];
+  let tabs = $derived<{ id: ViewTab; label: string; icon: typeof Inbox; getCount: () => number }[]>(
+    [
+      { id: 'notifications', label: 'Inbox', icon: Inbox, getCount: () => unreadCount },
+      { id: 'pull-requests', label: 'My PRs', icon: GitPullRequest, getCount: () => prCount },
+      ...(settingsState.enableIssues
+        ? [{ id: 'issues' as const, label: 'Issues', icon: CircleDot, getCount: () => issueCount }]
+        : [])
+    ]
+  );
 
   function handleTabKeydown(e: KeyboardEvent): void {
     if (e.key !== 'ArrowLeft' && e.key !== 'ArrowRight') return;
@@ -58,6 +76,8 @@
   function handleRefresh(): void {
     if (activeView === 'notifications') {
       refreshNotifications();
+    } else if (activeView === 'issues') {
+      refreshIssues();
     } else {
       refreshPullRequests();
     }
@@ -75,16 +95,9 @@
   }
 </script>
 
-<header class="relative flex items-center justify-between border-b border-border px-4 py-2">
-  <div class="flex items-center">
-    <BeaconLogo height={18} class="text-foreground" />
-  </div>
+{#snippet tabStrip(wrapperClass: string)}
   <!-- svelte-ignore a11y_interactive_supports_focus -->
-  <div
-    class="pointer-events-none absolute inset-x-0 bottom-0 flex justify-center gap-1"
-    role="tablist"
-    onkeydown={handleTabKeydown}
-  >
+  <div class={wrapperClass} role="tablist" onkeydown={handleTabKeydown}>
     {#each tabs as tab (tab.id)}
       {@const TabIcon = tab.icon}
       {@const count = tab.getCount()}
@@ -111,12 +124,15 @@
           >
             {count}
           </span>
-        {:else if (tab.id === 'notifications' && notificationsLoading && !getHasLoadedOnce()) || (tab.id === 'pull-requests' && prsLoading && !getPRHasLoadedOnce())}
+        {:else if (tab.id === 'notifications' && notificationsLoading && !getHasLoadedOnce()) || (tab.id === 'pull-requests' && prsLoading && !getPRHasLoadedOnce()) || (tab.id === 'issues' && issuesLoading && !getIssueHasLoadedOnce())}
           <span class="inline-block h-3 w-5 animate-pulse rounded-full bg-secondary/80"></span>
         {/if}
       </button>
     {/each}
   </div>
+{/snippet}
+
+{#snippet actions()}
   <div class="flex items-center gap-0.5">
     <button
       type="button"
@@ -144,4 +160,26 @@
       <Power size={14} />
     </button>
   </div>
-</header>
+{/snippet}
+
+{#if tabs.length > 2}
+  <!-- Two-row header: tabs get a dedicated row so three (or more) tabs never
+       overlap the action buttons. -->
+  <header class="flex flex-col border-b border-border px-4 py-2">
+    <div class="flex items-center justify-between">
+      <BeaconLogo height={18} class="text-foreground" />
+      {@render actions()}
+    </div>
+    {@render tabStrip('-mb-2 mt-1.5 flex justify-center gap-1')}
+  </header>
+{:else}
+  <!-- Single-row header: compact layout with tabs floating centered at the
+       bottom edge (fits comfortably with two tabs). -->
+  <header class="relative flex items-center justify-between border-b border-border px-4 py-2">
+    <div class="flex items-center">
+      <BeaconLogo height={18} class="text-foreground" />
+    </div>
+    {@render tabStrip('pointer-events-none absolute inset-x-0 bottom-0 flex justify-center gap-1')}
+    {@render actions()}
+  </header>
+{/if}

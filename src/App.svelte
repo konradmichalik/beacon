@@ -10,6 +10,7 @@
     setBadgeModeChangeCallback,
     setGlobalShortcutChangeCallback,
     setDebugLogChangeCallback,
+    setIssuesChangeCallback,
     listenForExternalSettingsChanges
   } from './lib/stores/settings.svelte';
   import { initializeMuteRules } from './lib/stores/mute-rules.svelte';
@@ -30,6 +31,7 @@
     restartPRPolling,
     loadDemoPRs
   } from './lib/stores/pull-requests.svelte';
+  import { startIssuePolling, stopIssuePolling, loadDemoIssues } from './lib/stores/issues.svelte';
   import Toast from './lib/components/ui/Toast.svelte';
   import { startConsoleCapture, stopConsoleCapture, info as logInfo } from './lib/utils/logger';
   import { onMount } from 'svelte';
@@ -72,8 +74,16 @@
         setPollingChangeCallback(() => {
           restartPolling();
           restartPRPolling();
+          if (settingsState.enableIssues) startIssuePolling();
         });
         setBadgeModeChangeCallback(refreshBadge);
+        setIssuesChangeCallback((enabled) => {
+          if (enabled && hasAnyServiceConfigured()) {
+            startIssuePolling();
+          } else {
+            stopIssuePolling();
+          }
+        });
         unlistenSettings = await listenForExternalSettingsChanges();
         setDebugLogChangeCallback((enabled) => {
           if (enabled) {
@@ -95,9 +105,11 @@
         if (isDemoMode()) {
           loadDemoData();
           loadDemoPRs();
+          loadDemoIssues();
         } else if (hasAnyServiceConfigured()) {
           startPolling();
           startPRPolling();
+          if (settingsState.enableIssues) startIssuePolling();
         } else {
           initialTab = 'settings';
         }
@@ -111,6 +123,7 @@
     return () => {
       stopPolling();
       stopPRPolling();
+      stopIssuePolling();
       unlistenNotifications?.();
       unlistenSettings?.();
     };

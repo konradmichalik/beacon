@@ -457,6 +457,42 @@
 
     <hr class="border-border" />
 
+    <!-- ── Issues ── -->
+    <div class="space-y-4">
+      <h3 class="text-[10px] font-semibold uppercase tracking-widest text-muted-foreground/60">
+        Issues
+      </h3>
+
+      <section>
+        <label class="flex cursor-pointer items-center justify-between gap-3">
+          <div>
+            <span class="text-xs font-medium text-foreground">Show issues tab</span>
+            <p class="text-[10px] text-muted-foreground">
+              Adds a third tab listing open issues you created or that are assigned to you.
+            </p>
+          </div>
+          <button
+            type="button"
+            role="switch"
+            aria-label="Toggle issues tab"
+            aria-checked={settingsState.enableIssues}
+            onclick={() => updateSettings({ enableIssues: !settingsState.enableIssues })}
+            class="relative inline-flex h-5 w-9 shrink-0 items-center rounded-full transition-colors {settingsState.enableIssues
+              ? 'bg-primary'
+              : 'bg-secondary'}"
+          >
+            <span
+              class="inline-block h-3.5 w-3.5 rounded-full bg-white shadow-sm transition-transform {settingsState.enableIssues
+                ? 'translate-x-4'
+                : 'translate-x-0.5'}"
+            ></span>
+          </button>
+        </label>
+      </section>
+    </div>
+
+    <hr class="border-border" />
+
     <!-- ── Debug ── -->
     <div class="space-y-4">
       <h3 class="text-[10px] font-semibold uppercase tracking-widest text-muted-foreground/60">

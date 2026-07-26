@@ -38,6 +38,7 @@ interface Settings {
   notifySound: NotifySound;
   enrichPullRequests: boolean;
   groupPullRequests: boolean;
+  enableIssues: boolean;
   globalShortcut: boolean;
   debugLog: boolean;
 }
@@ -53,6 +54,7 @@ const defaultSettings: Settings = {
   notifySound: 'none',
   enrichPullRequests: true,
   groupPullRequests: true,
+  enableIssues: false,
   globalShortcut: true,
   debugLog: false
 };
@@ -64,6 +66,7 @@ let onBadgeModeChange: (() => void) | null = null;
 let onNotifyChange: (() => void) | null = null;
 let onGlobalShortcutChange: ((enabled: boolean) => void) | null = null;
 let onDebugLogChange: ((enabled: boolean) => void) | null = null;
+let onIssuesChange: ((enabled: boolean) => void) | null = null;
 
 export function setPollingChangeCallback(callback: () => void): void {
   onPollingChange = callback;
@@ -83,6 +86,10 @@ export function setGlobalShortcutChangeCallback(callback: (enabled: boolean) => 
 
 export function setDebugLogChangeCallback(callback: (enabled: boolean) => void): void {
   onDebugLogChange = callback;
+}
+
+export function setIssuesChangeCallback(callback: (enabled: boolean) => void): void {
+  onIssuesChange = callback;
 }
 
 export async function initializeSettings(): Promise<void> {
@@ -168,6 +175,9 @@ export async function updateSettings(updates: Partial<Settings>): Promise<void> 
   if (updates.debugLog !== undefined && onDebugLogChange) {
     onDebugLogChange(updates.debugLog);
   }
+  if (updates.enableIssues !== undefined && onIssuesChange) {
+    onIssuesChange(updates.enableIssues);
+  }
 }
 
 function applyTheme(): void {
@@ -224,6 +234,9 @@ export async function listenForExternalSettingsChanges(): Promise<() => void> {
     }
     if (updated.debugLog !== prev.debugLog) {
       onDebugLogChange?.(updated.debugLog);
+    }
+    if (updated.enableIssues !== prev.enableIssues) {
+      onIssuesChange?.(updated.enableIssues);
     }
   });
 

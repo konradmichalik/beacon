@@ -32,4 +32,6 @@ export type {
   UnifiedPullRequest
 } from './pull-requests';
 
-export type ViewTab = 'notifications' | 'pull-requests';
+export type { IssueRole, IssueRoleFilter, UnifiedIssue } from './issues';
+
+export type ViewTab = 'notifications' | 'pull-requests' | 'issues';
