@@ -1,17 +1,11 @@
 <script lang="ts">
-  import {
-    getFilteredIssues,
-    getIsIssueLoading,
-    getIssueDisplayLimit,
-    loadMoreIssues,
-    resetIssueDisplayLimit
-  } from '$lib/stores/issues.svelte';
+  import { getFilteredIssues, getIsIssueLoading } from '$lib/stores/issues.svelte';
   import type { IssueSortMode } from '$lib/stores/issues.svelte';
   import { hasAnyServiceConfigured } from '$lib/stores/connections.svelte';
   import IssueCard from './IssueCard.svelte';
   import EmptyState from '../notifications/EmptyState.svelte';
   import PartyPopperIcon from '$lib/components/icons/PartyPopperIcon.svelte';
-  import { Inbox, ChevronRight, ChevronDown, CircleDot, UserCheck } from '@lucide/svelte';
+  import { Inbox, ChevronRight, CircleDot, UserCheck } from '@lucide/svelte';
   import type { NotificationSource, IssueRoleFilter } from '$lib/types';
   import { roving } from '$lib/actions/roving';
 
@@ -37,22 +31,10 @@
   let isLoading = $derived(getIsIssueLoading());
   let isConfigured = $derived(hasAnyServiceConfigured());
 
-  let visible = $derived(allItems.slice(0, getIssueDisplayLimit()));
-  let hasMore = $derived(allItems.length > visible.length);
-  let remaining = $derived(allItems.length - visible.length);
-
-  // Restart the display window whenever the active filters change.
-  let filterKey = $derived(`${sourceFilter}|${roleFilter}|${[...projectsFilter].sort().join(',')}`);
-  let lastFilterKey = '';
-  $effect(() => {
-    if (filterKey !== lastFilterKey) {
-      lastFilterKey = filterKey;
-      resetIssueDisplayLimit();
-    }
-  });
-
-  let authored = $derived(visible.filter((issue) => issue.role === 'authored'));
-  let assigned = $derived(visible.filter((issue) => issue.role === 'assigned'));
+  // Issues are capped (authored + assigned, ~100 max), so the full list is
+  // rendered without pagination — keeps section counts honest.
+  let authored = $derived(allItems.filter((issue) => issue.role === 'authored'));
+  let assigned = $derived(allItems.filter((issue) => issue.role === 'assigned'));
 </script>
 
 {#if !isConfigured}
@@ -125,17 +107,6 @@
           {/each}
         </div>
       {/if}
-    {/if}
-
-    {#if hasMore}
-      <button
-        type="button"
-        onclick={loadMoreIssues}
-        class="flex w-full items-center justify-center gap-1.5 border-t border-border px-4 py-2.5 text-[11px] font-medium text-muted-foreground transition-colors hover:bg-secondary/40 hover:text-foreground"
-      >
-        <ChevronDown size={12} class="shrink-0" />
-        Load more ({remaining})
-      </button>
     {/if}
   </div>
 {/if}

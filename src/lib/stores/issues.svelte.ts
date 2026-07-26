@@ -17,24 +17,7 @@ let lastVisibilityRefresh = 0;
 // rapid open/close toggling does not spam the API.
 const SHOW_REFRESH_MIN_GAP_MS = 30_000;
 
-// How many issues are rendered initially and how many more each "Load more" adds.
-const INITIAL_ISSUE_DISPLAY = 30;
-const ISSUE_DISPLAY_STEP = 30;
-let issueDisplayLimit = $state(INITIAL_ISSUE_DISPLAY);
-
 export type IssueSortMode = 'updated' | 'created';
-
-export function getIssueDisplayLimit(): number {
-  return issueDisplayLimit;
-}
-
-export function loadMoreIssues(): void {
-  issueDisplayLimit += ISSUE_DISPLAY_STEP;
-}
-
-export function resetIssueDisplayLimit(): void {
-  issueDisplayLimit = INITIAL_ISSUE_DISPLAY;
-}
 
 export function getIssueCount(): number {
   return issues.length;

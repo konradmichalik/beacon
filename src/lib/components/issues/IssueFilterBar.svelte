@@ -11,6 +11,7 @@
   import GitLabIcon from '$lib/components/icons/GitLabIcon.svelte';
   import SourceToggle from '$lib/components/ui/SourceToggle.svelte';
   import SortMenu from '$lib/components/ui/SortMenu.svelte';
+  import { focusTrap } from '$lib/actions/focusTrap';
   import { Filter, X } from '@lucide/svelte';
   import type { NotificationSource, IssueRoleFilter } from '$lib/types';
   import { SvelteSet } from 'svelte/reactivity';
@@ -133,6 +134,12 @@
   </div>
 {/snippet}
 
+<svelte:window
+  onkeydown={(e) => {
+    if (e.key === 'Escape' && filterOpen) filterOpen = false;
+  }}
+/>
+
 <div
   data-filter-bar
   class="flex items-center gap-1.5 overflow-x-auto border-b border-border bg-secondary/40 px-4 py-1.5 scrollbar-none"
@@ -168,7 +175,13 @@
           if (e.target === e.currentTarget) filterOpen = false;
         }}
       >
-        <div class="z-50 w-72 rounded-lg border border-border bg-card shadow-lg">
+        <div
+          class="z-50 w-72 rounded-lg border border-border bg-card shadow-lg"
+          role="dialog"
+          aria-modal="true"
+          aria-label="Filters"
+          use:focusTrap
+        >
           <div
             class="flex items-center justify-between rounded-t-lg border-b border-border bg-secondary/40 px-3 py-2"
           >
