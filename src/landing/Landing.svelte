@@ -231,6 +231,30 @@
       </div>
 
       <div class="feature-card">
+        <div class="feature-icon" style="background: rgba(143,188,187,0.18)">
+          <svg
+            width="20"
+            height="20"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="#8fbcbb"
+            stroke-width="2"
+            ><circle cx="12" cy="12" r="10" /><line x1="12" y1="8" x2="12" y2="12" /><line
+              x1="12"
+              y1="16"
+              x2="12.01"
+              y2="16"
+            /></svg
+          >
+        </div>
+        <h3>Issues Overview</h3>
+        <p>
+          Open issues you created or are assigned to, grouped by role — opt-in and ready when you
+          need it.
+        </p>
+      </div>
+
+      <div class="feature-card">
         <div class="feature-icon" style="background: rgba(208,135,112,0.18)">
           <svg
             width="20"
