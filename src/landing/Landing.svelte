@@ -357,6 +357,10 @@
             <h3>Install via Homebrew</h3>
             <p>One command, no dependencies.</p>
             {@render codeBlock('brew install konradmichalik/tap/beacon')}
+            <p class="install-hint">
+              Homebrew 6.0+ requires explicit trust for non-official taps. This command
+              automatically trusts just the <code>beacon</code> formula — no extra step needed.
+            </p>
           </div>
         </div>
         <div class="step">

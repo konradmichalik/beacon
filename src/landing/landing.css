@@ -492,6 +492,12 @@ body {
   min-width: 0;
 }
 
+.install-hint {
+  margin-top: 8px;
+  font-size: 13px;
+  color: var(--landing-text-muted);
+}
+
 .step-number {
   flex-shrink: 0;
   width: 36px;
