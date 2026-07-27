@@ -5,6 +5,8 @@
   import FilterBar from '../notifications/FilterBar.svelte';
   import PullRequestList from '../pull-requests/PullRequestList.svelte';
   import PRFilterBar from '../pull-requests/PRFilterBar.svelte';
+  import IssueList from '../issues/IssueList.svelte';
+  import IssueFilterBar from '../issues/IssueFilterBar.svelte';
   import SettingsView from '../settings/SettingsView.svelte';
   import { hasAnyServiceConfigured } from '$lib/stores/connections.svelte';
   import {
@@ -15,10 +17,19 @@
   } from '$lib/stores/notifications.svelte';
   import { showToast } from '$lib/stores/toast.svelte';
   import { refreshPullRequests } from '$lib/stores/pull-requests.svelte';
+  import { refreshIssues } from '$lib/stores/issues.svelte';
+  import { settingsState } from '$lib/stores/settings.svelte';
   import { ArrowLeft, ArrowUp } from '@lucide/svelte';
   import { onMount, untrack } from 'svelte';
-  import type { NotificationSource, PRRoleFilter, PRDraftFilter, PRCIFilter } from '$lib/types';
+  import type {
+    NotificationSource,
+    PRRoleFilter,
+    PRDraftFilter,
+    PRCIFilter,
+    IssueRoleFilter
+  } from '$lib/types';
   import type { PRSortMode } from '$lib/stores/pull-requests.svelte';
+  import type { IssueSortMode } from '$lib/stores/issues.svelte';
   import { SvelteSet } from 'svelte/reactivity';
 
   let {
@@ -36,6 +47,18 @@
   let prSort: PRSortMode = $state('updated');
   // eslint-disable-next-line svelte/no-unnecessary-state-wrap -- needed for reassignment reactivity in callbacks
   let prProjectsFilter: SvelteSet<string> = $state(new SvelteSet());
+  let issueSourceFilter: NotificationSource | 'all' = $state('all');
+  let issueRoleFilter: IssueRoleFilter = $state('all');
+  let issueSort: IssueSortMode = $state('updated');
+  // eslint-disable-next-line svelte/no-unnecessary-state-wrap -- needed for reassignment reactivity in callbacks
+  let issueProjectsFilter: SvelteSet<string> = $state(new SvelteSet());
+
+  // If the issues tab is disabled while active, fall back to notifications.
+  $effect(() => {
+    if (!settingsState.enableIssues && activeView === 'issues') {
+      activeView = 'notifications';
+    }
+  });
 
   async function toggleSettings(): Promise<void> {
     if (isDemoMode()) {
@@ -75,6 +98,8 @@
   function handleRefresh(): void {
     if (activeView === 'notifications') {
       refreshNotifications();
+    } else if (activeView === 'issues') {
+      refreshIssues();
     } else {
       refreshPullRequests();
     }
@@ -90,6 +115,9 @@
     const actions: Record<string, () => void> = {
       '1': () => (activeView = 'notifications'),
       '2': () => (activeView = 'pull-requests'),
+      '3': () => {
+        if (settingsState.enableIssues) activeView = 'issues';
+      },
       r: () => handleRefresh(),
       '/': () => {
         const btn = document.querySelector<HTMLElement>('[data-filter-bar] button');
@@ -121,7 +149,9 @@
     // ArrowLeft/ArrowRight: switch tabs
     if (e.key === 'ArrowLeft' || e.key === 'ArrowRight') {
       e.preventDefault();
-      const tabs: ViewTab[] = ['notifications', 'pull-requests'];
+      const tabs: ViewTab[] = settingsState.enableIssues
+        ? ['notifications', 'pull-requests', 'issues']
+        : ['notifications', 'pull-requests'];
       const idx = tabs.indexOf(activeView);
       activeView =
         e.key === 'ArrowRight'
@@ -195,6 +225,17 @@
     />
     {#if activeView === 'notifications'}
       <FilterBar />
+    {:else if activeView === 'issues'}
+      <IssueFilterBar
+        sourceFilter={issueSourceFilter}
+        roleFilter={issueRoleFilter}
+        sort={issueSort}
+        projectsFilter={issueProjectsFilter}
+        onSourceChange={(s) => (issueSourceFilter = s)}
+        onRoleChange={(r) => (issueRoleFilter = r)}
+        onSortChange={(s) => (issueSort = s)}
+        onProjectsChange={(p) => (issueProjectsFilter = p)}
+      />
     {:else}
       <PRFilterBar
         sourceFilter={prSourceFilter}
@@ -215,6 +256,13 @@
       <div class="h-full overflow-y-auto" bind:this={scrollEl} onscroll={handleScroll}>
         {#if activeView === 'notifications'}
           <NotificationList />
+        {:else if activeView === 'issues'}
+          <IssueList
+            sourceFilter={issueSourceFilter}
+            roleFilter={issueRoleFilter}
+            sort={issueSort}
+            projectsFilter={issueProjectsFilter}
+          />
         {:else}
           <PullRequestList
             sourceFilter={prSourceFilter}

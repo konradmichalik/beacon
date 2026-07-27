@@ -1,20 +1,19 @@
 <script lang="ts">
   import {
-    getPRCount,
-    getPRCountBySource,
-    getIsPRLoading,
-    getUniquePRProjectsWithSource,
-    getPRCountByRole,
-    getPRCountByDraft,
-    getPRCountByCI,
-    getPRCountByProject
-  } from '$lib/stores/pull-requests.svelte';
+    getIssueCount,
+    getIssueCountBySource,
+    getIsIssueLoading,
+    getUniqueIssueProjectsWithSource,
+    getIssueCountByRole,
+    getIssueCountByProject
+  } from '$lib/stores/issues.svelte';
   import GitHubIcon from '$lib/components/icons/GitHubIcon.svelte';
   import GitLabIcon from '$lib/components/icons/GitLabIcon.svelte';
   import SourceToggle from '$lib/components/ui/SourceToggle.svelte';
   import SortMenu from '$lib/components/ui/SortMenu.svelte';
+  import { focusTrap } from '$lib/actions/focusTrap';
   import { Filter, X } from '@lucide/svelte';
-  import type { NotificationSource, PRRoleFilter, PRDraftFilter, PRCIFilter } from '$lib/types';
+  import type { NotificationSource, IssueRoleFilter } from '$lib/types';
   import { SvelteSet } from 'svelte/reactivity';
 
   type SourceOption = NotificationSource | 'all';
@@ -23,46 +22,36 @@
   let {
     sourceFilter = 'all',
     roleFilter = 'all',
-    draftFilter = 'all',
-    ciFilter = 'all',
     sort = 'updated',
     projectsFilter = new SvelteSet<string>(),
     onSourceChange,
     onRoleChange,
-    onDraftChange,
-    onCIChange,
     onSortChange,
     onProjectsChange
   }: {
     sourceFilter?: SourceOption;
-    roleFilter?: PRRoleFilter;
-    draftFilter?: PRDraftFilter;
-    ciFilter?: PRCIFilter;
+    roleFilter?: IssueRoleFilter;
     sort?: SortMode;
     projectsFilter?: SvelteSet<string>;
     onSourceChange: (source: SourceOption) => void;
-    onRoleChange: (role: PRRoleFilter) => void;
-    onDraftChange: (draft: PRDraftFilter) => void;
-    onCIChange: (ci: PRCIFilter) => void;
+    onRoleChange: (role: IssueRoleFilter) => void;
     onSortChange: (sort: SortMode) => void;
     onProjectsChange: (projects: SvelteSet<string>) => void;
   } = $props();
 
-  let totalCount = $derived(getPRCount());
-  let githubCount = $derived(getPRCountBySource('github'));
-  let gitlabCount = $derived(getPRCountBySource('gitlab'));
+  let totalCount = $derived(getIssueCount());
+  let githubCount = $derived(getIssueCountBySource('github'));
+  let gitlabCount = $derived(getIssueCountBySource('gitlab'));
 
   let filterOpen = $state(false);
 
-  let countByRole = $derived(getPRCountByRole(sourceFilter));
-  let countByDraft = $derived(getPRCountByDraft(sourceFilter));
-  let countByCI = $derived(getPRCountByCI(sourceFilter));
-  let countByProject = $derived(getPRCountByProject(sourceFilter));
+  let countByRole = $derived(getIssueCountByRole(sourceFilter));
+  let countByProject = $derived(getIssueCountByProject(sourceFilter));
   let sourceScopedTotal = $derived(
     sourceFilter === 'all' ? totalCount : sourceFilter === 'github' ? githubCount : gitlabCount
   );
   let availableProjects = $derived.by(() => {
-    const projects = getUniquePRProjectsWithSource();
+    const projects = getUniqueIssueProjectsWithSource();
     return [...projects].sort((a, b) => {
       const countA = countByProject.get(a.repository) ?? 0;
       const countB = countByProject.get(b.repository) ?? 0;
@@ -71,14 +60,16 @@
     });
   });
 
-  let hasActiveFilter = $derived(
-    roleFilter !== 'all' || draftFilter !== 'all' || ciFilter !== 'all' || projectsFilter.size > 0
-  );
+  let hasActiveFilter = $derived(roleFilter !== 'all' || projectsFilter.size > 0);
+  let initialLoading = $derived(getIsIssueLoading() && totalCount === 0);
 
   const chipBase = 'rounded-md border px-2 py-0.5 text-[10px] font-medium transition-colors';
   const chipActive = 'border-primary bg-primary text-primary-foreground';
   const chipInactive =
     'border-border text-muted-foreground hover:border-foreground/20 hover:text-foreground';
+  const badgeBase = 'ml-0.5 rounded-full px-1 py-px text-[9px] font-semibold leading-tight';
+  const badgeActive = 'bg-primary-foreground/20 text-primary-foreground';
+  const badgeInactive = 'bg-secondary text-muted-foreground';
 
   function toggleProject(repo: string) {
     const next = new SvelteSet(projectsFilter);
@@ -96,22 +87,14 @@
 
   function resetFilters() {
     onRoleChange('all');
-    onDraftChange('all');
-    onCIChange('all');
     onProjectsChange(new SvelteSet());
     filterOpen = false;
   }
 
-  let initialLoading = $derived(getIsPRLoading() && totalCount === 0);
-
-  const badgeBase = 'ml-0.5 rounded-full px-1 py-px text-[9px] font-semibold leading-tight';
-  const badgeActive = 'bg-primary-foreground/20 text-primary-foreground';
-  const badgeInactive = 'bg-secondary text-muted-foreground';
-
-  const roleOptions: { value: PRRoleFilter; label: string }[] = [
+  const roleOptions: { value: IssueRoleFilter; label: string }[] = [
     { value: 'all', label: 'All' },
     { value: 'authored', label: 'Created by me' },
-    { value: 'review_requested', label: 'Review requested' }
+    { value: 'assigned', label: 'Assigned to me' }
   ];
 
   const sortOptions: { value: SortMode; label: string }[] = [
@@ -151,6 +134,12 @@
   </div>
 {/snippet}
 
+<svelte:window
+  onkeydown={(e) => {
+    if (e.key === 'Escape' && filterOpen) filterOpen = false;
+  }}
+/>
+
 <div
   data-filter-bar
   class="flex items-center gap-1.5 overflow-x-auto border-b border-border bg-secondary/40 px-4 py-1.5 scrollbar-none"
@@ -186,7 +175,13 @@
           if (e.target === e.currentTarget) filterOpen = false;
         }}
       >
-        <div class="z-50 w-72 rounded-lg border border-border bg-card shadow-lg">
+        <div
+          class="z-50 w-72 rounded-lg border border-border bg-card shadow-lg"
+          role="dialog"
+          aria-modal="true"
+          aria-label="Filters"
+          use:focusTrap
+        >
           <div
             class="flex items-center justify-between rounded-t-lg border-b border-border bg-secondary/40 px-3 py-2"
           >
@@ -208,46 +203,7 @@
                 >Role</span
               >
               {@render filterChips(roleOptions, roleFilter, countByRole, sourceScopedTotal, (v) =>
-                onRoleChange(v as PRRoleFilter)
-              )}
-            </div>
-
-            <!-- Status -->
-            <div>
-              <span
-                class="mb-1.5 block text-[10px] font-semibold uppercase tracking-wide text-muted-foreground"
-                >Status</span
-              >
-              {@render filterChips(
-                [
-                  { value: 'all', label: 'All' },
-                  { value: 'ready', label: 'Ready' },
-                  { value: 'draft', label: 'Draft' }
-                ],
-                draftFilter,
-                countByDraft,
-                sourceScopedTotal,
-                (v) => onDraftChange(v as PRDraftFilter)
-              )}
-            </div>
-
-            <!-- CI -->
-            <div>
-              <span
-                class="mb-1.5 block text-[10px] font-semibold uppercase tracking-wide text-muted-foreground"
-                >CI</span
-              >
-              {@render filterChips(
-                [
-                  { value: 'all', label: 'All' },
-                  { value: 'success', label: 'Passed' },
-                  { value: 'failure', label: 'Failed' },
-                  { value: 'pending', label: 'Pending' }
-                ],
-                ciFilter,
-                countByCI,
-                sourceScopedTotal,
-                (v) => onCIChange(v as PRCIFilter)
+                onRoleChange(v as IssueRoleFilter)
               )}
             </div>
 
