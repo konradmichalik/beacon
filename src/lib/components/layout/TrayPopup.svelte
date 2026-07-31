@@ -213,7 +213,7 @@
       </button>
       <span class="text-sm font-semibold text-foreground">Settings</span>
     </header>
-    <div class="flex-1 overflow-y-auto">
+    <div class="flex-1 overflow-y-auto scrollbar-none">
       <SettingsView />
     </div>
   {:else}
@@ -253,7 +253,11 @@
       />
     {/if}
     <div class="relative flex-1 overflow-hidden">
-      <div class="h-full overflow-y-auto" bind:this={scrollEl} onscroll={handleScroll}>
+      <div
+        class="h-full overflow-y-auto scrollbar-none"
+        bind:this={scrollEl}
+        onscroll={handleScroll}
+      >
         {#if activeView === 'notifications'}
           <NotificationList />
         {:else if activeView === 'issues'}
