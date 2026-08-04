@@ -1,5 +1,5 @@
 import type { MuteRule, UnifiedNotification } from '$lib/types';
-import { getStorageItem, setStorageItem } from '$lib/utils/storage';
+import { isTauri, getStorageItem, setStorageItem } from '$lib/utils/storage';
 import { showToast } from '$lib/stores/toast.svelte';
 
 const STORAGE_KEY = 'mute-rules';
@@ -8,6 +8,15 @@ let muteRules: MuteRule[] = $state([]);
 
 export function getMuteRules(): readonly MuteRule[] {
   return muteRules;
+}
+
+// Muting hides notifications from the list, so the tray badge has to be
+// recounted whenever the rules change. Set by the app shell to avoid importing
+// the notifications store here (it already imports this one).
+let onRulesChange: (() => void) | null = null;
+
+export function setMuteRulesChangeCallback(callback: () => void): void {
+  onRulesChange = callback;
 }
 
 async function persist(): Promise<void> {
@@ -52,12 +61,14 @@ export async function addMuteRule(rule: Omit<MuteRule, 'id' | 'createdAt'>): Pro
   };
   muteRules = [...muteRules, newRule];
   await persist();
+  onRulesChange?.();
   showToast('Mute rule created');
 }
 
 export async function removeMuteRule(id: string): Promise<void> {
   muteRules = muteRules.filter((r) => r.id !== id);
   await persist();
+  onRulesChange?.();
   showToast('Mute rule removed');
 }
 
@@ -125,4 +136,32 @@ export async function initializeMuteRules(): Promise<void> {
     delete settings.hideClosed;
     await setStorageItem('settings', settings);
   }
+}
+
+function sameRules(a: readonly MuteRule[], b: readonly MuteRule[]): boolean {
+  return a.length === b.length && a.every((rule, i) => rule.id === b[i].id);
+}
+
+/**
+ * Listen for mute rules changed in another window (they are editable both in the
+ * popup and in the separate settings window). Each webview holds its own copy of
+ * the rules, so without this a rule added or removed in one window leaves the
+ * other showing a stale list — and a stale tray badge.
+ */
+export async function listenForExternalMuteRuleChanges(): Promise<() => void> {
+  if (!isTauri()) return () => {};
+
+  const { Store } = await import('@tauri-apps/plugin-store');
+  const store = await Store.load('settings.json');
+
+  return store.onKeyChange<unknown>(STORAGE_KEY, (updated) => {
+    const rules = Array.isArray(updated) ? updated.filter(isValidMuteRule) : [];
+
+    // The webview that made the change already applied it, so ignore the echo of
+    // our own write — otherwise every local edit notifies twice.
+    if (sameRules(rules, muteRules)) return;
+
+    muteRules = rules;
+    onRulesChange?.();
+  });
 }

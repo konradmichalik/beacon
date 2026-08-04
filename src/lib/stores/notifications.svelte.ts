@@ -53,8 +53,28 @@ export function getNotifications(): readonly UnifiedNotification[] {
   return notifications;
 }
 
-export function getUnreadCount(): number {
-  return notifications.filter((n) => n.unread).length;
+/**
+ * Unread and actually shown to the user. Muted notifications are hidden from the
+ * list, so they must not be counted anywhere the user can see the number either
+ * — a count that includes them leaves the tray indicator lit with nothing behind
+ * it.
+ */
+function isUnreadAndVisible(n: UnifiedNotification): boolean {
+  return n.unread && !isNotificationMuted(n);
+}
+
+/** Unread count for the tray icon. */
+export function countBadgeUnread(items: readonly UnifiedNotification[]): number {
+  return items.filter(isUnreadAndVisible).length;
+}
+
+/** Unread, visible notifications, optionally narrowed to one platform. */
+function unreadVisibleFrom(
+  sourceFilter: NotificationSource | 'all'
+): readonly UnifiedNotification[] {
+  return notifications.filter(
+    (n) => isUnreadAndVisible(n) && (sourceFilter === 'all' || n.source === sourceFilter)
+  );
 }
 
 export function getFilteredUnreadCount(): number {
@@ -178,10 +198,7 @@ export function getUniqueTypes(): readonly NotificationType[] {
 export function getUnreadCountByType(
   sourceFilter: NotificationSource | 'all'
 ): ReadonlyMap<NotificationType, number> {
-  const sourceOk = sourceFilter === 'all';
-  const filtered = notifications.filter(
-    (n) => n.unread && !isNotificationMuted(n) && (sourceOk || n.source === sourceFilter)
-  );
+  const filtered = unreadVisibleFrom(sourceFilter);
   // eslint-disable-next-line svelte/prefer-svelte-reactivity -- local counting map, not state
   const counts = new Map<NotificationType, number>();
   for (const n of filtered) {
@@ -193,10 +210,7 @@ export function getUnreadCountByType(
 export function getUnreadCountByStatus(
   sourceFilter: NotificationSource | 'all'
 ): ReadonlyMap<StatusFilter, number> {
-  const sourceOk = sourceFilter === 'all';
-  const filtered = notifications.filter(
-    (n) => n.unread && !isNotificationMuted(n) && (sourceOk || n.source === sourceFilter)
-  );
+  const filtered = unreadVisibleFrom(sourceFilter);
   // eslint-disable-next-line svelte/prefer-svelte-reactivity -- local counting map, not state
   const counts = new Map<StatusFilter, number>();
   for (const n of filtered) {
@@ -210,10 +224,7 @@ export function getUnreadCountByStatus(
 export function getUnreadCountByDraft(
   sourceFilter: NotificationSource | 'all'
 ): ReadonlyMap<NotificationDraftFilter, number> {
-  const sourceOk = sourceFilter === 'all';
-  const filtered = notifications.filter(
-    (n) => n.unread && !isNotificationMuted(n) && (sourceOk || n.source === sourceFilter)
-  );
+  const filtered = unreadVisibleFrom(sourceFilter);
   // eslint-disable-next-line svelte/prefer-svelte-reactivity -- local counting map, not state
   const counts = new Map<NotificationDraftFilter, number>();
   for (const n of filtered) {
@@ -229,10 +240,7 @@ export function getUnreadCountByDraft(
 export function getUnreadCountByProject(
   sourceFilter: NotificationSource | 'all'
 ): ReadonlyMap<string, number> {
-  const sourceOk = sourceFilter === 'all';
-  const filtered = notifications.filter(
-    (n) => n.unread && !isNotificationMuted(n) && (sourceOk || n.source === sourceFilter)
-  );
+  const filtered = unreadVisibleFrom(sourceFilter);
   // eslint-disable-next-line svelte/prefer-svelte-reactivity -- local counting map, not state
   const counts = new Map<string, number>();
   for (const n of filtered) {
@@ -262,14 +270,7 @@ export function getUniqueAuthors(): readonly AuthorInfo[] {
 export function getUnreadCountByAuthor(
   sourceFilter: NotificationSource | 'all'
 ): ReadonlyMap<string, number> {
-  const sourceOk = sourceFilter === 'all';
-  const filtered = notifications.filter(
-    (n) =>
-      n.unread &&
-      n.author !== null &&
-      !isNotificationMuted(n) &&
-      (sourceOk || n.source === sourceFilter)
-  );
+  const filtered = unreadVisibleFrom(sourceFilter).filter((n) => n.author !== null);
   // eslint-disable-next-line svelte/prefer-svelte-reactivity -- local counting map, not state
   const counts = new Map<string, number>();
   for (const n of filtered) {
@@ -286,9 +287,8 @@ export function getUnreadIdsByAuthor(
   const ids = new Set<string>();
   for (const n of notifications) {
     if (
-      n.unread &&
+      isUnreadAndVisible(n) &&
       n.author?.login === login &&
-      !isNotificationMuted(n) &&
       (source === undefined || n.source === source)
     ) {
       ids.add(n.id);
@@ -406,8 +406,8 @@ function updateFromBackend(items: UnifiedNotification[]): void {
   notifications = effectiveItems;
   lastRefresh = new Date().toISOString();
 
-  // Update badge accounting for locally-read items
-  const unreadCount = notifications.filter((n) => n.unread).length;
+  // Update badge accounting for locally-read and muted items
+  const unreadCount = countBadgeUnread(notifications);
   updateTrayBadge(unreadCount);
 }
 
@@ -459,8 +459,7 @@ export async function refreshNotifications(): Promise<void> {
 }
 
 export function refreshBadge(): void {
-  const unreadCount = notifications.filter((n) => n.unread).length;
-  updateTrayBadge(unreadCount);
+  updateTrayBadge(countBadgeUnread(notifications));
 }
 
 // ── Demo mode ───────────────────────────────────────────────────
@@ -496,7 +495,7 @@ export function markAllAsRead(ids?: ReadonlySet<string>): void {
   notifications = notifications.map((n) =>
     n.unread && (!ids || ids.has(n.id)) ? { ...n, unread: false } : n
   );
-  const unreadCount = notifications.filter((n) => n.unread).length;
+  const unreadCount = countBadgeUnread(notifications);
   updateTrayBadge(unreadCount);
 
   // Play ripple sound when all notifications are cleared
@@ -517,8 +516,7 @@ export function markAsUnread(id: string): void {
   locallyReadIds.delete(id);
   persistReadIds();
   notifications = notifications.map((n) => (n.id === id ? { ...n, unread: true } : n));
-  const unreadCount = notifications.filter((n) => n.unread).length;
-  updateTrayBadge(unreadCount);
+  updateTrayBadge(countBadgeUnread(notifications));
 }
 
 export function markAsRead(id: string): void {
@@ -532,7 +530,7 @@ export function markAsRead(id: string): void {
   locallyReadIds.set(id, Date.now());
   persistReadIds();
   notifications = notifications.map((n) => (n.id === id ? { ...n, unread: false } : n));
-  const unreadCount = notifications.filter((n) => n.unread).length;
+  const unreadCount = countBadgeUnread(notifications);
   updateTrayBadge(unreadCount);
 
   // Play ripple sound when this was the last unread notification
