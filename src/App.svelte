@@ -13,7 +13,11 @@
     setIssuesChangeCallback,
     listenForExternalSettingsChanges
   } from './lib/stores/settings.svelte';
-  import { initializeMuteRules, setMuteRulesChangeCallback } from './lib/stores/mute-rules.svelte';
+  import {
+    initializeMuteRules,
+    setMuteRulesChangeCallback,
+    listenForExternalMuteRuleChanges
+  } from './lib/stores/mute-rules.svelte';
   import { loadStarredPRs } from './lib/stores/starred-prs.svelte';
   import {
     startPolling,
@@ -44,6 +48,7 @@
   onMount(() => {
     let unlistenNotifications: (() => void) | undefined;
     let unlistenSettings: (() => void) | undefined;
+    let unlistenMuteRules: (() => void) | undefined;
 
     async function initialize(): Promise<void> {
       try {
@@ -54,6 +59,9 @@
           logInfo('app', 'frontend initializing (debug log enabled)');
         }
         await initializeMuteRules();
+        // Both windows render the mute-rule editor, so both need to follow the
+        // other's edits. Only the tray window gets the badge callback below.
+        unlistenMuteRules = await listenForExternalMuteRuleChanges();
         await loadStarredPRs();
 
         if (isSettingsWindow) {
@@ -127,6 +135,7 @@
       stopIssuePolling();
       unlistenNotifications?.();
       unlistenSettings?.();
+      unlistenMuteRules?.();
     };
   });
 </script>
