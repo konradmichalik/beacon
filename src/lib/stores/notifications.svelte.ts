@@ -57,6 +57,15 @@ export function getUnreadCount(): number {
   return notifications.filter((n) => n.unread).length;
 }
 
+/**
+ * Unread count for the tray icon. Muted notifications are hidden from the list,
+ * so they must not light up the menu bar indicator either — otherwise the
+ * indicator stays lit with nothing to show behind it.
+ */
+export function countBadgeUnread(items: readonly UnifiedNotification[]): number {
+  return items.filter((n) => n.unread && !isNotificationMuted(n)).length;
+}
+
 export function getFilteredUnreadCount(): number {
   return getFilteredNotifications(
     'all',
@@ -406,8 +415,8 @@ function updateFromBackend(items: UnifiedNotification[]): void {
   notifications = effectiveItems;
   lastRefresh = new Date().toISOString();
 
-  // Update badge accounting for locally-read items
-  const unreadCount = notifications.filter((n) => n.unread).length;
+  // Update badge accounting for locally-read and muted items
+  const unreadCount = countBadgeUnread(notifications);
   updateTrayBadge(unreadCount);
 }
 
@@ -459,8 +468,7 @@ export async function refreshNotifications(): Promise<void> {
 }
 
 export function refreshBadge(): void {
-  const unreadCount = notifications.filter((n) => n.unread).length;
-  updateTrayBadge(unreadCount);
+  updateTrayBadge(countBadgeUnread(notifications));
 }
 
 // ── Demo mode ───────────────────────────────────────────────────
@@ -496,7 +504,7 @@ export function markAllAsRead(ids?: ReadonlySet<string>): void {
   notifications = notifications.map((n) =>
     n.unread && (!ids || ids.has(n.id)) ? { ...n, unread: false } : n
   );
-  const unreadCount = notifications.filter((n) => n.unread).length;
+  const unreadCount = countBadgeUnread(notifications);
   updateTrayBadge(unreadCount);
 
   // Play ripple sound when all notifications are cleared
@@ -517,8 +525,7 @@ export function markAsUnread(id: string): void {
   locallyReadIds.delete(id);
   persistReadIds();
   notifications = notifications.map((n) => (n.id === id ? { ...n, unread: true } : n));
-  const unreadCount = notifications.filter((n) => n.unread).length;
-  updateTrayBadge(unreadCount);
+  updateTrayBadge(countBadgeUnread(notifications));
 }
 
 export function markAsRead(id: string): void {
@@ -532,7 +539,7 @@ export function markAsRead(id: string): void {
   locallyReadIds.set(id, Date.now());
   persistReadIds();
   notifications = notifications.map((n) => (n.id === id ? { ...n, unread: false } : n));
-  const unreadCount = notifications.filter((n) => n.unread).length;
+  const unreadCount = countBadgeUnread(notifications);
   updateTrayBadge(unreadCount);
 
   // Play ripple sound when this was the last unread notification

@@ -10,6 +10,15 @@ export function getMuteRules(): readonly MuteRule[] {
   return muteRules;
 }
 
+// Muting hides notifications from the list, so the tray badge has to be
+// recounted whenever the rules change. Set by the app shell to avoid importing
+// the notifications store here (it already imports this one).
+let onRulesChange: (() => void) | null = null;
+
+export function setMuteRulesChangeCallback(callback: () => void): void {
+  onRulesChange = callback;
+}
+
 async function persist(): Promise<void> {
   await setStorageItem(STORAGE_KEY, [...muteRules]);
 }
@@ -52,12 +61,14 @@ export async function addMuteRule(rule: Omit<MuteRule, 'id' | 'createdAt'>): Pro
   };
   muteRules = [...muteRules, newRule];
   await persist();
+  onRulesChange?.();
   showToast('Mute rule created');
 }
 
 export async function removeMuteRule(id: string): Promise<void> {
   muteRules = muteRules.filter((r) => r.id !== id);
   await persist();
+  onRulesChange?.();
   showToast('Mute rule removed');
 }
 

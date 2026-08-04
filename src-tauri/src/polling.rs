@@ -1013,15 +1013,20 @@ async fn do_poll(app: &AppHandle, force_emit: bool) {
         (results, unread, should_emit)
     };
 
-    let _ = crate::update_tray_icon(
-        app,
-        unread,
-        &settings.badge_mode,
-        &settings.indicator_mode,
-        &settings.indicator_color,
-    );
-
+    // Only touch the tray alongside an emit. `unread` is the raw API count and
+    // knows nothing about locally-read IDs or mute rules, so the frontend
+    // corrects it via `update_badge` as soon as it receives the list. Updating
+    // the tray on every poll instead would resurrect the indicator for
+    // notifications the user can no longer see, with no emit following to undo
+    // it — leaving it stuck on until something else changed.
     if should_emit {
+        let _ = crate::update_tray_icon(
+            app,
+            unread,
+            &settings.badge_mode,
+            &settings.indicator_mode,
+            &settings.indicator_color,
+        );
         let _ = app.emit("notifications-updated", &results);
     } else {
         crate::debug_log::info("poll", "results unchanged, skipping frontend emit");

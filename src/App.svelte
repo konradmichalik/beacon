@@ -13,7 +13,7 @@
     setIssuesChangeCallback,
     listenForExternalSettingsChanges
   } from './lib/stores/settings.svelte';
-  import { initializeMuteRules } from './lib/stores/mute-rules.svelte';
+  import { initializeMuteRules, setMuteRulesChangeCallback } from './lib/stores/mute-rules.svelte';
   import { loadStarredPRs } from './lib/stores/starred-prs.svelte';
   import {
     startPolling,
@@ -77,6 +77,7 @@
           if (settingsState.enableIssues) startIssuePolling();
         });
         setBadgeModeChangeCallback(refreshBadge);
+        setMuteRulesChangeCallback(refreshBadge);
         setIssuesChangeCallback((enabled) => {
           if (enabled && hasAnyServiceConfigured()) {
             startIssuePolling();
