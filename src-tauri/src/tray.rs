@@ -151,6 +151,13 @@ fn show_and_focus(window: &tauri::WebviewWindow) {
             }
         }
     }
+
+    let final_visible = window.is_visible().unwrap_or(false);
+    crate::debug_log::write_always(
+        "INFO",
+        "tray",
+        &format!("show_and_focus: done, window.is_visible()={final_visible}"),
+    );
 }
 
 /// Check whether the panel is truly visible and functional on screen.
@@ -192,14 +199,61 @@ pub fn is_panel_showing(window: &tauri::WebviewWindow) -> bool {
     true
 }
 
+/// Diagnostic snapshot of the panel's visibility state, logged only around
+/// user-initiated toggle actions (tray click / global shortcut) — NOT from
+/// [`is_panel_showing`] itself, which is also polled by the ambient
+/// click-outside and space-change auto-hide monitors on every mouse click.
+#[cfg(target_os = "macos")]
+fn log_panel_state(window: &tauri::WebviewWindow, context: &str) {
+    use objc2_app_kit::{NSPanel, NSPopUpMenuWindowLevel};
+    let tauri_visible = window.is_visible().unwrap_or(false);
+    match window.ns_window() {
+        Ok(ns_window) => unsafe {
+            let panel = &*(ns_window as *const NSPanel);
+            let ak_visible = panel.isVisible();
+            let level = panel.level();
+            crate::debug_log::write_always(
+                "INFO",
+                "tray",
+                &format!(
+                    "{context}: tauri_visible={tauri_visible} ak_visible={ak_visible} level={level} popup_level={NSPopUpMenuWindowLevel}"
+                ),
+            );
+        },
+        Err(_) => {
+            crate::debug_log::write_always(
+                "WARN",
+                "tray",
+                &format!("{context}: tauri_visible={tauri_visible} ns_window() returned Err"),
+            );
+        }
+    }
+}
+
+#[cfg(not(target_os = "macos"))]
+fn log_panel_state(_window: &tauri::WebviewWindow, _context: &str) {}
+
 /// Toggle the main window: hide if visible, show if hidden.
 pub fn toggle_main_window(app: &tauri::AppHandle) {
-    if let Some(window) = app.get_webview_window("main") {
-        if is_panel_showing(&window) {
-            let _ = window.hide();
-        } else {
-            show_and_focus(&window);
-        }
+    let Some(window) = app.get_webview_window("main") else {
+        crate::debug_log::write_always(
+            "WARN",
+            "tray",
+            "toggle_main_window: get_webview_window(\"main\") -> None",
+        );
+        return;
+    };
+    log_panel_state(&window, "toggle_main_window: before");
+    if is_panel_showing(&window) {
+        crate::debug_log::write_always("INFO", "tray", "toggle_main_window: showing -> hide()");
+        let _ = window.hide();
+    } else {
+        crate::debug_log::write_always(
+            "INFO",
+            "tray",
+            "toggle_main_window: hidden -> show_and_focus()",
+        );
+        show_and_focus(&window);
     }
 }
 
@@ -230,6 +284,13 @@ pub fn create_tray(app: &App) -> Result<(), Box<dyn std::error::Error>> {
         .show_menu_on_left_click(false)
         .tooltip("Beacon")
         .on_tray_icon_event(|tray, event| {
+            if matches!(event, TrayIconEvent::Click { .. }) {
+                crate::debug_log::write_always(
+                    "INFO",
+                    "tray",
+                    &format!("tray icon event: {event:?}"),
+                );
+            }
             if let TrayIconEvent::Click {
                 button: MouseButton::Left,
                 button_state: MouseButtonState::Up,
