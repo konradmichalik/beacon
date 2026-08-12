@@ -153,11 +153,26 @@ fn show_and_focus(window: &tauri::WebviewWindow) {
     }
 
     let final_visible = window.is_visible().unwrap_or(false);
-    crate::debug_log::write_always(
-        "INFO",
+    crate::debug_log::info_always(
         "tray",
         &format!("show_and_focus: done, window.is_visible()={final_visible}"),
     );
+}
+
+/// Read the AppKit-level visibility and window level for the panel, if the
+/// native handle is currently reachable. Shared by [`is_panel_showing`]
+/// (the show/hide decision) and [`log_panel_state`] (the diagnostic log) so
+/// the two can never read this state differently.
+#[cfg(target_os = "macos")]
+fn ak_panel_visibility(
+    window: &tauri::WebviewWindow,
+) -> Option<(bool, objc2_app_kit::NSWindowLevel)> {
+    use objc2_app_kit::NSPanel;
+    let ns_window = window.ns_window().ok()?;
+    unsafe {
+        let panel = &*(ns_window as *const NSPanel);
+        Some((panel.isVisible(), panel.level()))
+    }
 }
 
 /// Check whether the panel is truly visible and functional on screen.
@@ -179,19 +194,16 @@ pub fn is_panel_showing(window: &tauri::WebviewWindow) -> bool {
 
     #[cfg(target_os = "macos")]
     {
-        use objc2_app_kit::{NSPanel, NSPopUpMenuWindowLevel};
-        if let Ok(ns_window) = window.ns_window() {
-            unsafe {
-                let panel = &*(ns_window as *const NSPanel);
-                if !panel.isVisible() {
-                    return false;
-                }
-                // If the window level was reset below popup-menu level (e.g.
-                // after a display reconfiguration), the panel is hidden behind
-                // other windows and effectively invisible to the user.
-                if panel.level() < NSPopUpMenuWindowLevel {
-                    return false;
-                }
+        use objc2_app_kit::NSPopUpMenuWindowLevel;
+        if let Some((ak_visible, level)) = ak_panel_visibility(window) {
+            if !ak_visible {
+                return false;
+            }
+            // If the window level was reset below popup-menu level (e.g.
+            // after a display reconfiguration), the panel is hidden behind
+            // other windows and effectively invisible to the user.
+            if level < NSPopUpMenuWindowLevel {
+                return false;
             }
         }
     }
@@ -205,24 +217,19 @@ pub fn is_panel_showing(window: &tauri::WebviewWindow) -> bool {
 /// click-outside and space-change auto-hide monitors on every mouse click.
 #[cfg(target_os = "macos")]
 fn log_panel_state(window: &tauri::WebviewWindow, context: &str) {
-    use objc2_app_kit::{NSPanel, NSPopUpMenuWindowLevel};
+    use objc2_app_kit::NSPopUpMenuWindowLevel;
     let tauri_visible = window.is_visible().unwrap_or(false);
-    match window.ns_window() {
-        Ok(ns_window) => unsafe {
-            let panel = &*(ns_window as *const NSPanel);
-            let ak_visible = panel.isVisible();
-            let level = panel.level();
-            crate::debug_log::write_always(
-                "INFO",
+    match ak_panel_visibility(window) {
+        Some((ak_visible, level)) => {
+            crate::debug_log::info_always(
                 "tray",
                 &format!(
                     "{context}: tauri_visible={tauri_visible} ak_visible={ak_visible} level={level} popup_level={NSPopUpMenuWindowLevel}"
                 ),
             );
-        },
-        Err(_) => {
-            crate::debug_log::write_always(
-                "WARN",
+        }
+        None => {
+            crate::debug_log::warn_always(
                 "tray",
                 &format!("{context}: tauri_visible={tauri_visible} ns_window() returned Err"),
             );
@@ -230,29 +237,22 @@ fn log_panel_state(window: &tauri::WebviewWindow, context: &str) {
     }
 }
 
-#[cfg(not(target_os = "macos"))]
-fn log_panel_state(_window: &tauri::WebviewWindow, _context: &str) {}
-
 /// Toggle the main window: hide if visible, show if hidden.
 pub fn toggle_main_window(app: &tauri::AppHandle) {
     let Some(window) = app.get_webview_window("main") else {
-        crate::debug_log::write_always(
-            "WARN",
+        crate::debug_log::warn_always(
             "tray",
             "toggle_main_window: get_webview_window(\"main\") -> None",
         );
         return;
     };
+    #[cfg(target_os = "macos")]
     log_panel_state(&window, "toggle_main_window: before");
     if is_panel_showing(&window) {
-        crate::debug_log::write_always("INFO", "tray", "toggle_main_window: showing -> hide()");
+        crate::debug_log::info_always("tray", "toggle_main_window: showing -> hide()");
         let _ = window.hide();
     } else {
-        crate::debug_log::write_always(
-            "INFO",
-            "tray",
-            "toggle_main_window: hidden -> show_and_focus()",
-        );
+        crate::debug_log::info_always("tray", "toggle_main_window: hidden -> show_and_focus()");
         show_and_focus(&window);
     }
 }
@@ -285,11 +285,7 @@ pub fn create_tray(app: &App) -> Result<(), Box<dyn std::error::Error>> {
         .tooltip("Beacon")
         .on_tray_icon_event(|tray, event| {
             if matches!(event, TrayIconEvent::Click { .. }) {
-                crate::debug_log::write_always(
-                    "INFO",
-                    "tray",
-                    &format!("tray icon event: {event:?}"),
-                );
+                crate::debug_log::info_always("tray", &format!("tray icon event: {event:?}"));
             }
             if let TrayIconEvent::Click {
                 button: MouseButton::Left,
