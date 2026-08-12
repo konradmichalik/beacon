@@ -152,10 +152,10 @@ fn show_and_focus(window: &tauri::WebviewWindow) {
         }
     }
 
-    let final_visible = window.is_visible().unwrap_or(false);
-    crate::debug_log::info_always(
+    let final_visible = window.is_visible();
+    crate::debug_log::info(
         "tray",
-        &format!("show_and_focus: done, window.is_visible()={final_visible}"),
+        &format!("show_and_focus: done, window.is_visible()={final_visible:?}"),
     );
 }
 
@@ -218,20 +218,20 @@ pub fn is_panel_showing(window: &tauri::WebviewWindow) -> bool {
 #[cfg(target_os = "macos")]
 fn log_panel_state(window: &tauri::WebviewWindow, context: &str) {
     use objc2_app_kit::NSPopUpMenuWindowLevel;
-    let tauri_visible = window.is_visible().unwrap_or(false);
+    let tauri_visible = window.is_visible();
     match ak_panel_visibility(window) {
         Some((ak_visible, level)) => {
-            crate::debug_log::info_always(
+            crate::debug_log::info(
                 "tray",
                 &format!(
-                    "{context}: tauri_visible={tauri_visible} ak_visible={ak_visible} level={level} popup_level={NSPopUpMenuWindowLevel}"
+                    "{context}: tauri_visible={tauri_visible:?} ak_visible={ak_visible} level={level} popup_level={NSPopUpMenuWindowLevel}"
                 ),
             );
         }
         None => {
-            crate::debug_log::warn_always(
+            crate::debug_log::warn(
                 "tray",
-                &format!("{context}: tauri_visible={tauri_visible} ns_window() returned Err"),
+                &format!("{context}: tauri_visible={tauri_visible:?} ns_window() returned Err"),
             );
         }
     }
@@ -240,7 +240,7 @@ fn log_panel_state(window: &tauri::WebviewWindow, context: &str) {
 /// Toggle the main window: hide if visible, show if hidden.
 pub fn toggle_main_window(app: &tauri::AppHandle) {
     let Some(window) = app.get_webview_window("main") else {
-        crate::debug_log::warn_always(
+        crate::debug_log::warn(
             "tray",
             "toggle_main_window: get_webview_window(\"main\") -> None",
         );
@@ -249,10 +249,10 @@ pub fn toggle_main_window(app: &tauri::AppHandle) {
     #[cfg(target_os = "macos")]
     log_panel_state(&window, "toggle_main_window: before");
     if is_panel_showing(&window) {
-        crate::debug_log::info_always("tray", "toggle_main_window: showing -> hide()");
+        crate::debug_log::info("tray", "toggle_main_window: showing -> hide()");
         let _ = window.hide();
     } else {
-        crate::debug_log::info_always("tray", "toggle_main_window: hidden -> show_and_focus()");
+        crate::debug_log::info("tray", "toggle_main_window: hidden -> show_and_focus()");
         show_and_focus(&window);
     }
 }
@@ -285,7 +285,7 @@ pub fn create_tray(app: &App) -> Result<(), Box<dyn std::error::Error>> {
         .tooltip("Beacon")
         .on_tray_icon_event(|tray, event| {
             if matches!(event, TrayIconEvent::Click { .. }) {
-                crate::debug_log::info_always("tray", &format!("tray icon event: {event:?}"));
+                crate::debug_log::info("tray", &format!("tray icon event: {event:?}"));
             }
             if let TrayIconEvent::Click {
                 button: MouseButton::Left,

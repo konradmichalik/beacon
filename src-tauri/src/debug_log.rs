@@ -86,14 +86,6 @@ pub fn warn(source: &str, msg: &str) {
     write("WARN", source, msg);
 }
 
-pub fn info_always(source: &str, msg: &str) {
-    write_always("INFO", source, msg);
-}
-
-pub fn warn_always(source: &str, msg: &str) {
-    write_always("WARN", source, msg);
-}
-
 pub fn error(source: &str, msg: &str) {
     write("ERROR", source, msg);
 }
