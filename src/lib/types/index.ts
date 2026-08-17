@@ -17,7 +17,9 @@ export type {
   ConnectionConfig,
   ConnectionStatus,
   ServiceState,
-  AllConnectionsState
+  AllConnectionsState,
+  PlatformStatusIndicator,
+  PlatformStatus
 } from './connections';
 
 export type {

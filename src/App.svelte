@@ -31,6 +31,7 @@
     loadPersistedReadIds,
     loadPersistedDismissedIds
   } from './lib/stores/notifications.svelte';
+  import { setupPlatformStatusListener } from './lib/stores/platform-status.svelte';
   import {
     startPRPolling,
     stopPRPolling,
@@ -51,6 +52,7 @@
     let unlistenNotifications: (() => void) | undefined;
     let unlistenSettings: (() => void) | undefined;
     let unlistenMuteRules: (() => void) | undefined;
+    let unlistenPlatformStatus: (() => void) | undefined;
 
     async function initialize(): Promise<void> {
       try {
@@ -66,6 +68,10 @@
         unlistenMuteRules = await listenForExternalMuteRuleChanges();
         await initializeSnoozed();
         await loadStarredPRs();
+
+        // Both windows can render the Connections tab, so both need to follow
+        // the platform-status backend event independently of the notification poller.
+        unlistenPlatformStatus = await setupPlatformStatusListener();
 
         if (isSettingsWindow) {
           await initializeConnections();
@@ -141,6 +147,7 @@
       unlistenNotifications?.();
       unlistenSettings?.();
       unlistenMuteRules?.();
+      unlistenPlatformStatus?.();
     };
   });
 </script>

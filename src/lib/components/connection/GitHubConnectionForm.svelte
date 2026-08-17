@@ -6,6 +6,8 @@
     connectGitHubWithPAT,
     disconnectService
   } from '$lib/stores/connections.svelte';
+  import { platformStatusState } from '$lib/stores/platform-status.svelte';
+  import type { PlatformStatusIndicator } from '$lib/types';
   import { isTauri } from '$lib/utils/storage';
 
   let token = $state('');
@@ -13,6 +15,18 @@
 
   let status = $derived(connectionsState.github.status);
   let error = $derived(connectionsState.github.error);
+  let platformStatus = $derived(platformStatusState.github);
+
+  const PLATFORM_STATUS_CLASS: Record<PlatformStatusIndicator, string> = {
+    ok: '',
+    degraded: 'text-warning',
+    down: 'text-destructive'
+  };
+  const PLATFORM_STATUS_DOT_CLASS: Record<PlatformStatusIndicator, string> = {
+    ok: '',
+    degraded: 'bg-warning',
+    down: 'bg-destructive'
+  };
 
   async function handleConnect(): Promise<void> {
     if (!token.trim()) return;
@@ -66,7 +80,20 @@
   </div>
 
   {#if status === 'connected'}
-    <!-- Connected, nothing to show -->
+    {#if platformStatus && platformStatus.indicator !== 'ok'}
+      <p
+        class="mt-2 flex items-center gap-1.5 text-[10px] {PLATFORM_STATUS_CLASS[
+          platformStatus.indicator
+        ]}"
+      >
+        <span
+          class="h-1.5 w-1.5 shrink-0 rounded-full {PLATFORM_STATUS_DOT_CLASS[
+            platformStatus.indicator
+          ]}"
+        ></span>
+        {platformStatus.description}
+      </p>
+    {/if}
   {:else}
     <div class="mt-2 space-y-2">
       <input
