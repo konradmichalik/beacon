@@ -1,4 +1,4 @@
-import type { GitLabTodo, UnifiedNotification, NotificationType, SubjectState } from '$lib/types';
+import type { NotificationType, SubjectState } from '$lib/types';
 import { safeFetch } from '$lib/utils/fetch';
 import { error as logError, info as logInfo } from '$lib/utils/logger';
 
@@ -56,59 +56,6 @@ export function mapTargetState(state?: string): SubjectState {
   if (state === 'closed') return 'closed';
   if (state === 'opened') return 'open';
   return null;
-}
-
-function mapToUnified(todo: GitLabTodo): UnifiedNotification {
-  // Use the later of todo.updated_at and target.updated_at so the displayed
-  // time reflects the most recent MR activity, not just when the todo was created.
-  const targetUpdated = todo.target.updated_at;
-  const effectiveUpdated =
-    targetUpdated && targetUpdated > todo.updated_at ? targetUpdated : todo.updated_at;
-
-  return {
-    id: `gitlab-${todo.id}`,
-    source: 'gitlab',
-    type: mapTargetType(todo.target_type),
-    title: todo.target.title,
-    repository: todo.project.path_with_namespace,
-    url: todo.target_url,
-    reason: mapActionToReason(todo.action_name, todo.body),
-    unread: todo.state === 'pending',
-    updatedAt: effectiveUpdated,
-    createdAt: todo.created_at,
-    author: todo.author ? { login: todo.author.username, avatarUrl: todo.author.avatar_url } : null,
-    subjectState: mapTargetState(todo.target.state)
-  };
-}
-
-export async function fetchGitLabTodos(
-  token: string,
-  baseUrl: string
-): Promise<UnifiedNotification[]> {
-  const base = baseUrl.replace(/\/$/, '');
-  const perPage = 100;
-  const maxPages = 1;
-  const allTodos: GitLabTodo[] = [];
-
-  for (let page = 1; page <= maxPages; page++) {
-    const response = await safeFetch(
-      `${base}/api/v4/todos?state=pending&per_page=${perPage}&page=${page}`,
-      { headers: { Authorization: `Bearer ${token}` } }
-    );
-
-    if (!response.ok) {
-      logError('gitlab', `todos fetch failed: HTTP ${response.status} (page ${page})`);
-      throw new Error(`GitLab API error: ${response.status}`);
-    }
-
-    const batch: GitLabTodo[] = await response.json();
-    logInfo('gitlab', `page ${page}: fetched ${batch.length} todos`);
-    allTodos.push(...batch);
-
-    if (batch.length < perPage) break;
-  }
-
-  return allTodos.map(mapToUnified);
 }
 
 export async function markGitLabTodoDone(

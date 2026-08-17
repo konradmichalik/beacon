@@ -65,31 +65,6 @@ export interface GitHubNotification {
   };
 }
 
-export interface GitLabTodo {
-  readonly id: number;
-  readonly action_name: string;
-  readonly target_type: string;
-  readonly target_url: string;
-  readonly body: string;
-  readonly state: 'pending' | 'done';
-  readonly created_at: string;
-  readonly updated_at: string;
-  readonly project: {
-    readonly path_with_namespace: string;
-    readonly web_url: string;
-  };
-  readonly target: {
-    readonly title: string;
-    readonly iid: number;
-    readonly state?: string;
-    readonly updated_at?: string;
-  };
-  readonly author: {
-    readonly username: string;
-    readonly avatar_url: string;
-  };
-}
-
 export interface MuteRule {
   readonly id: string;
   readonly project?: string;
@@ -97,10 +72,4 @@ export interface MuteRule {
   readonly status?: SubjectState;
   readonly author?: string;
   readonly createdAt: string;
-}
-
-export interface NotificationGroup {
-  readonly repository: string;
-  readonly source: NotificationSource;
-  readonly notifications: readonly UnifiedNotification[];
 }

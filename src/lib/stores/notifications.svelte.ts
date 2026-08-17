@@ -1,9 +1,4 @@
-import type {
-  UnifiedNotification,
-  NotificationSource,
-  NotificationType,
-  NotificationGroup
-} from '$lib/types';
+import type { UnifiedNotification, NotificationSource, NotificationType } from '$lib/types';
 import type { SortMode, StatusFilter, NotificationDraftFilter } from './filters.svelte';
 import { filterState } from './filters.svelte';
 import { settingsState } from './settings.svelte';
@@ -295,39 +290,6 @@ export function getUnreadIdsByAuthor(
     }
   }
   return ids;
-}
-
-export function getGroupedNotifications(
-  sourceFilter: NotificationSource | 'all',
-  projectFilter: string | null
-): readonly NotificationGroup[] {
-  let filtered = notifications;
-
-  if (sourceFilter !== 'all') {
-    filtered = filtered.filter((n) => n.source === sourceFilter);
-  }
-  if (projectFilter) {
-    filtered = filtered.filter((n) => n.repository === projectFilter);
-  }
-
-  // eslint-disable-next-line svelte/prefer-svelte-reactivity -- local grouping map, not state
-  const grouped = new Map<string, { source: NotificationSource; items: UnifiedNotification[] }>();
-
-  for (const notification of filtered) {
-    const key = `${notification.source}:${notification.repository}`;
-    const existing = grouped.get(key);
-    if (existing) {
-      existing.items.push(notification);
-    } else {
-      grouped.set(key, { source: notification.source, items: [notification] });
-    }
-  }
-
-  return Array.from(grouped.entries()).map(([, value]) => ({
-    repository: value.items[0].repository,
-    source: value.source,
-    notifications: value.items
-  }));
 }
 
 export interface ProjectInfo {
