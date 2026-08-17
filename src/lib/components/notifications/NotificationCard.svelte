@@ -2,7 +2,6 @@
   import type { UnifiedNotification } from '$lib/types';
   import {
     markAsRead,
-    markAsUnread,
     markAllAsRead,
     getLastSeenAt,
     getUnreadIdsByAuthor
@@ -34,7 +33,6 @@
     ExternalLink,
     CheckCheck,
     ClipboardCopy,
-    CircleDashed,
     BellOff,
     FileEdit
   } from '@lucide/svelte';
@@ -186,10 +184,6 @@
       dismissing = true;
       setTimeout(() => markAsRead(notification.id), 350);
     });
-  }
-
-  function handleContextMarkUnread(): void {
-    closeContextMenu(() => markAsUnread(notification.id));
   }
 
   function handleContextMute(): void {
@@ -360,15 +354,6 @@
       >
         <CheckCheck size={12} />
         Mark as read
-      </button>
-    {:else}
-      <button
-        type="button"
-        onclick={handleContextMarkUnread}
-        class="flex w-full items-center gap-2 px-3 py-1.5 text-left text-xs text-foreground hover:bg-secondary"
-      >
-        <CircleDashed size={12} />
-        Mark as unread
       </button>
     {/if}
     {#if unreadIdsByAuthor && notification.author}
