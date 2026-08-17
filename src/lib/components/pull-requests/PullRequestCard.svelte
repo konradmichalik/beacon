@@ -22,8 +22,24 @@
     GitBranch
   } from '@lucide/svelte';
   import { isStarred, toggleStar } from '$lib/stores/starred-prs.svelte';
+  import { getAttentionState, type AttentionState } from '$lib/utils/pr-attention';
 
   let { pullRequest }: { pullRequest: UnifiedPullRequest } = $props();
+
+  const ATTENTION_LABELS: Record<Exclude<AttentionState, 'none'>, string> = {
+    blocked: 'Changes requested',
+    failing: 'CI failing',
+    ready: 'Ready to merge',
+    stale: 'Stale — no activity in a while'
+  };
+  const ATTENTION_DOT_CLASS: Record<Exclude<AttentionState, 'none'>, string> = {
+    blocked: 'bg-warning',
+    failing: 'bg-destructive',
+    ready: 'bg-success-text',
+    stale: 'bg-muted-foreground'
+  };
+
+  let attentionState = $derived(getAttentionState(pullRequest));
 
   let timeLabel = $derived(timeAgo(pullRequest.updatedAt));
   let repoShort = $derived(pullRequest.repository.split('/').slice(-2).join('/'));
@@ -143,6 +159,16 @@
     oncontextmenu={handleContextMenu}
     class="group relative flex w-full items-start gap-3 px-4 py-3 text-left transition-all duration-200 ease-in-out hover:bg-surface-hovered"
   >
+    <!-- Attention indicator -->
+    {#if attentionState !== 'none'}
+      <span
+        title={ATTENTION_LABELS[attentionState]}
+        class="absolute right-2 top-2 h-1.5 w-1.5 rounded-full {ATTENTION_DOT_CLASS[
+          attentionState
+        ]}"
+      ></span>
+    {/if}
+
     <!-- Avatar -->
     <Avatar author={pullRequest.author} source={pullRequest.source} />
 
