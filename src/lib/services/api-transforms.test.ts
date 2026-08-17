@@ -6,13 +6,15 @@ import {
   mapReviewDecision as ghMapReviewDecision,
   hasUserReviewed,
   repoFromUrl,
+  firstFailingCheck,
   type GitHubCheckRun,
   type GitHubReview
 } from './github/pull-requests';
 import {
   mapCIStatus as glMapCIStatus,
   mapReviewDecision as glMapReviewDecision,
-  hasUserApproved
+  hasUserApproved,
+  mapFailingCheck
 } from './gitlab/pull-requests';
 import type { GitHubNotification } from '$lib/types';
 
@@ -162,26 +164,51 @@ describe('GitHub PR: mapCIStatus', () => {
 
   it('returns "pending" when any run is not completed', () => {
     const runs: GitHubCheckRun[] = [
-      { status: 'completed', conclusion: 'success' },
-      { status: 'in_progress', conclusion: null }
+      { status: 'completed', conclusion: 'success', name: 'build', html_url: null },
+      { status: 'in_progress', conclusion: null, name: 'lint', html_url: null }
     ];
     expect(ghMapCIStatus(runs)).toBe('pending');
   });
 
   it('returns "success" when all completed with success/skipped', () => {
     const runs: GitHubCheckRun[] = [
-      { status: 'completed', conclusion: 'success' },
-      { status: 'completed', conclusion: 'skipped' }
+      { status: 'completed', conclusion: 'success', name: 'build', html_url: null },
+      { status: 'completed', conclusion: 'skipped', name: 'deploy', html_url: null }
     ];
     expect(ghMapCIStatus(runs)).toBe('success');
   });
 
   it('returns "failure" when any run failed', () => {
     const runs: GitHubCheckRun[] = [
-      { status: 'completed', conclusion: 'success' },
-      { status: 'completed', conclusion: 'failure' }
+      { status: 'completed', conclusion: 'success', name: 'build', html_url: null },
+      { status: 'completed', conclusion: 'failure', name: 'test', html_url: null }
     ];
     expect(ghMapCIStatus(runs)).toBe('failure');
+  });
+});
+
+describe('GitHub PR: firstFailingCheck', () => {
+  it('returns null when nothing failed', () => {
+    const runs: GitHubCheckRun[] = [
+      { status: 'completed', conclusion: 'success', name: 'build', html_url: 'https://x/1' }
+    ];
+    expect(firstFailingCheck(runs)).toBeNull();
+  });
+
+  it('returns the name and url of the first failing run', () => {
+    const runs: GitHubCheckRun[] = [
+      { status: 'completed', conclusion: 'success', name: 'build', html_url: 'https://x/1' },
+      { status: 'completed', conclusion: 'failure', name: 'test', html_url: 'https://x/2' },
+      { status: 'completed', conclusion: 'failure', name: 'e2e', html_url: 'https://x/3' }
+    ];
+    expect(firstFailingCheck(runs)).toEqual({ name: 'test', url: 'https://x/2' });
+  });
+
+  it('returns null when the failing run has no html_url', () => {
+    const runs: GitHubCheckRun[] = [
+      { status: 'completed', conclusion: 'failure', name: 'test', html_url: null }
+    ];
+    expect(firstFailingCheck(runs)).toBeNull();
   });
 });
 
@@ -259,6 +286,27 @@ describe('GitLab MR: mapCIStatus', () => {
     ['skipped', 'unknown']
   ])('maps pipeline status "%s" to "%s"', (input, expected) => {
     expect(glMapCIStatus(input)).toBe(expected);
+  });
+});
+
+describe('GitLab MR: mapFailingCheck', () => {
+  it('returns null when the pipeline succeeded', () => {
+    expect(mapFailingCheck({ id: 1, status: 'success', web_url: 'https://x/1' })).toBeNull();
+  });
+
+  it('returns null for a null pipeline', () => {
+    expect(mapFailingCheck(null)).toBeNull();
+  });
+
+  it('returns a synthesized name and the pipeline url when it failed', () => {
+    expect(mapFailingCheck({ id: 42, status: 'failed', web_url: 'https://x/42' })).toEqual({
+      name: 'Pipeline #42',
+      url: 'https://x/42'
+    });
+  });
+
+  it('returns null when the failed pipeline has no web_url', () => {
+    expect(mapFailingCheck({ id: 42, status: 'failed', web_url: null })).toBeNull();
   });
 });
 
