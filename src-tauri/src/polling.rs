@@ -283,6 +283,14 @@ fn read_store(app: &AppHandle) -> (Option<GitHubConfig>, Option<GitLabConfig>, S
     (gh, gl, settings)
 }
 
+pub(crate) fn github_is_configured(app: &AppHandle) -> bool {
+    read_store(app).0.is_some()
+}
+
+pub(crate) fn gitlab_is_configured(app: &AppHandle) -> bool {
+    read_store(app).1.is_some()
+}
+
 // ── GitHub fetching ─────────────────────────────────────────────
 
 fn gh_type(t: &str) -> &str {

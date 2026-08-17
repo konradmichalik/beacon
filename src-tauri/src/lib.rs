@@ -1,4 +1,5 @@
 pub mod debug_log;
+mod platform_status;
 mod polling;
 mod tray;
 
@@ -445,6 +446,7 @@ pub fn run() {
             }));
 
             app.manage(std::sync::Arc::new(polling::Poller::new()));
+            platform_status::spawn_loop(app.handle().clone());
             tray::create_tray(app)?;
 
             // Register global shortcut (CmdOrCtrl+Shift+B) to toggle the main window.
