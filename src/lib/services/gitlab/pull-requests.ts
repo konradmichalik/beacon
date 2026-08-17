@@ -1,4 +1,4 @@
-import type { UnifiedPullRequest, CIStatus, ReviewDecision } from '$lib/types';
+import type { UnifiedPullRequest, CIStatus, ReviewDecision, FailingCheck } from '$lib/types';
 import { safeFetch } from '$lib/utils/fetch';
 import { error as logError, info as logInfo } from '$lib/utils/logger';
 
@@ -18,7 +18,9 @@ interface GitLabMergeRequest {
   readonly reviewers: readonly { username: string }[];
   readonly approved_by?: readonly { user: { username: string } }[];
   readonly head_pipeline: {
+    readonly id: number;
     readonly status: string;
+    readonly web_url: string | null;
   } | null;
   readonly target_branch: string;
   readonly source_project_id: number;
@@ -50,6 +52,17 @@ export function mapCIStatus(pipelineStatus: string | null): CIStatus {
     default:
       return 'unknown';
   }
+}
+
+/**
+ * GitLab has no per-check name like GitHub's check-runs — a pipeline is one
+ * unit — so the "check" name is synthesized from the pipeline id.
+ */
+export function mapFailingCheck(
+  pipeline: GitLabMergeRequest['head_pipeline']
+): FailingCheck | null {
+  if (!pipeline || mapCIStatus(pipeline.status) !== 'failure' || !pipeline.web_url) return null;
+  return { name: `Pipeline #${pipeline.id}`, url: pipeline.web_url };
 }
 
 export function mapReviewDecision(mr: GitLabMergeRequest): ReviewDecision | null {
@@ -135,6 +148,7 @@ function mapBasicMR(mr: GitLabMergeRequest, reviewRequested: boolean): UnifiedPu
     updatedAt: mr.updated_at,
     // GitLab list endpoint includes pipeline status
     ciStatus: mapCIStatus(mr.head_pipeline?.status ?? null),
+    failingCheck: mapFailingCheck(mr.head_pipeline) ?? undefined,
     reviewDecision: mapReviewDecision(mr),
     reviewRequestedFromMe: reviewRequested,
     reviewedByMe: false,

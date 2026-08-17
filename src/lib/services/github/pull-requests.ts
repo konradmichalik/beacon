@@ -1,4 +1,4 @@
-import type { UnifiedPullRequest, CIStatus, ReviewDecision } from '$lib/types';
+import type { UnifiedPullRequest, CIStatus, ReviewDecision, FailingCheck } from '$lib/types';
 import { safeFetch } from '$lib/utils/fetch';
 import { error as logError, info as logInfo } from '$lib/utils/logger';
 
@@ -37,6 +37,8 @@ interface GitHubSearchResponse {
 export interface GitHubCheckRun {
   readonly conclusion: string | null;
   readonly status: string;
+  readonly name: string;
+  readonly html_url: string | null;
 }
 
 export interface GitHubReview {
@@ -57,6 +59,13 @@ export function mapCIStatus(runs: readonly GitHubCheckRun[]): CIStatus {
   if (runs.every((r) => r.conclusion === 'success' || r.conclusion === 'skipped')) return 'success';
   if (runs.some((r) => r.conclusion === 'failure')) return 'failure';
   return 'unknown';
+}
+
+/** The first failed run, so a red PR can link straight to what broke. */
+export function firstFailingCheck(runs: readonly GitHubCheckRun[]): FailingCheck | null {
+  const failed = runs.find((r) => r.conclusion === 'failure');
+  if (!failed || !failed.html_url) return null;
+  return { name: failed.name, url: failed.html_url };
 }
 
 export function mapReviewDecision(reviews: readonly GitHubReview[]): ReviewDecision | null {
@@ -82,17 +91,20 @@ async function fetchCheckStatus(
   repo: string,
   ref: string,
   signal?: AbortSignal
-): Promise<CIStatus> {
+): Promise<{ status: CIStatus; failingCheck: FailingCheck | null }> {
   try {
     const response = await safeFetch(
       `${GITHUB_API}/repos/${repo}/commits/${ref}/check-runs?per_page=100`,
       { headers: HEADERS(token), signal }
     );
-    if (!response.ok) return 'unknown';
+    if (!response.ok) return { status: 'unknown', failingCheck: null };
     const data = (await response.json()) as { check_runs: GitHubCheckRun[] };
-    return mapCIStatus(data.check_runs);
+    return {
+      status: mapCIStatus(data.check_runs),
+      failingCheck: firstFailingCheck(data.check_runs)
+    };
   } catch {
-    return 'unknown';
+    return { status: 'unknown', failingCheck: null };
   }
 }
 
@@ -214,17 +226,18 @@ export async function enrichGitHubPR(
   const repo = pr.repository;
   const detail = await fetchPRDetail(token, repo, pr.number, signal);
 
-  const [ciStatus, reviewStatus] = await Promise.all([
+  const [checkStatus, reviewStatus] = await Promise.all([
     detail
       ? fetchCheckStatus(token, repo, detail.headSha, signal)
-      : Promise.resolve('unknown' as CIStatus),
+      : Promise.resolve({ status: 'unknown' as CIStatus, failingCheck: null }),
     fetchReviewStatus(token, repo, pr.number, username, signal)
   ]);
 
   return {
     ...pr,
     baseBranch: detail?.baseBranch,
-    ciStatus,
+    ciStatus: checkStatus.status,
+    failingCheck: checkStatus.failingCheck ?? undefined,
     reviewDecision: reviewStatus.reviewDecision,
     reviewedByMe: reviewStatus.reviewedByMe,
     enrichment: 'enriched'

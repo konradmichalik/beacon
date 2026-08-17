@@ -27,6 +27,7 @@ export type {
   PRDraftFilter,
   PRCIFilter,
   EnrichmentState,
+  FailingCheck,
   UnifiedPullRequest
 } from './pull-requests';
 

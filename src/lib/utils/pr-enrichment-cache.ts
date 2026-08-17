@@ -23,6 +23,7 @@ export function mergeCachedEnrichment(
         ...pr,
         baseBranch: cached.baseBranch,
         ciStatus: cached.ciStatus,
+        failingCheck: cached.failingCheck,
         reviewDecision: cached.reviewDecision,
         reviewedByMe: cached.reviewedByMe,
         enrichment: 'enriched' as const

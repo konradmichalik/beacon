@@ -7,6 +7,11 @@ export type PRDraftFilter = 'all' | 'ready' | 'draft';
 export type PRCIFilter = 'all' | 'success' | 'failure' | 'pending';
 export type EnrichmentState = 'pending' | 'enriched' | 'skipped';
 
+export interface FailingCheck {
+  readonly name: string;
+  readonly url: string;
+}
+
 export interface UnifiedPullRequest {
   readonly id: string;
   readonly source: NotificationSource;
@@ -23,6 +28,7 @@ export interface UnifiedPullRequest {
   readonly reviewRequestedFromMe: boolean;
   readonly reviewedByMe: boolean;
   readonly baseBranch?: string;
+  readonly failingCheck?: FailingCheck;
   readonly enrichment: EnrichmentState;
   readonly sourceMetadata?: Readonly<Record<string, number | string>>;
 }

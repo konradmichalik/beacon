@@ -82,6 +82,34 @@ describe('mergeCachedEnrichment', () => {
     expect(merged[0].title).toBe('Renamed'); // kept fresh
   });
 
+  it('carries the failing check over across a poll for an unchanged PR', () => {
+    const previous = [
+      makePR({
+        enrichment: 'enriched',
+        ciStatus: 'failure',
+        failingCheck: { name: 'test', url: 'https://x/1' }
+      })
+    ];
+    const fresh = [makePR({ enrichment: 'pending' })];
+
+    const merged = mergeCachedEnrichment(fresh, previous);
+    expect(merged[0].failingCheck).toEqual({ name: 'test', url: 'https://x/1' });
+  });
+
+  it('drops the failing check when the PR changed and needs re-enrichment', () => {
+    const previous = [
+      makePR({
+        enrichment: 'enriched',
+        ciStatus: 'failure',
+        failingCheck: { name: 'test', url: 'https://x/1' }
+      })
+    ];
+    const fresh = [makePR({ enrichment: 'pending', updatedAt: '2026-03-18T09:00:00Z' })];
+
+    const merged = mergeCachedEnrichment(fresh, previous);
+    expect(merged[0].failingCheck).toBeUndefined();
+  });
+
   it('handles empty inputs', () => {
     expect(mergeCachedEnrichment([], [])).toEqual([]);
     const fresh = [makePR()];
