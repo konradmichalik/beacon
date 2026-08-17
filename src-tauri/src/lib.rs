@@ -497,9 +497,19 @@ pub fn run() {
                     // hiding a panel that's already in a ghost state — calling
                     // hide() on a ghost panel can further desync Tauri's internal
                     // visibility tracking from AppKit's actual state.
+                    //
+                    // The show grace period is honoured here for the same reason as
+                    // in the space-change observer below: the mouse-down that opens
+                    // the panel from the tray icon can still be in flight when the
+                    // panel becomes visible, and under load macOS may deliver it (or
+                    // a duplicate) afterwards. Without the guard that stray event
+                    // hides the panel immediately, so the click appears to do nothing.
                     let click_app_handle = app.handle().clone();
                     let click_block =
                         block2::RcBlock::new(move |_: std::ptr::NonNull<AnyObject>| {
+                            if tray::is_within_show_grace() {
+                                return;
+                            }
                             if let Some(w) = click_app_handle.get_webview_window("main") {
                                 if tray::is_panel_showing(&w) {
                                     let _ = w.hide();
