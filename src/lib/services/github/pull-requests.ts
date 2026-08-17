@@ -166,11 +166,11 @@ export async function fetchGitHubPullRequestsBasic(
   username: string
 ): Promise<UnifiedPullRequest[]> {
   const [authoredRes, reviewRes] = await Promise.all([
-    fetch(
+    safeFetch(
       `${GITHUB_API}/search/issues?q=type:pr+state:open+author:${encodeURIComponent(username)}&per_page=50&sort=updated`,
       { headers: HEADERS(token) }
     ),
-    fetch(
+    safeFetch(
       `${GITHUB_API}/search/issues?q=type:pr+state:open+review-requested:${encodeURIComponent(username)}&per_page=50&sort=updated`,
       { headers: HEADERS(token) }
     )
