@@ -27,7 +27,8 @@
     isDemoMode,
     loadDemoData,
     setupNotificationListener,
-    loadPersistedReadIds
+    loadPersistedReadIds,
+    loadPersistedDismissedIds
   } from './lib/stores/notifications.svelte';
   import {
     startPRPolling,
@@ -105,8 +106,9 @@
         });
         await initializeConnections();
 
-        // Restore persisted read state before listening for updates
+        // Restore persisted read/dismissed state before listening for updates
         await loadPersistedReadIds();
+        await loadPersistedDismissedIds();
 
         // Listen for notification updates from Rust backend
         unlistenNotifications = await setupNotificationListener();
