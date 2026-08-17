@@ -5,11 +5,13 @@
     markAsDone,
     markAllAsRead,
     getLastSeenAt,
-    getUnreadIdsByAuthor
+    getUnreadIdsByAuthor,
+    unsubscribeFromNotification
   } from '$lib/stores/notifications.svelte';
   import { timeAgo } from '$lib/utils/time';
   import { openExternalUrl } from '$lib/utils/open-url';
   import { clampMenuPosition, menuPositionFromElement } from '$lib/utils/context-menu';
+  import { parseGitLabTargetUrl } from '$lib/utils/gitlab-target';
   import { focusTrap } from '$lib/actions/focusTrap';
   import GitHubIcon from '$lib/components/icons/GitHubIcon.svelte';
   import GitLabIcon from '$lib/components/icons/GitLabIcon.svelte';
@@ -35,6 +37,7 @@
     CheckCheck,
     ClipboardCopy,
     BellOff,
+    BellMinus,
     FileEdit,
     Archive
   } from '@lucide/svelte';
@@ -153,7 +156,7 @@
 
   function handleContextMenu(event: MouseEvent): void {
     event.preventDefault();
-    contextMenu = clampMenuPosition(event, { width: 240, height: 198 });
+    contextMenu = clampMenuPosition(event, { width: 240, height: 226 });
 
     function close() {
       contextMenu = null;
@@ -192,6 +195,20 @@
     closeContextMenu(() => (showMuteModal = true));
   }
 
+  // GitHub threads can always be unsubscribed from. GitLab todos need an iid
+  // parsed out of the target URL, which only works for merge requests and
+  // issues — pipelines and other target types have no unsubscribe endpoint.
+  let canUnsubscribe = $derived(
+    notification.source === 'github' ||
+      (notification.source === 'gitlab' && parseGitLabTargetUrl(notification.url) !== null)
+  );
+
+  function handleContextUnsubscribe(): void {
+    closeContextMenu(() => {
+      unsubscribeFromNotification(notification.id);
+    });
+  }
+
   function handleContextMarkDone(): void {
     closeContextMenu(() => {
       dismissing = true;
@@ -217,7 +234,7 @@
     if (e.key === 'F10' && e.shiftKey) {
       e.preventDefault();
       const rect = (e.currentTarget as HTMLElement).getBoundingClientRect();
-      contextMenu = menuPositionFromElement(rect, { width: 240, height: 198 });
+      contextMenu = menuPositionFromElement(rect, { width: 240, height: 226 });
       function close() {
         contextMenu = null;
         window.removeEventListener('click', close);
@@ -354,6 +371,17 @@
       <BellOff size={12} />
       Mute…
     </button>
+    {#if canUnsubscribe}
+      <button
+        type="button"
+        onclick={handleContextUnsubscribe}
+        title="Tells GitHub/GitLab to stop notifying you about this thread — unlike Mute, this is not just hidden locally"
+        class="flex w-full items-center gap-2 px-3 py-1.5 text-left text-xs text-foreground hover:bg-secondary"
+      >
+        <BellMinus size={12} />
+        Unsubscribe
+      </button>
+    {/if}
     <div class="mx-2 my-0.5 border-t border-border"></div>
     {#if notification.unread}
       <button
