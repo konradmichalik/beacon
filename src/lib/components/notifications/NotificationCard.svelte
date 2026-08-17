@@ -2,6 +2,7 @@
   import type { UnifiedNotification } from '$lib/types';
   import {
     markAsRead,
+    markAsDone,
     markAllAsRead,
     getLastSeenAt,
     getUnreadIdsByAuthor
@@ -34,7 +35,8 @@
     CheckCheck,
     ClipboardCopy,
     BellOff,
-    FileEdit
+    FileEdit,
+    Archive
   } from '@lucide/svelte';
   import MuteModal from './MuteModal.svelte';
 
@@ -151,7 +153,7 @@
 
   function handleContextMenu(event: MouseEvent): void {
     event.preventDefault();
-    contextMenu = clampMenuPosition(event, { width: 240, height: 170 });
+    contextMenu = clampMenuPosition(event, { width: 240, height: 198 });
 
     function close() {
       contextMenu = null;
@@ -190,6 +192,13 @@
     closeContextMenu(() => (showMuteModal = true));
   }
 
+  function handleContextMarkDone(): void {
+    closeContextMenu(() => {
+      dismissing = true;
+      setTimeout(() => markAsDone(notification.id), 350);
+    });
+  }
+
   let unreadIdsByAuthor = $derived.by(() => {
     const login = notification.author?.login;
     if (!login) return null;
@@ -208,7 +217,7 @@
     if (e.key === 'F10' && e.shiftKey) {
       e.preventDefault();
       const rect = (e.currentTarget as HTMLElement).getBoundingClientRect();
-      contextMenu = menuPositionFromElement(rect, { width: 240, height: 170 });
+      contextMenu = menuPositionFromElement(rect, { width: 240, height: 198 });
       function close() {
         contextMenu = null;
         window.removeEventListener('click', close);
@@ -364,6 +373,17 @@
       >
         <CheckCheck size={12} />
         Mark all from @{notification.author.login} as read ({unreadIdsByAuthor.size})
+      </button>
+    {/if}
+    {#if notification.source === 'github'}
+      <button
+        type="button"
+        onclick={handleContextMarkDone}
+        title="Removes the thread from your GitHub notification inbox — cannot be undone"
+        class="flex w-full items-center gap-2 px-3 py-1.5 text-left text-xs text-foreground hover:bg-secondary"
+      >
+        <Archive size={12} />
+        Mark as done
       </button>
     {/if}
   </div>
