@@ -20,10 +20,26 @@
     Eye,
     CircleCheckBig
   } from '@lucide/svelte';
-  import type { NotificationSource, PRRoleFilter, PRDraftFilter, PRCIFilter } from '$lib/types';
+  import type {
+    NotificationSource,
+    PRRoleFilter,
+    PRDraftFilter,
+    PRCIFilter,
+    UnifiedPullRequest
+  } from '$lib/types';
   import { getStarredIds } from '$lib/stores/starred-prs.svelte';
   import { settingsState } from '$lib/stores/settings.svelte';
   import { roving } from '$lib/actions/roving';
+  import { attentionPriority, getAttentionState } from '$lib/utils/pr-attention';
+
+  // Sorts attention-bearing PRs (blocked/failing/ready/stale) to the top of a
+  // section without introducing a second grouping axis — order otherwise
+  // follows whatever `sort` already produced.
+  function byAttention(items: readonly UnifiedPullRequest[]): UnifiedPullRequest[] {
+    return [...items].sort(
+      (a, b) => attentionPriority(getAttentionState(a)) - attentionPriority(getAttentionState(b))
+    );
+  }
 
   let {
     sourceFilter = 'all',
@@ -56,7 +72,7 @@
   let starredIds = $derived(getStarredIds());
 
   // Starred PRs always show at the top; the display window only bounds the rest.
-  let starred = $derived(allItems.filter((pr) => starredIds.has(pr.id)));
+  let starred = $derived(byAttention(allItems.filter((pr) => starredIds.has(pr.id))));
   let unstarredAll = $derived(allItems.filter((pr) => !starredIds.has(pr.id)));
   let unstarred = $derived(unstarredAll.slice(0, getPRDisplayLimit()));
   let hasMore = $derived(unstarredAll.length > unstarred.length);
@@ -76,26 +92,34 @@
 
   // Section splits (only unstarred PRs)
   let authored = $derived(
-    roleFilter === 'all'
-      ? unstarred.filter((pr) => !pr.reviewRequestedFromMe)
-      : roleFilter === 'authored'
-        ? unstarred
-        : []
+    byAttention(
+      roleFilter === 'all'
+        ? unstarred.filter((pr) => !pr.reviewRequestedFromMe)
+        : roleFilter === 'authored'
+          ? unstarred
+          : []
+    )
   );
   let toReview = $derived(
-    roleFilter === 'all'
-      ? unstarred.filter((pr) => pr.reviewRequestedFromMe && !pr.reviewedByMe)
-      : roleFilter === 'review_requested'
-        ? unstarred.filter((pr) => !pr.reviewedByMe)
-        : []
+    byAttention(
+      roleFilter === 'all'
+        ? unstarred.filter((pr) => pr.reviewRequestedFromMe && !pr.reviewedByMe)
+        : roleFilter === 'review_requested'
+          ? unstarred.filter((pr) => !pr.reviewedByMe)
+          : []
+    )
   );
   let reviewed = $derived(
-    roleFilter === 'all'
-      ? unstarred.filter((pr) => pr.reviewRequestedFromMe && pr.reviewedByMe)
-      : roleFilter === 'review_requested'
-        ? unstarred.filter((pr) => pr.reviewedByMe)
-        : []
+    byAttention(
+      roleFilter === 'all'
+        ? unstarred.filter((pr) => pr.reviewRequestedFromMe && pr.reviewedByMe)
+        : roleFilter === 'review_requested'
+          ? unstarred.filter((pr) => pr.reviewedByMe)
+          : []
+    )
   );
+  // Only rendered when groupPullRequests is off — the ungrouped fallback list.
+  let unstarredSorted = $derived(byAttention(unstarred));
 </script>
 
 {#if !isConfigured}
@@ -213,7 +237,7 @@
         {/if}
       {/if}
     {:else}
-      {#each unstarred as pr (pr.id)}
+      {#each unstarredSorted as pr (pr.id)}
         <PullRequestCard pullRequest={pr} />
       {/each}
     {/if}
