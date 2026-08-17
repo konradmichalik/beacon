@@ -3,6 +3,7 @@ import type { SortMode, StatusFilter, NotificationDraftFilter } from './filters.
 import { filterState } from './filters.svelte';
 import { settingsState } from './settings.svelte';
 import { isNotificationMuted } from './mute-rules.svelte';
+import { isSnoozed } from './snooze.svelte';
 import { isTauri, getStorageItem, setStorageItem } from '$lib/utils/storage';
 import { demoNotifications } from '$lib/utils/demo-data';
 import { playNotificationSound } from '$lib/services/notification-sound';
@@ -81,13 +82,13 @@ export function getNotifications(): readonly UnifiedNotification[] {
 }
 
 /**
- * Unread and actually shown to the user. Muted notifications are hidden from the
- * list, so they must not be counted anywhere the user can see the number either
- * — a count that includes them leaves the tray indicator lit with nothing behind
- * it.
+ * Unread and actually shown to the user. Muted and snoozed notifications are
+ * hidden from the list, so they must not be counted anywhere the user can see
+ * the number either — a count that includes them leaves the tray indicator lit
+ * with nothing behind it.
  */
 function isUnreadAndVisible(n: UnifiedNotification): boolean {
-  return n.unread && !isNotificationMuted(n);
+  return n.unread && !isNotificationMuted(n) && !isSnoozed(n);
 }
 
 /** Unread count for the tray icon. */
@@ -203,7 +204,7 @@ export function getFilteredNotifications(
   } else if (draftFilter === 'draft') {
     filtered = filtered.filter((n) => n.draft === true);
   }
-  filtered = filtered.filter((n) => !isNotificationMuted(n));
+  filtered = filtered.filter((n) => !isNotificationMuted(n) && !isSnoozed(n));
 
   if (sort === 'project') {
     filtered.sort((a, b) => {

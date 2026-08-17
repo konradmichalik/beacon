@@ -29,6 +29,7 @@
         { keys: ['Enter'], action: 'Open in browser' },
         { keys: ['Shift', 'F10'], action: 'Open context menu' },
         { keys: ['M'], action: 'Mark as read (Notifications)' },
+        { keys: ['Z'], action: 'Snooze until tomorrow (Notifications)' },
         { keys: ['S'], action: 'Star / Unstar (Pull Requests)' }
       ]
     }

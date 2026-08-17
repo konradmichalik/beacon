@@ -1,5 +1,10 @@
 <script lang="ts">
-  import { getFilteredNotifications, getIsLoading } from '$lib/stores/notifications.svelte';
+  import {
+    getFilteredNotifications,
+    getIsLoading,
+    getNotifications
+  } from '$lib/stores/notifications.svelte';
+  import { getSnoozedNotifications, getSnoozedEntries, unsnooze } from '$lib/stores/snooze.svelte';
   import { filterState } from '$lib/stores/filters.svelte';
   import { hasAnyServiceConfigured } from '$lib/stores/connections.svelte';
   import NotificationCard from './NotificationCard.svelte';
@@ -7,9 +12,10 @@
   import GitHubIcon from '$lib/components/icons/GitHubIcon.svelte';
   import GitLabIcon from '$lib/components/icons/GitLabIcon.svelte';
   import PartyPopperIcon from '$lib/components/icons/PartyPopperIcon.svelte';
-  import { Inbox, ChevronRight, MailOpen } from '@lucide/svelte';
+  import { Inbox, ChevronRight, MailOpen, AlarmClockOff } from '@lucide/svelte';
   import type { UnifiedNotification } from '$lib/types';
   import { roving } from '$lib/actions/roving';
+  import { formatWakeTime } from '$lib/utils/time';
 
   let items = $derived(
     getFilteredNotifications(
@@ -29,6 +35,18 @@
   let unreadItems = $derived(items.filter((n) => n.unread));
   let readItems = $derived(items.filter((n) => !n.unread));
   let showRead = $state(false);
+
+  // getFilteredNotifications already excludes snoozed items, so the snoozed
+  // list is built from the unfiltered set — matching only source/project, the
+  // same scope the hidden-count reasoning elsewhere in the app uses.
+  let snoozedItems = $derived(
+    getSnoozedNotifications(getNotifications()).filter(
+      (n) =>
+        (filterState.source === 'all' || n.source === filterState.source) &&
+        (!filterState.project || n.repository === filterState.project)
+    )
+  );
+  let showSnoozed = $state(false);
 
   interface ProjectGroup {
     repository: string;
@@ -152,6 +170,57 @@
         <div use:roving>
           {#each readItems as notification (notification.id)}
             <NotificationCard {notification} />
+          {/each}
+        </div>
+      {/if}
+    {/if}
+
+    <!-- Snoozed section (collapsible, always at bottom) -->
+    {#if snoozedItems.length > 0}
+      <button
+        type="button"
+        onclick={() => (showSnoozed = !showSnoozed)}
+        class="sticky top-0 z-10 flex w-full items-center gap-1.5 border-b border-border bg-card/95 px-4 py-1.5 backdrop-blur-sm transition-colors hover:bg-secondary/40"
+      >
+        <ChevronRight
+          size={12}
+          class="shrink-0 text-muted-foreground transition-transform {showSnoozed
+            ? 'rotate-90'
+            : ''}"
+        />
+        <AlarmClockOff size={10} class="shrink-0 text-muted-foreground" />
+        <span class="text-[11px] font-semibold text-muted-foreground">Snoozed</span>
+        <span
+          class="ml-auto shrink-0 rounded-full bg-secondary px-1.5 py-px text-[9px] font-semibold text-muted-foreground"
+          >{snoozedItems.length}</span
+        >
+      </button>
+      {#if showSnoozed}
+        <div class="divide-y divide-border/60">
+          {#each snoozedItems as notification (notification.id)}
+            {@const entry = getSnoozedEntries()[notification.id]}
+            <div class="flex items-center gap-3 px-4 py-2">
+              {#if notification.source === 'github'}
+                <GitHubIcon size={12} class="shrink-0 text-muted-foreground/70" />
+              {:else}
+                <GitLabIcon size={12} class="shrink-0 text-muted-foreground/70" />
+              {/if}
+              <div class="min-w-0 flex-1">
+                <p class="truncate text-[12px] text-foreground">{notification.title}</p>
+                {#if entry}
+                  <p class="text-[10px] text-muted-foreground">
+                    Wakes {formatWakeTime(entry.until)}
+                  </p>
+                {/if}
+              </div>
+              <button
+                type="button"
+                onclick={() => unsnooze(notification.id)}
+                class="shrink-0 rounded px-2 py-1 text-[10px] font-medium text-muted-foreground transition-colors hover:bg-secondary hover:text-foreground"
+              >
+                Wake now
+              </button>
+            </div>
           {/each}
         </div>
       {/if}
