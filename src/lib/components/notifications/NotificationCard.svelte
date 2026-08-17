@@ -8,6 +8,7 @@
     getUnreadIdsByAuthor,
     unsubscribeFromNotification
   } from '$lib/stores/notifications.svelte';
+  import { snoozeNotification } from '$lib/stores/snooze.svelte';
   import { timeAgo } from '$lib/utils/time';
   import { openExternalUrl } from '$lib/utils/open-url';
   import { clampMenuPosition, menuPositionFromElement } from '$lib/utils/context-menu';
@@ -39,9 +40,11 @@
     BellOff,
     BellMinus,
     FileEdit,
-    Archive
+    Archive,
+    AlarmClock
   } from '@lucide/svelte';
   import MuteModal from './MuteModal.svelte';
+  import SnoozeModal from './SnoozeModal.svelte';
 
   let { notification }: { notification: UnifiedNotification } = $props();
 
@@ -153,10 +156,11 @@
 
   let contextMenu: { x: number; y: number } | null = $state(null);
   let showMuteModal = $state(false);
+  let showSnoozeModal = $state(false);
 
   function handleContextMenu(event: MouseEvent): void {
     event.preventDefault();
-    contextMenu = clampMenuPosition(event, { width: 240, height: 226 });
+    contextMenu = clampMenuPosition(event, { width: 240, height: 254 });
 
     function close() {
       contextMenu = null;
@@ -193,6 +197,15 @@
 
   function handleContextMute(): void {
     closeContextMenu(() => (showMuteModal = true));
+  }
+
+  function handleContextSnooze(): void {
+    closeContextMenu(() => (showSnoozeModal = true));
+  }
+
+  function handleSnoozeShortcut(): void {
+    dismissing = true;
+    setTimeout(() => snoozeNotification(notification, 'tomorrow', true), 350);
   }
 
   // GitHub threads can always be unsubscribed from. GitLab todos need an iid
@@ -234,7 +247,7 @@
     if (e.key === 'F10' && e.shiftKey) {
       e.preventDefault();
       const rect = (e.currentTarget as HTMLElement).getBoundingClientRect();
-      contextMenu = menuPositionFromElement(rect, { width: 240, height: 226 });
+      contextMenu = menuPositionFromElement(rect, { width: 240, height: 254 });
       function close() {
         contextMenu = null;
         window.removeEventListener('click', close);
@@ -251,6 +264,9 @@
       e.preventDefault();
       dismissing = true;
       setTimeout(() => markAsRead(notification.id), 350);
+    } else if (e.key === 'z') {
+      e.preventDefault();
+      handleSnoozeShortcut();
     }
   }
 </script>
@@ -371,6 +387,14 @@
       <BellOff size={12} />
       Mute…
     </button>
+    <button
+      type="button"
+      onclick={handleContextSnooze}
+      class="flex w-full items-center gap-2 px-3 py-1.5 text-left text-xs text-foreground hover:bg-secondary"
+    >
+      <AlarmClock size={12} />
+      Snooze…
+    </button>
     {#if canUnsubscribe}
       <button
         type="button"
@@ -419,4 +443,8 @@
 
 {#if showMuteModal}
   <MuteModal {notification} onClose={() => (showMuteModal = false)} />
+{/if}
+
+{#if showSnoozeModal}
+  <SnoozeModal {notification} onClose={() => (showSnoozeModal = false)} />
 {/if}
