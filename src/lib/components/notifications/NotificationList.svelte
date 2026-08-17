@@ -1,12 +1,14 @@
 <script lang="ts">
   import {
     getFilteredNotifications,
+    getHiddenCount,
     getIsLoading,
     getNotifications
   } from '$lib/stores/notifications.svelte';
   import { getSnoozedNotifications, getSnoozedEntries, unsnooze } from '$lib/stores/snooze.svelte';
   import { filterState } from '$lib/stores/filters.svelte';
   import { hasAnyServiceConfigured } from '$lib/stores/connections.svelte';
+  import { isTauri } from '$lib/utils/storage';
   import NotificationCard from './NotificationCard.svelte';
   import EmptyState from './EmptyState.svelte';
   import GitHubIcon from '$lib/components/icons/GitHubIcon.svelte';
@@ -48,6 +50,30 @@
   );
   let showSnoozed = $state(false);
 
+  // Scoped to the same source/project/type/etc. filters as `items`, so this
+  // never claims more is hidden than the user could actually see by clearing
+  // filters — a global count would include notifications outside the current
+  // view entirely.
+  let hiddenCount = $derived(
+    getHiddenCount(
+      filterState.source,
+      filterState.project,
+      filterState.types,
+      filterState.projects,
+      filterState.statuses,
+      filterState.authors,
+      filterState.draftFilter
+    )
+  );
+
+  // Deep-links into the standalone settings window; not available in the
+  // browser dev-preview fallback (no Tauri window to open).
+  async function openMuteRuleSettings(): Promise<void> {
+    if (!isTauri()) return;
+    const { invoke } = await import('@tauri-apps/api/core');
+    await invoke('open_settings_window', { tab: 'preferences' });
+  }
+
   interface ProjectGroup {
     repository: string;
     source: 'github' | 'gitlab';
@@ -73,6 +99,18 @@
   });
 </script>
 
+{#snippet hiddenCountFooter()}
+  {#if hiddenCount > 0}
+    <button
+      type="button"
+      onclick={openMuteRuleSettings}
+      class="mt-1.5 text-[10px] text-muted-foreground underline decoration-dotted underline-offset-2 transition-colors hover:text-foreground"
+    >
+      {hiddenCount} hidden — muted or snoozed
+    </button>
+  {/if}
+{/snippet}
+
 {#if !isConfigured}
   <EmptyState
     icon={Inbox}
@@ -92,12 +130,15 @@
     {/each}
   </div>
 {:else if items.length === 0}
-  <EmptyState
-    icon={PartyPopperIcon}
-    title="All clear"
-    description="No unread notifications."
-    iconSize={48}
-  />
+  <div class="flex min-h-full flex-col items-center justify-center">
+    <EmptyState
+      icon={PartyPopperIcon}
+      title="All clear"
+      description="No unread notifications."
+      iconSize={48}
+    />
+    {@render hiddenCountFooter()}
+  </div>
 {:else}
   <div class="flex min-h-full flex-col">
     <!-- Unread -->
@@ -224,6 +265,12 @@
           {/each}
         </div>
       {/if}
+    {/if}
+
+    {#if hiddenCount > 0}
+      <div class="border-t border-border/60 px-4 py-2 text-center">
+        {@render hiddenCountFooter()}
+      </div>
     {/if}
   </div>
 {/if}

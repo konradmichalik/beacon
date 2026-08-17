@@ -317,7 +317,7 @@ pub fn create_tray(app: &App) -> Result<(), Box<dyn std::error::Error>> {
             "settings" => {
                 let app_clone = app.clone();
                 tauri::async_runtime::spawn(async move {
-                    let _ = crate::open_settings_window(app_clone).await;
+                    let _ = crate::open_settings_window(app_clone, None).await;
                 });
             }
             _ => {}

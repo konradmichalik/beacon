@@ -72,14 +72,21 @@ export async function removeMuteRule(id: string): Promise<void> {
   showToast('Mute rule removed');
 }
 
+function ruleMatches(rule: MuteRule, notification: UnifiedNotification): boolean {
+  if (rule.project !== undefined && rule.project !== notification.repository) return false;
+  if (rule.type !== undefined && rule.type !== notification.type) return false;
+  if (rule.status !== undefined && rule.status !== notification.subjectState) return false;
+  if (rule.author !== undefined && rule.author !== notification.author?.login) return false;
+  return true;
+}
+
+/** The first mute rule hiding this notification, or null if none does. */
+export function getMatchingMuteRule(notification: UnifiedNotification): MuteRule | null {
+  return muteRules.find((rule) => ruleMatches(rule, notification)) ?? null;
+}
+
 export function isNotificationMuted(notification: UnifiedNotification): boolean {
-  return muteRules.some((rule) => {
-    if (rule.project !== undefined && rule.project !== notification.repository) return false;
-    if (rule.type !== undefined && rule.type !== notification.type) return false;
-    if (rule.status !== undefined && rule.status !== notification.subjectState) return false;
-    if (rule.author !== undefined && rule.author !== notification.author?.login) return false;
-    return true;
-  });
+  return getMatchingMuteRule(notification) !== null;
 }
 
 function isValidMuteRule(value: unknown): value is MuteRule {

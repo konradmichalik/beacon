@@ -156,20 +156,21 @@ export function markAllSeen(): void {
   lastSeenAt = new Date().toISOString();
 }
 
-export function getFilteredNotifications(
+/**
+ * Every filter except the mute/snooze visibility check. Shared by
+ * `getFilteredNotifications` and `getHiddenCount` so the two never drift:
+ * the hidden count is exactly what this scope contains minus what the former
+ * returns.
+ */
+function applyVisibleFilters(
   sourceFilter: NotificationSource | 'all',
   projectFilter: string | null,
-  sort: SortMode = 'date',
-  // eslint-disable-next-line svelte/prefer-svelte-reactivity -- default param, not state
-  typeFilter: ReadonlySet<NotificationType> = new Set(),
-  // eslint-disable-next-line svelte/prefer-svelte-reactivity -- default param, not state
-  projectsFilter: ReadonlySet<string> = new Set(),
-  // eslint-disable-next-line svelte/prefer-svelte-reactivity -- default param, not state
-  statusFilter: ReadonlySet<StatusFilter> = new Set(),
-  // eslint-disable-next-line svelte/prefer-svelte-reactivity -- default param, not state
-  authorsFilter: ReadonlySet<string> = new Set(),
-  draftFilter: NotificationDraftFilter = 'all'
-): readonly UnifiedNotification[] {
+  typeFilter: ReadonlySet<NotificationType>,
+  projectsFilter: ReadonlySet<string>,
+  statusFilter: ReadonlySet<StatusFilter>,
+  authorsFilter: ReadonlySet<string>,
+  draftFilter: NotificationDraftFilter
+): UnifiedNotification[] {
   let filtered: UnifiedNotification[] = [...notifications];
 
   if (sourceFilter !== 'all') {
@@ -204,6 +205,33 @@ export function getFilteredNotifications(
   } else if (draftFilter === 'draft') {
     filtered = filtered.filter((n) => n.draft === true);
   }
+
+  return filtered;
+}
+
+export function getFilteredNotifications(
+  sourceFilter: NotificationSource | 'all',
+  projectFilter: string | null,
+  sort: SortMode = 'date',
+  // eslint-disable-next-line svelte/prefer-svelte-reactivity -- default param, not state
+  typeFilter: ReadonlySet<NotificationType> = new Set(),
+  // eslint-disable-next-line svelte/prefer-svelte-reactivity -- default param, not state
+  projectsFilter: ReadonlySet<string> = new Set(),
+  // eslint-disable-next-line svelte/prefer-svelte-reactivity -- default param, not state
+  statusFilter: ReadonlySet<StatusFilter> = new Set(),
+  // eslint-disable-next-line svelte/prefer-svelte-reactivity -- default param, not state
+  authorsFilter: ReadonlySet<string> = new Set(),
+  draftFilter: NotificationDraftFilter = 'all'
+): readonly UnifiedNotification[] {
+  let filtered = applyVisibleFilters(
+    sourceFilter,
+    projectFilter,
+    typeFilter,
+    projectsFilter,
+    statusFilter,
+    authorsFilter,
+    draftFilter
+  );
   filtered = filtered.filter((n) => !isNotificationMuted(n) && !isSnoozed(n));
 
   if (sort === 'project') {
@@ -216,6 +244,37 @@ export function getFilteredNotifications(
   }
 
   return filtered;
+}
+
+/**
+ * How many notifications within the current source/project/type/etc. scope
+ * are hidden by a mute rule or a snooze. Scoped the same way as
+ * `getFilteredNotifications` — a global count would include items the user
+ * isn't even looking at right now.
+ */
+export function getHiddenCount(
+  sourceFilter: NotificationSource | 'all',
+  projectFilter: string | null,
+  // eslint-disable-next-line svelte/prefer-svelte-reactivity -- default param, not state
+  typeFilter: ReadonlySet<NotificationType> = new Set(),
+  // eslint-disable-next-line svelte/prefer-svelte-reactivity -- default param, not state
+  projectsFilter: ReadonlySet<string> = new Set(),
+  // eslint-disable-next-line svelte/prefer-svelte-reactivity -- default param, not state
+  statusFilter: ReadonlySet<StatusFilter> = new Set(),
+  // eslint-disable-next-line svelte/prefer-svelte-reactivity -- default param, not state
+  authorsFilter: ReadonlySet<string> = new Set(),
+  draftFilter: NotificationDraftFilter = 'all'
+): number {
+  const withinScope = applyVisibleFilters(
+    sourceFilter,
+    projectFilter,
+    typeFilter,
+    projectsFilter,
+    statusFilter,
+    authorsFilter,
+    draftFilter
+  );
+  return withinScope.filter((n) => isNotificationMuted(n) || isSnoozed(n)).length;
 }
 
 export function getUniqueTypes(): readonly NotificationType[] {

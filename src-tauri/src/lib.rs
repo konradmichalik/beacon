@@ -358,25 +358,28 @@ fn quit_app(app: tauri::AppHandle) {
 }
 
 #[tauri::command]
-async fn open_settings_window(app: tauri::AppHandle) -> Result<(), String> {
+async fn open_settings_window(app: tauri::AppHandle, tab: Option<String>) -> Result<(), String> {
     use tauri::Manager;
 
-    // If settings window already exists, just focus it
+    // If settings window already exists, just focus it. Deep-linking to a tab
+    // only applies to a freshly opened window; switching the tab of an
+    // already-open window is a rarer case not worth an extra IPC round trip.
     if let Some(win) = app.get_webview_window("settings") {
         win.set_focus().map_err(|e| e.to_string())?;
         return Ok(());
     }
 
-    tauri::WebviewWindowBuilder::new(
-        &app,
-        "settings",
-        tauri::WebviewUrl::App("?window=settings".into()),
-    )
-    .title("Beacon Settings")
-    .inner_size(480.0, 480.0)
-    .resizable(false)
-    .build()
-    .map_err(|e| e.to_string())?;
+    let url = match tab {
+        Some(tab) => format!("?window=settings&tab={tab}"),
+        None => "?window=settings".to_string(),
+    };
+
+    tauri::WebviewWindowBuilder::new(&app, "settings", tauri::WebviewUrl::App(url.into()))
+        .title("Beacon Settings")
+        .inner_size(480.0, 480.0)
+        .resizable(false)
+        .build()
+        .map_err(|e| e.to_string())?;
 
     Ok(())
 }
