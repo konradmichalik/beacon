@@ -7,6 +7,7 @@ import { isTauri, getStorageItem, setStorageItem } from '$lib/utils/storage';
 import { demoNotifications } from '$lib/utils/demo-data';
 import { playNotificationSound } from '$lib/services/notification-sound';
 import { showToast } from '$lib/stores/toast.svelte';
+import { parseGitLabTargetUrl } from '$lib/utils/gitlab-target';
 
 let notifications: UnifiedNotification[] = $state([]);
 let isLoading = $state(false);
@@ -571,6 +572,49 @@ export function markAsDone(id: string): void {
   })();
 
   showToast('Marked as done on GitHub — this cannot be undone');
+}
+
+/**
+ * Tells the forge to stop sending notifications for this thread. Unlike Mute
+ * (client-side, this device only), this survives a reinstall and applies to
+ * every client. Not optimistic — the forge doesn't remove the thread itself,
+ * so on success this also marks the notification read to make the effect
+ * visible immediately; on failure nothing changes and a toast explains why.
+ */
+export async function unsubscribeFromNotification(id: string): Promise<void> {
+  const notification = notifications.find((n) => n.id === id);
+  if (!notification) return;
+
+  try {
+    if (notification.source === 'github') {
+      const { getGitHubConfig } = await import('./connections.svelte');
+      const ghConfig = getGitHubConfig();
+      if (!ghConfig) throw new Error('GitHub is not configured');
+      const { unsubscribeGitHubThread } = await import('$lib/services/github/client');
+      await unsubscribeGitHubThread(ghConfig.token, notification.id.replace('github-', ''));
+    } else {
+      const target = parseGitLabTargetUrl(notification.url);
+      if (!target) throw new Error('Unsupported GitLab notification target');
+      const { getGitLabConfig } = await import('./connections.svelte');
+      const glConfig = getGitLabConfig();
+      if (!glConfig) throw new Error('GitLab is not configured');
+      const { unsubscribeGitLabTarget } = await import('$lib/services/gitlab/client');
+      await unsubscribeGitLabTarget(
+        glConfig.token,
+        glConfig.baseUrl,
+        target.projectPath,
+        target.targetType,
+        target.iid
+      );
+    }
+  } catch (e) {
+    console.warn('[beacon] unsubscribe failed:', id, e);
+    showToast('Unsubscribe failed');
+    return;
+  }
+
+  showToast('Unsubscribed — the forge will no longer notify you about this thread');
+  markAsRead(id);
 }
 
 // ── Server-side mark helper ─────────────────────────────────────

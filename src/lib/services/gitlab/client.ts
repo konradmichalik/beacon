@@ -80,6 +80,30 @@ export async function markGitLabTodoDone(
   logInfo('gitlab', `marked todo ${todoId} as done`);
 }
 
+export async function unsubscribeGitLabTarget(
+  token: string,
+  baseUrl: string,
+  projectPath: string,
+  targetType: 'merge_requests' | 'issues',
+  iid: number
+): Promise<void> {
+  const response = await safeFetch(
+    `${baseUrl.replace(/\/$/, '')}/api/v4/projects/${encodeURIComponent(projectPath)}/${targetType}/${iid}/unsubscribe`,
+    {
+      method: 'POST',
+      headers: {
+        Authorization: `Bearer ${token}`
+      }
+    }
+  );
+
+  if (!response.ok) {
+    logError('gitlab', `unsubscribe from ${targetType}/${iid} failed: HTTP ${response.status}`);
+    throw new Error(`GitLab unsubscribe failed: ${response.status}`);
+  }
+  logInfo('gitlab', `unsubscribed from ${targetType}/${iid}`);
+}
+
 export async function markAllGitLabTodosDone(token: string, baseUrl: string): Promise<void> {
   const response = await safeFetch(`${baseUrl.replace(/\/$/, '')}/api/v4/todos/mark_as_done`, {
     method: 'POST',
