@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { onMount, tick } from 'svelte';
   import {
     Sun,
     Moon,
@@ -53,11 +54,33 @@
   } from '@lucide/svelte';
 
   type SettingsTab = 'connections' | 'preferences' | 'alerts' | 'shortcuts' | 'about';
-  let activeTab: SettingsTab = $state('connections');
+  const SETTINGS_TABS: readonly SettingsTab[] = [
+    'connections',
+    'preferences',
+    'alerts',
+    'shortcuts',
+    'about'
+  ];
+
+  function initialTab(): SettingsTab {
+    const requested = new URLSearchParams(window.location.search).get('tab');
+    return SETTINGS_TABS.includes(requested as SettingsTab)
+      ? (requested as SettingsTab)
+      : 'connections';
+  }
+
+  let activeTab: SettingsTab = $state(initialTab());
   let isPlayingPreview = $state(false);
   let activeMuteRules = $derived(getMuteRules());
   let updateStatus: UpdateStatus = $state('idle');
   let updateResult: UpdateCheckResult = $state({ status: 'idle' });
+
+  onMount(() => {
+    if (new URLSearchParams(window.location.search).get('tab') !== 'preferences') return;
+    tick().then(() => {
+      document.getElementById('mute-rules')?.scrollIntoView({ block: 'start' });
+    });
+  });
 
   async function openLoginItemsSettings(): Promise<void> {
     if (!isTauri()) return;
@@ -330,7 +353,7 @@
         Inbox
       </h3>
 
-      <section>
+      <section id="mute-rules">
         <h4 class="mb-2 text-xs font-medium text-foreground">Mute Rules</h4>
         <p class="mb-2 text-[10px] text-muted-foreground">
           Notifications matching these rules are hidden from your inbox. Add rules via right-click
