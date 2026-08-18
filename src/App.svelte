@@ -18,6 +18,7 @@
     setMuteRulesChangeCallback,
     listenForExternalMuteRuleChanges
   } from './lib/stores/mute-rules.svelte';
+  import { initializeSnoozed, setSnoozeChangeCallback } from './lib/stores/snooze.svelte';
   import { loadStarredPRs } from './lib/stores/starred-prs.svelte';
   import {
     startPolling,
@@ -63,6 +64,7 @@
         // Both windows render the mute-rule editor, so both need to follow the
         // other's edits. Only the tray window gets the badge callback below.
         unlistenMuteRules = await listenForExternalMuteRuleChanges();
+        await initializeSnoozed();
         await loadStarredPRs();
 
         if (isSettingsWindow) {
@@ -87,6 +89,7 @@
         });
         setBadgeModeChangeCallback(refreshBadge);
         setMuteRulesChangeCallback(refreshBadge);
+        setSnoozeChangeCallback(refreshBadge);
         setIssuesChangeCallback((enabled) => {
           if (enabled && hasAnyServiceConfigured()) {
             startIssuePolling();

@@ -23,6 +23,17 @@ export function timeAgo(dateString: string): string {
   return d.toLocaleDateString('de-DE', options);
 }
 
+export function formatWakeTime(dateString: string): string {
+  const d = new Date(dateString);
+  const dateOptions: Intl.DateTimeFormatOptions = { day: 'numeric', month: 'short' };
+  if (d.getFullYear() !== new Date().getFullYear()) {
+    dateOptions.year = 'numeric';
+  }
+  const datePart = d.toLocaleDateString('de-DE', dateOptions);
+  const timePart = d.toLocaleTimeString('de-DE', { hour: '2-digit', minute: '2-digit' });
+  return `${datePart}, ${timePart}`;
+}
+
 export function formatRefreshTime(dateString: string | null): string {
   if (!dateString) return 'Never';
   return new Date(dateString).toLocaleTimeString('de-DE', {

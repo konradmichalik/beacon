@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, afterEach } from 'vitest';
-import { timeAgo, formatRefreshTime } from './time';
+import { timeAgo, formatRefreshTime, formatWakeTime } from './time';
 
 afterEach(() => {
   vi.useRealTimers();
@@ -43,6 +43,23 @@ describe('timeAgo', () => {
     vi.setSystemTime(new Date('2026-03-17T12:00:00Z'));
     const result = timeAgo('2025-06-15T12:00:00Z');
     expect(result).toMatch(/2025/);
+  });
+});
+
+describe('formatWakeTime', () => {
+  it('includes date and time', () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date('2026-08-17T12:00:00Z'));
+    const result = formatWakeTime('2026-08-18T09:00:00Z');
+    expect(result).toMatch(/18/);
+    expect(result).toMatch(/\d{2}:\d{2}/);
+  });
+
+  it('includes year for a wake time in a different year', () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date('2026-08-17T12:00:00Z'));
+    const result = formatWakeTime('2027-01-04T09:00:00Z');
+    expect(result).toMatch(/2027/);
   });
 });
 
