@@ -35,6 +35,20 @@ export default ts.config(
     }
   },
   {
+    files: ['src/lib/services/**/*.ts'],
+    ignores: ['**/*.test.ts'],
+    rules: {
+      'no-restricted-globals': [
+        'error',
+        {
+          name: 'fetch',
+          message:
+            'Use safeFetch from $lib/utils/fetch instead — it routes through the Tauri HTTP plugin in desktop mode.'
+        }
+      ]
+    }
+  },
+  {
     ignores: ['dist/', 'dist-pages/', 'src-tauri/', 'node_modules/', '.svelte-kit/']
   }
 );

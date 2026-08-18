@@ -166,27 +166,27 @@ export async function fetchGitHubPullRequestsBasic(
   username: string
 ): Promise<UnifiedPullRequest[]> {
   const [authoredRes, reviewRes] = await Promise.all([
-    fetch(
+    safeFetch(
       `${GITHUB_API}/search/issues?q=type:pr+state:open+author:${encodeURIComponent(username)}&per_page=50&sort=updated`,
       { headers: HEADERS(token) }
-    ),
-    fetch(
+    ).catch(() => null),
+    safeFetch(
       `${GITHUB_API}/search/issues?q=type:pr+state:open+review-requested:${encodeURIComponent(username)}&per_page=50&sort=updated`,
       { headers: HEADERS(token) }
-    )
+    ).catch(() => null)
   ]);
 
-  if (!authoredRes.ok) {
+  if (authoredRes && !authoredRes.ok) {
     logError('github-pr', `authored PRs fetch failed: HTTP ${authoredRes.status}`);
   }
-  if (!reviewRes.ok) {
+  if (reviewRes && !reviewRes.ok) {
     logError('github-pr', `review-requested PRs fetch failed: HTTP ${reviewRes.status}`);
   }
 
-  const authored: GitHubSearchResponse = authoredRes.ok
+  const authored: GitHubSearchResponse = authoredRes?.ok
     ? await authoredRes.json()
     : { total_count: 0, items: [] };
-  const reviewRequested: GitHubSearchResponse = reviewRes.ok
+  const reviewRequested: GitHubSearchResponse = reviewRes?.ok
     ? await reviewRes.json()
     : { total_count: 0, items: [] };
 
