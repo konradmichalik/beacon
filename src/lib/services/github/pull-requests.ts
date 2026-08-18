@@ -63,7 +63,7 @@ export function mapCIStatus(runs: readonly GitHubCheckRun[]): CIStatus {
 
 /** The first failed run, so a red PR can link straight to what broke. */
 export function firstFailingCheck(runs: readonly GitHubCheckRun[]): FailingCheck | null {
-  const failed = runs.find((r) => r.conclusion === 'failure');
+  const failed = runs.find((r) => r.conclusion === 'failure' && r.html_url);
   if (!failed || !failed.html_url) return null;
   return { name: failed.name, url: failed.html_url };
 }
