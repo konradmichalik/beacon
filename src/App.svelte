@@ -56,6 +56,10 @@
 
     async function initialize(): Promise<void> {
       try {
+        // Registered before any other await so a status event emitted while
+        // the rest of init is still running isn't missed until the next poll.
+        unlistenPlatformStatus = await setupPlatformStatusListener();
+
         await initializeSettings();
 
         if (settingsState.debugLog) {
@@ -68,10 +72,6 @@
         unlistenMuteRules = await listenForExternalMuteRuleChanges();
         await initializeSnoozed();
         await loadStarredPRs();
-
-        // Both windows can render the Connections tab, so both need to follow
-        // the platform-status backend event independently of the notification poller.
-        unlistenPlatformStatus = await setupPlatformStatusListener();
 
         if (isSettingsWindow) {
           await initializeConnections();
