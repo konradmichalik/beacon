@@ -3,7 +3,8 @@
   import {
     connectionsState,
     connectGitLabWithPAT,
-    disconnectService
+    disconnectService,
+    getGitLabConfig
   } from '$lib/stores/connections.svelte';
   import { platformStatusState } from '$lib/stores/platform-status.svelte';
   import type { PlatformStatusIndicator } from '$lib/types';
@@ -15,7 +16,18 @@
 
   let status = $derived(connectionsState.gitlab.status);
   let error = $derived(connectionsState.gitlab.error);
-  let platformStatus = $derived(platformStatusState.gitlab);
+
+  // The polled status is always for gitlab.com's public status page — showing
+  // it for a self-hosted instance would misattribute an unrelated incident.
+  let isGitLabCom = $derived.by(() => {
+    if (status !== 'connected') return false;
+    try {
+      return new URL(getGitLabConfig()?.baseUrl ?? '').hostname === 'gitlab.com';
+    } catch {
+      return false;
+    }
+  });
+  let platformStatus = $derived(isGitLabCom ? platformStatusState.gitlab : null);
 
   const PLATFORM_STATUS_CLASS: Record<PlatformStatusIndicator, string> = {
     ok: '',
