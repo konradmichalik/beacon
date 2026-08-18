@@ -57,6 +57,23 @@ export async function markGitHubThreadDone(token: string, threadId: string): Pro
   }
 }
 
+export async function unsubscribeGitHubThread(token: string, threadId: string): Promise<void> {
+  const response = await safeFetch(`${GITHUB_API}/notifications/threads/${threadId}/subscription`, {
+    method: 'PUT',
+    headers: {
+      Authorization: `Bearer ${token}`,
+      Accept: 'application/vnd.github+json',
+      'X-GitHub-Api-Version': '2022-11-28',
+      'Content-Type': 'application/json'
+    },
+    body: JSON.stringify({ ignored: true })
+  });
+
+  if (!response.ok) {
+    throw new Error(`GitHub unsubscribe failed: HTTP ${response.status}`);
+  }
+}
+
 export async function markAllGitHubNotificationsRead(token: string): Promise<void> {
   await safeFetch(`${GITHUB_API}/notifications`, {
     method: 'PUT',
