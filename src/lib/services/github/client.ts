@@ -43,6 +43,20 @@ export async function markGitHubThreadRead(token: string, threadId: string): Pro
   });
 }
 
+export async function markGitHubThreadDone(token: string, threadId: string): Promise<void> {
+  const response = await safeFetch(`${GITHUB_API}/notifications/threads/${threadId}`, {
+    method: 'DELETE',
+    headers: {
+      Authorization: `Bearer ${token}`,
+      Accept: 'application/vnd.github+json',
+      'X-GitHub-Api-Version': '2022-11-28'
+    }
+  });
+  if (!response.ok) {
+    throw new Error(`GitHub mark-done failed: HTTP ${response.status}`);
+  }
+}
+
 export async function markAllGitHubNotificationsRead(token: string): Promise<void> {
   await safeFetch(`${GITHUB_API}/notifications`, {
     method: 'PUT',

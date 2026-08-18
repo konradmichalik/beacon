@@ -41,6 +41,37 @@ export async function loadPersistedReadIds(): Promise<void> {
   }
 }
 
+// Track GitHub notifications marked "done" (DELETE'd on the server) so a poll
+// already in flight can't re-add them. Unlike locallyReadIds, this must be
+// pruned by age only — a "done" thread never reappears in the backend payload,
+// so pruning on absence would drop the entry on the very next poll.
+// eslint-disable-next-line svelte/prefer-svelte-reactivity -- not reactive state, internal bookkeeping
+const dismissedIds = new Map<string, number>();
+const DISMISSED_IDS_STORAGE_KEY = 'dismissedNotificationIds';
+const DISMISSED_IDS_MAX_AGE_MS = 30 * 24 * 60 * 60 * 1000; // 30 days
+
+let dismissedPersistTimer: ReturnType<typeof setTimeout> | null = null;
+
+function persistDismissedIds(): void {
+  if (dismissedPersistTimer) return;
+  dismissedPersistTimer = setTimeout(() => {
+    dismissedPersistTimer = null;
+    const obj = Object.fromEntries(dismissedIds);
+    setStorageItem(DISMISSED_IDS_STORAGE_KEY, obj).catch(() => {});
+  }, 500);
+}
+
+export async function loadPersistedDismissedIds(): Promise<void> {
+  const stored = await getStorageItem<Record<string, number>>(DISMISSED_IDS_STORAGE_KEY);
+  if (!stored) return;
+  const now = Date.now();
+  for (const [id, ts] of Object.entries(stored)) {
+    if (now - ts < DISMISSED_IDS_MAX_AGE_MS) {
+      dismissedIds.set(id, ts);
+    }
+  }
+}
+
 // Timestamp of the last time the user opened the popup
 let lastSeenAt: string | null = $state(null);
 
@@ -339,8 +370,9 @@ async function updateTrayBadge(count: number): Promise<void> {
 let knownUnreadIds = new Set<string>();
 let isFirstLoad = true;
 
-function updateFromBackend(items: UnifiedNotification[]): void {
+export function updateFromBackend(items: UnifiedNotification[]): void {
   // Clean up locally-read IDs no longer in the notification list
+  // eslint-disable-next-line svelte/prefer-svelte-reactivity -- local lookup set, not state
   const ids = new Set(items.map((n) => n.id));
   let pruned = false;
   for (const id of locallyReadIds.keys()) {
@@ -351,10 +383,28 @@ function updateFromBackend(items: UnifiedNotification[]): void {
   }
   if (pruned) persistReadIds();
 
+  // Prune dismissedIds by age only (see comment at declaration) — a poll in
+  // flight when a thread is marked done may still briefly return it, so it is
+  // filtered out below rather than pruned on absence.
+  const now = Date.now();
+  let dismissedPruned = false;
+  for (const [id, ts] of dismissedIds) {
+    if (now - ts >= DISMISSED_IDS_MAX_AGE_MS) {
+      dismissedIds.delete(id);
+      dismissedPruned = true;
+    }
+  }
+  if (dismissedPruned) persistDismissedIds();
+
+  const undismissedItems = items.filter((n) => !dismissedIds.has(n.id));
+
   // Apply local read state overlay
-  const effectiveItems = items.map((n) => (locallyReadIds.has(n.id) ? { ...n, unread: false } : n));
+  const effectiveItems = undismissedItems.map((n) =>
+    locallyReadIds.has(n.id) ? { ...n, unread: false } : n
+  );
 
   // Detect genuinely new unread notifications for sound playback
+  // eslint-disable-next-line svelte/prefer-svelte-reactivity -- local lookup set, not state
   const currentUnreadIds = new Set(effectiveItems.filter((n) => n.unread).map((n) => n.id));
   if (!isFirstLoad && settingsState.notifyMode !== 'disabled') {
     const hasNew = [...currentUnreadIds].some((id) => !knownUnreadIds.has(id));
@@ -366,6 +416,7 @@ function updateFromBackend(items: UnifiedNotification[]): void {
   isFirstLoad = false;
 
   notifications = effectiveItems;
+  // eslint-disable-next-line svelte/prefer-svelte-reactivity -- timestamp string, not reactive Date
   lastRefresh = new Date().toISOString();
 
   // Update badge accounting for locally-read and muted items
@@ -493,6 +544,50 @@ export function markAsRead(id: string): void {
   markOnServers([notification], { totalGhUnread, totalGlUnread }).catch(() => {});
 
   showToast('Marked as read');
+}
+
+/**
+ * GitHub-only: DELETEs the thread so it leaves the github.com inbox entirely,
+ * not just the unread state. Irreversible via the API, so no undo affordance.
+ */
+export function markAsDone(id: string): void {
+  const found = notifications.find((n) => n.id === id);
+  if (!found || found.source !== 'github') return;
+  const notification: UnifiedNotification = found;
+
+  dismissedIds.set(id, Date.now());
+  persistDismissedIds();
+  notifications = notifications.filter((n) => n.id !== id);
+  updateTrayBadge(countBadgeUnread(notifications));
+
+  const threadId = notification.id.replace('github-', '');
+
+  function rollback(): void {
+    dismissedIds.delete(id);
+    persistDismissedIds();
+    if (!notifications.some((n) => n.id === id)) {
+      notifications = [...notifications, notification];
+    }
+    updateTrayBadge(countBadgeUnread(notifications));
+    showToast('Could not mark as done on GitHub');
+  }
+
+  (async () => {
+    const { getGitHubConfig } = await import('./connections.svelte');
+    const ghConfig = getGitHubConfig();
+    if (!ghConfig) {
+      rollback();
+      return;
+    }
+    const { markGitHubThreadDone } = await import('$lib/services/github/client');
+    try {
+      await markGitHubThreadDone(ghConfig.token, threadId);
+      showToast('Marked as done on GitHub — this cannot be undone');
+    } catch (e) {
+      console.warn('[beacon] GH mark-done failed:', id, e);
+      rollback();
+    }
+  })();
 }
 
 // ── Server-side mark helper ─────────────────────────────────────
