@@ -15,13 +15,11 @@ describe('parseGitLabTargetUrl', () => {
   });
 
   it('parses an issue URL', () => {
-    expect(parseGitLabTargetUrl('https://gitlab.com/acme/project/-/issues/7', GITLAB_COM)).toEqual(
-      {
-        projectPath: 'acme/project',
-        targetType: 'issues',
-        iid: 7
-      }
-    );
+    expect(parseGitLabTargetUrl('https://gitlab.com/acme/project/-/issues/7', GITLAB_COM)).toEqual({
+      projectPath: 'acme/project',
+      targetType: 'issues',
+      iid: 7
+    });
   });
 
   it('handles a subgroup path', () => {
@@ -88,12 +86,12 @@ describe('parseGitLabTargetUrl', () => {
   });
 
   it('falls back to the full pathname when baseUrl is malformed', () => {
-    expect(
-      parseGitLabTargetUrl('https://gitlab.com/acme/project/-/issues/3', 'not a url')
-    ).toEqual({
-      projectPath: 'acme/project',
-      targetType: 'issues',
-      iid: 3
-    });
+    expect(parseGitLabTargetUrl('https://gitlab.com/acme/project/-/issues/3', 'not a url')).toEqual(
+      {
+        projectPath: 'acme/project',
+        targetType: 'issues',
+        iid: 3
+      }
+    );
   });
 });
