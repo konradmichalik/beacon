@@ -70,8 +70,14 @@ struct PlatformStatusEvent {
 /// Runs for the app's lifetime; independent of `polling::start_polling` /
 /// `stop_polling` since the status check is cheap and useful even while the
 /// notification poller is stopped.
-pub fn spawn_loop(app: AppHandle) -> tokio::task::JoinHandle<()> {
-    tokio::spawn(async move {
+///
+/// Called synchronously from `setup()`, outside any Tokio task, so this must
+/// go through Tauri's runtime-agnostic spawn rather than `tokio::spawn`
+/// directly — the latter panics with "no reactor running" when there's no
+/// ambient Tokio context to spawn onto (see `tray.rs`'s menu handler for the
+/// same pattern from a sync callback).
+pub fn spawn_loop(app: AppHandle) -> tauri::async_runtime::JoinHandle<()> {
+    tauri::async_runtime::spawn(async move {
         let client = reqwest::Client::builder()
             .user_agent("Beacon")
             .build()
