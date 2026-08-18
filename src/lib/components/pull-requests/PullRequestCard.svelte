@@ -149,15 +149,11 @@
   data-roving-item
   tabindex="-1"
   onkeydown={handleCardKeydown}
+  onclick={openUrl}
+  oncontextmenu={handleContextMenu}
   class="border-b border-border/60 outline-none focus:bg-surface-hovered focus:shadow-[inset_3px_0_0_var(--ds-border-focused)]"
 >
-  <!-- Not focusable (tabindex=-1) — the outer roving container's onkeydown handles Enter -->
-  <!-- svelte-ignore a11y_click_events_have_key_events -->
   <div
-    role="button"
-    tabindex={-1}
-    onclick={openUrl}
-    oncontextmenu={handleContextMenu}
     class="group relative flex w-full items-start gap-3 px-4 py-3 text-left transition-all duration-200 ease-in-out hover:bg-surface-hovered"
   >
     <!-- Attention indicator -->

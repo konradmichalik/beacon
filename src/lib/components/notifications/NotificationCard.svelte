@@ -13,6 +13,7 @@
   import { openExternalUrl } from '$lib/utils/open-url';
   import { clampMenuPosition, menuPositionFromElement } from '$lib/utils/context-menu';
   import { parseGitLabTargetUrl } from '$lib/utils/gitlab-target';
+  import { getGitLabConfig } from '$lib/stores/connections.svelte';
   import { focusTrap } from '$lib/actions/focusTrap';
   import GitHubIcon from '$lib/components/icons/GitHubIcon.svelte';
   import GitLabIcon from '$lib/components/icons/GitLabIcon.svelte';
@@ -213,7 +214,8 @@
   // issues — pipelines and other target types have no unsubscribe endpoint.
   let canUnsubscribe = $derived(
     notification.source === 'github' ||
-      (notification.source === 'gitlab' && parseGitLabTargetUrl(notification.url) !== null)
+      (notification.source === 'gitlab' &&
+        parseGitLabTargetUrl(notification.url, getGitLabConfig()?.baseUrl ?? '') !== null)
   );
 
   function handleContextUnsubscribe(): void {

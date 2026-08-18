@@ -48,6 +48,9 @@ export async function initializeSnoozed(): Promise<void> {
     }
   }
   snoozed = kept;
+  if (Object.keys(kept).length !== Object.keys(stored).length) {
+    await persist();
+  }
 }
 
 export function snoozeNotification(

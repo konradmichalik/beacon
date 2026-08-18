@@ -27,3 +27,10 @@ export interface AllConnectionsState {
   github: ServiceState;
   gitlab: ServiceState;
 }
+
+export type PlatformStatusIndicator = 'ok' | 'degraded' | 'down';
+
+export interface PlatformStatus {
+  readonly indicator: PlatformStatusIndicator;
+  readonly description: string;
+}

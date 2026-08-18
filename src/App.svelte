@@ -31,6 +31,7 @@
     loadPersistedReadIds,
     loadPersistedDismissedIds
   } from './lib/stores/notifications.svelte';
+  import { setupPlatformStatusListener } from './lib/stores/platform-status.svelte';
   import {
     startPRPolling,
     stopPRPolling,
@@ -51,9 +52,14 @@
     let unlistenNotifications: (() => void) | undefined;
     let unlistenSettings: (() => void) | undefined;
     let unlistenMuteRules: (() => void) | undefined;
+    let unlistenPlatformStatus: (() => void) | undefined;
 
     async function initialize(): Promise<void> {
       try {
+        // Registered before any other await so a status event emitted while
+        // the rest of init is still running isn't missed until the next poll.
+        unlistenPlatformStatus = await setupPlatformStatusListener();
+
         await initializeSettings();
 
         if (settingsState.debugLog) {
@@ -141,6 +147,7 @@
       unlistenNotifications?.();
       unlistenSettings?.();
       unlistenMuteRules?.();
+      unlistenPlatformStatus?.();
     };
   });
 </script>

@@ -74,7 +74,7 @@
   // Starred PRs always show at the top; the display window only bounds the rest.
   let starred = $derived(byAttention(allItems.filter((pr) => starredIds.has(pr.id))));
   let unstarredAll = $derived(allItems.filter((pr) => !starredIds.has(pr.id)));
-  let unstarred = $derived(unstarredAll.slice(0, getPRDisplayLimit()));
+  let unstarred = $derived(byAttention(unstarredAll).slice(0, getPRDisplayLimit()));
   let hasMore = $derived(unstarredAll.length > unstarred.length);
   let remaining = $derived(unstarredAll.length - unstarred.length);
 
@@ -237,9 +237,11 @@
         {/if}
       {/if}
     {:else}
-      {#each unstarredSorted as pr (pr.id)}
-        <PullRequestCard pullRequest={pr} />
-      {/each}
+      <div use:roving>
+        {#each unstarredSorted as pr (pr.id)}
+          <PullRequestCard pullRequest={pr} />
+        {/each}
+      </div>
     {/if}
 
     {#if hasMore}

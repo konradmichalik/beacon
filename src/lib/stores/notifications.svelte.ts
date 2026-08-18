@@ -670,11 +670,11 @@ export async function unsubscribeFromNotification(id: string): Promise<void> {
       const { unsubscribeGitHubThread } = await import('$lib/services/github/client');
       await unsubscribeGitHubThread(ghConfig.token, notification.id.replace('github-', ''));
     } else {
-      const target = parseGitLabTargetUrl(notification.url);
-      if (!target) throw new Error('Unsupported GitLab notification target');
       const { getGitLabConfig } = await import('./connections.svelte');
       const glConfig = getGitLabConfig();
       if (!glConfig) throw new Error('GitLab is not configured');
+      const target = parseGitLabTargetUrl(notification.url, glConfig.baseUrl);
+      if (!target) throw new Error('Unsupported GitLab notification target');
       const { unsubscribeGitLabTarget } = await import('$lib/services/gitlab/client');
       await unsubscribeGitLabTarget(
         glConfig.token,
