@@ -78,6 +78,13 @@
     await openExternalUrl(pullRequest.url);
   }
 
+  async function openFailingCheck(event: MouseEvent): Promise<void> {
+    event.stopPropagation();
+    if (pullRequest.failingCheck) {
+      await openExternalUrl(pullRequest.failingCheck.url);
+    }
+  }
+
   let starred = $derived(isStarred(pullRequest.id));
   let contextMenu: { x: number; y: number } | null = $state(null);
 
@@ -97,6 +104,7 @@
   }
 
   function handleCardKeydown(e: KeyboardEvent): void {
+    if (e.target !== e.currentTarget) return;
     if (e.key === 'F10' && e.shiftKey) {
       e.preventDefault();
       const rect = (e.currentTarget as HTMLElement).getBoundingClientRect();
@@ -127,8 +135,10 @@
   onkeydown={handleCardKeydown}
   class="border-b border-border/60 outline-none focus:bg-surface-hovered focus:shadow-[inset_3px_0_0_var(--ds-border-focused)]"
 >
-  <button
-    type="button"
+  <!-- Not focusable (tabindex=-1) — the outer roving container's onkeydown handles Enter -->
+  <!-- svelte-ignore a11y_click_events_have_key_events -->
+  <div
+    role="button"
     tabindex={-1}
     onclick={openUrl}
     oncontextmenu={handleContextMenu}
@@ -188,7 +198,18 @@
           {@const CIIcon = ciInfo.icon}
           <span class="flex shrink-0 items-center gap-0.5 text-[10px] font-medium {ciInfo.class}">
             <CIIcon size={10} />
-            {ciInfo.label}
+            {#if pullRequest.ciStatus === 'failure' && pullRequest.failingCheck}
+              <button
+                type="button"
+                onclick={openFailingCheck}
+                title="Open {pullRequest.failingCheck.name}"
+                class="max-w-[110px] truncate underline decoration-dotted underline-offset-2 hover:text-destructive"
+              >
+                {pullRequest.failingCheck.name}
+              </button>
+            {:else}
+              {ciInfo.label}
+            {/if}
           </span>
         {/if}
 
@@ -210,7 +231,7 @@
         <span class="ml-auto shrink-0 text-[11px] text-muted-foreground">{timeLabel}</span>
       </div>
     </div>
-  </button>
+  </div>
 </div>
 
 {#if contextMenu}
