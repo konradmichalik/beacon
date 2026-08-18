@@ -5,9 +5,7 @@ export type {
   SubjectState,
   UnifiedNotification,
   GitHubNotification,
-  GitLabTodo,
-  MuteRule,
-  NotificationGroup
+  MuteRule
 } from './notifications';
 
 export { NOTIFICATION_TYPE_LABELS } from './notifications';
