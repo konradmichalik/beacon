@@ -12,7 +12,6 @@ vi.mock('./settings.svelte', () => ({
   }
 }));
 vi.mock('$lib/services/notification-sound', () => ({ playNotificationSound: vi.fn() }));
-vi.mock('$lib/stores/toast.svelte', () => ({ showToast: vi.fn() }));
 vi.mock('$lib/utils/demo-data', () => ({ demoNotifications: [] }));
 vi.mock('$lib/utils/storage', () => ({
   isTauri: () => false,
@@ -37,7 +36,16 @@ vi.mock('$lib/services/gitlab/client', () => ({
   markAllGitLabTodosDone: vi.fn()
 }));
 
+const showToast = vi.fn();
+vi.mock('$lib/stores/toast.svelte', () => ({
+  showToast: (...args: unknown[]) => showToast(...args)
+}));
+
 import { updateFromBackend, markAsDone, getNotifications } from './notifications.svelte';
+
+function flushMicrotasks(): Promise<void> {
+  return new Promise((resolve) => setTimeout(resolve, 0));
+}
 
 function notification(overrides: Partial<UnifiedNotification> = {}): UnifiedNotification {
   return {
@@ -62,9 +70,15 @@ function ids(): string[] {
 }
 
 describe('markAsDone + dismissedIds overlay', () => {
-  beforeEach(() => {
+  beforeEach(async () => {
+    // Drain any fire-and-forget promise chain left pending by the previous
+    // test (markAsDone's async work isn't awaited by callers) before
+    // resetting mocks, so its late resolution can't leak into this test.
+    await flushMicrotasks();
     vi.useRealTimers();
     getGitHubConfig.mockReturnValue({ token: 'tok' });
+    markGitHubThreadDone.mockReset().mockResolvedValue(undefined);
+    showToast.mockReset();
     updateFromBackend([]);
   });
 
@@ -108,5 +122,47 @@ describe('markAsDone + dismissedIds overlay', () => {
     expect(ids()).toContain('github-stale');
 
     vi.useRealTimers();
+  });
+
+  it('shows a success toast only after the server request resolves', async () => {
+    updateFromBackend([notification({ id: 'github-success' })]);
+    markAsDone('github-success');
+
+    expect(showToast).not.toHaveBeenCalled();
+
+    await flushMicrotasks();
+    expect(showToast).toHaveBeenCalledWith('Marked as done on GitHub — this cannot be undone');
+  });
+
+  it('rolls back the optimistic removal when the GitHub request fails', async () => {
+    markGitHubThreadDone.mockRejectedValue(new Error('HTTP 403'));
+    updateFromBackend([notification({ id: 'github-fail' })]);
+    markAsDone('github-fail');
+
+    expect(ids()).not.toContain('github-fail');
+
+    await flushMicrotasks();
+
+    expect(ids()).toContain('github-fail');
+    expect(showToast).toHaveBeenCalledWith('Could not mark as done on GitHub');
+
+    // The id must no longer be treated as dismissed, otherwise a later poll
+    // would filter it back out again despite the rollback.
+    updateFromBackend([notification({ id: 'github-fail' })]);
+    expect(ids()).toContain('github-fail');
+  });
+
+  it('rolls back when there is no GitHub connection configured', async () => {
+    getGitHubConfig.mockReturnValue(null);
+    updateFromBackend([notification({ id: 'github-noconfig' })]);
+    markAsDone('github-noconfig');
+
+    expect(ids()).not.toContain('github-noconfig');
+
+    await flushMicrotasks();
+
+    expect(ids()).toContain('github-noconfig');
+    expect(showToast).toHaveBeenCalledWith('Could not mark as done on GitHub');
+    expect(markGitHubThreadDone).not.toHaveBeenCalled();
   });
 });

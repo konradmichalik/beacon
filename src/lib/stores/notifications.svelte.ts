@@ -612,8 +612,9 @@ export function markAsRead(id: string): void {
  * not just the unread state. Irreversible via the API, so no undo affordance.
  */
 export function markAsDone(id: string): void {
-  const notification = notifications.find((n) => n.id === id);
-  if (!notification || notification.source !== 'github') return;
+  const found = notifications.find((n) => n.id === id);
+  if (!found || found.source !== 'github') return;
+  const notification: UnifiedNotification = found;
 
   dismissedIds.set(id, Date.now());
   persistDismissedIds();
@@ -621,17 +622,33 @@ export function markAsDone(id: string): void {
   updateTrayBadge(countBadgeUnread(notifications));
 
   const threadId = notification.id.replace('github-', '');
+
+  function rollback(): void {
+    dismissedIds.delete(id);
+    persistDismissedIds();
+    if (!notifications.some((n) => n.id === id)) {
+      notifications = [...notifications, notification];
+    }
+    updateTrayBadge(countBadgeUnread(notifications));
+    showToast('Could not mark as done on GitHub');
+  }
+
   (async () => {
     const { getGitHubConfig } = await import('./connections.svelte');
     const ghConfig = getGitHubConfig();
-    if (!ghConfig) return;
+    if (!ghConfig) {
+      rollback();
+      return;
+    }
     const { markGitHubThreadDone } = await import('$lib/services/github/client');
-    markGitHubThreadDone(ghConfig.token, threadId).catch((e) =>
-      console.warn('[beacon] GH mark-done failed:', id, e)
-    );
+    try {
+      await markGitHubThreadDone(ghConfig.token, threadId);
+      showToast('Marked as done on GitHub — this cannot be undone');
+    } catch (e) {
+      console.warn('[beacon] GH mark-done failed:', id, e);
+      rollback();
+    }
   })();
-
-  showToast('Marked as done on GitHub — this cannot be undone');
 }
 
 /**
