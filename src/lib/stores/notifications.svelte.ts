@@ -471,16 +471,6 @@ export function markAllAsRead(ids?: ReadonlySet<string>): void {
   showToast(unread.length === 1 ? 'Marked as read' : `${unread.length} marked as read`);
 }
 
-export function markAsUnread(id: string): void {
-  const notification = notifications.find((n) => n.id === id);
-  if (!notification || notification.unread) return;
-
-  locallyReadIds.delete(id);
-  persistReadIds();
-  notifications = notifications.map((n) => (n.id === id ? { ...n, unread: true } : n));
-  updateTrayBadge(countBadgeUnread(notifications));
-}
-
 export function markAsRead(id: string): void {
   const notification = notifications.find((n) => n.id === id);
   if (!notification || !notification.unread) return;
