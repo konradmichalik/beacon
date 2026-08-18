@@ -104,6 +104,7 @@
   }
 
   function handleCardKeydown(e: KeyboardEvent): void {
+    if (e.target !== e.currentTarget) return;
     if (e.key === 'F10' && e.shiftKey) {
       e.preventDefault();
       const rect = (e.currentTarget as HTMLElement).getBoundingClientRect();
