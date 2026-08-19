@@ -7,6 +7,7 @@
     getPRCountByRole,
     getPRCountByDraft,
     getPRCountByCI,
+    getPRCountByMerge,
     getPRCountByProject
   } from '$lib/stores/pull-requests.svelte';
   import GitHubIcon from '$lib/components/icons/GitHubIcon.svelte';
@@ -14,7 +15,13 @@
   import SourceToggle from '$lib/components/ui/SourceToggle.svelte';
   import SortMenu from '$lib/components/ui/SortMenu.svelte';
   import { Filter, X } from '@lucide/svelte';
-  import type { NotificationSource, PRRoleFilter, PRDraftFilter, PRCIFilter } from '$lib/types';
+  import type {
+    NotificationSource,
+    PRRoleFilter,
+    PRDraftFilter,
+    PRCIFilter,
+    PRMergeFilter
+  } from '$lib/types';
   import { SvelteSet } from 'svelte/reactivity';
 
   type SourceOption = NotificationSource | 'all';
@@ -25,12 +32,14 @@
     roleFilter = 'all',
     draftFilter = 'all',
     ciFilter = 'all',
+    mergeFilter = 'all',
     sort = 'updated',
     projectsFilter = new SvelteSet<string>(),
     onSourceChange,
     onRoleChange,
     onDraftChange,
     onCIChange,
+    onMergeChange,
     onSortChange,
     onProjectsChange
   }: {
@@ -38,12 +47,14 @@
     roleFilter?: PRRoleFilter;
     draftFilter?: PRDraftFilter;
     ciFilter?: PRCIFilter;
+    mergeFilter?: PRMergeFilter;
     sort?: SortMode;
     projectsFilter?: SvelteSet<string>;
     onSourceChange: (source: SourceOption) => void;
     onRoleChange: (role: PRRoleFilter) => void;
     onDraftChange: (draft: PRDraftFilter) => void;
     onCIChange: (ci: PRCIFilter) => void;
+    onMergeChange: (merge: PRMergeFilter) => void;
     onSortChange: (sort: SortMode) => void;
     onProjectsChange: (projects: SvelteSet<string>) => void;
   } = $props();
@@ -57,6 +68,7 @@
   let countByRole = $derived(getPRCountByRole(sourceFilter));
   let countByDraft = $derived(getPRCountByDraft(sourceFilter));
   let countByCI = $derived(getPRCountByCI(sourceFilter));
+  let countByMerge = $derived(getPRCountByMerge(sourceFilter));
   let countByProject = $derived(getPRCountByProject(sourceFilter));
   let sourceScopedTotal = $derived(
     sourceFilter === 'all' ? totalCount : sourceFilter === 'github' ? githubCount : gitlabCount
@@ -72,7 +84,11 @@
   });
 
   let hasActiveFilter = $derived(
-    roleFilter !== 'all' || draftFilter !== 'all' || ciFilter !== 'all' || projectsFilter.size > 0
+    roleFilter !== 'all' ||
+      draftFilter !== 'all' ||
+      ciFilter !== 'all' ||
+      mergeFilter !== 'all' ||
+      projectsFilter.size > 0
   );
 
   const chipBase = 'rounded-md border px-2 py-0.5 text-[10px] font-medium transition-colors';
@@ -98,6 +114,7 @@
     onRoleChange('all');
     onDraftChange('all');
     onCIChange('all');
+    onMergeChange('all');
     onProjectsChange(new SvelteSet());
     filterOpen = false;
   }
@@ -248,6 +265,24 @@
                 countByCI,
                 sourceScopedTotal,
                 (v) => onCIChange(v as PRCIFilter)
+              )}
+            </div>
+
+            <!-- Merge -->
+            <div>
+              <span
+                class="mb-1.5 block text-[10px] font-semibold uppercase tracking-wide text-muted-foreground"
+                >Merge</span
+              >
+              {@render filterChips(
+                [
+                  { value: 'all', label: 'All' },
+                  { value: 'mergeable', label: 'Mergeable' }
+                ],
+                mergeFilter,
+                countByMerge,
+                sourceScopedTotal,
+                (v) => onMergeChange(v as PRMergeFilter)
               )}
             </div>
 

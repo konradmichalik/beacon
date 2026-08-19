@@ -16,7 +16,7 @@
 ## ✨ Features
 
 - **Unified inbox** for GitHub and GitLab notifications side by side
-- **My PRs overview** — see open pull requests you authored or need to review, with CI and review status at a glance
+- **My PRs overview** — see open pull requests you authored or need to review, with CI, review and merge status at a glance
 - **Issues overview** _(opt-in)_ — open issues you created or are assigned to, grouped by role; enable it in Settings
 - **Menu bar popup** — lives quietly in the tray, one click to open
 - **Filter & sort** by source, project, type, or read status

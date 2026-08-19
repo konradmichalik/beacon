@@ -26,6 +26,7 @@
     PRRoleFilter,
     PRDraftFilter,
     PRCIFilter,
+    PRMergeFilter,
     IssueRoleFilter
   } from '$lib/types';
   import type { PRSortMode } from '$lib/stores/pull-requests.svelte';
@@ -44,6 +45,7 @@
   let prRoleFilter: PRRoleFilter = $state('all');
   let prDraftFilter: PRDraftFilter = $state('all');
   let prCIFilter: PRCIFilter = $state('all');
+  let prMergeFilter: PRMergeFilter = $state('all');
   let prSort: PRSortMode = $state('updated');
   // eslint-disable-next-line svelte/no-unnecessary-state-wrap -- needed for reassignment reactivity in callbacks
   let prProjectsFilter: SvelteSet<string> = $state(new SvelteSet());
@@ -242,12 +244,14 @@
         roleFilter={prRoleFilter}
         draftFilter={prDraftFilter}
         ciFilter={prCIFilter}
+        mergeFilter={prMergeFilter}
         sort={prSort}
         projectsFilter={prProjectsFilter}
         onSourceChange={(s) => (prSourceFilter = s)}
         onRoleChange={(r) => (prRoleFilter = r)}
         onDraftChange={(d) => (prDraftFilter = d)}
         onCIChange={(c) => (prCIFilter = c)}
+        onMergeChange={(m) => (prMergeFilter = m)}
         onSortChange={(s) => (prSort = s)}
         onProjectsChange={(p) => (prProjectsFilter = p)}
       />
@@ -273,6 +277,7 @@
             roleFilter={prRoleFilter}
             draftFilter={prDraftFilter}
             ciFilter={prCIFilter}
+            mergeFilter={prMergeFilter}
             sort={prSort}
             projectsFilter={prProjectsFilter}
           />

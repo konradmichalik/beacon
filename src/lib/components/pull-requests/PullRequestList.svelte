@@ -25,6 +25,7 @@
     PRRoleFilter,
     PRDraftFilter,
     PRCIFilter,
+    PRMergeFilter,
     UnifiedPullRequest
   } from '$lib/types';
   import { getStarredIds } from '$lib/stores/starred-prs.svelte';
@@ -46,6 +47,7 @@
     roleFilter = 'all',
     draftFilter = 'all',
     ciFilter = 'all',
+    mergeFilter = 'all',
     sort = 'updated',
     projectsFilter = new Set<string>()
   }: {
@@ -53,6 +55,7 @@
     roleFilter?: PRRoleFilter;
     draftFilter?: PRDraftFilter;
     ciFilter?: PRCIFilter;
+    mergeFilter?: PRMergeFilter;
     sort?: PRSortMode;
     projectsFilter?: ReadonlySet<string>;
   } = $props();
@@ -64,7 +67,15 @@
   }
 
   let allItems = $derived(
-    getFilteredPRs(sourceFilter, roleFilter, sort, draftFilter, ciFilter, projectsFilter)
+    getFilteredPRs({
+      source: sourceFilter,
+      role: roleFilter,
+      sort,
+      draft: draftFilter,
+      ci: ciFilter,
+      merge: mergeFilter,
+      projects: projectsFilter
+    })
   );
   let isLoading = $derived(getIsPRLoading());
   let isConfigured = $derived(hasAnyServiceConfigured());
@@ -80,7 +91,7 @@
 
   // Restart the display window whenever the active filters change.
   let filterKey = $derived(
-    `${sourceFilter}|${roleFilter}|${draftFilter}|${ciFilter}|${[...projectsFilter].sort().join(',')}`
+    `${sourceFilter}|${roleFilter}|${draftFilter}|${ciFilter}|${mergeFilter}|${[...projectsFilter].sort().join(',')}`
   );
   let lastFilterKey = '';
   $effect(() => {

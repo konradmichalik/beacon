@@ -3,7 +3,8 @@ import type {
   NotificationSource,
   PRRoleFilter,
   PRDraftFilter,
-  PRCIFilter
+  PRCIFilter,
+  PRMergeFilter
 } from '$lib/types';
 import { isServiceConnected, getGitHubConfig, getGitLabConfig } from './connections.svelte';
 import { fetchGitHubPullRequestsBasic, enrichGitHubPR } from '$lib/services/github/pull-requests';
@@ -77,11 +78,16 @@ export function getUniquePRProjectsWithSource(): readonly {
     .sort((a, b) => a.repository.localeCompare(b.repository));
 }
 
+function prsForSource(sourceFilter: NotificationSource | 'all'): readonly UnifiedPullRequest[] {
+  return sourceFilter === 'all'
+    ? pullRequests
+    : pullRequests.filter((pr) => pr.source === sourceFilter);
+}
+
 export function getPRCountByRole(
   sourceFilter: NotificationSource | 'all'
 ): ReadonlyMap<PRRoleFilter, number> {
-  const filtered =
-    sourceFilter === 'all' ? pullRequests : pullRequests.filter((pr) => pr.source === sourceFilter);
+  const filtered = prsForSource(sourceFilter);
   // eslint-disable-next-line svelte/prefer-svelte-reactivity -- local counting map, not state
   const counts = new Map<PRRoleFilter, number>();
   for (const pr of filtered) {
@@ -94,8 +100,7 @@ export function getPRCountByRole(
 export function getPRCountByDraft(
   sourceFilter: NotificationSource | 'all'
 ): ReadonlyMap<PRDraftFilter, number> {
-  const filtered =
-    sourceFilter === 'all' ? pullRequests : pullRequests.filter((pr) => pr.source === sourceFilter);
+  const filtered = prsForSource(sourceFilter);
   // eslint-disable-next-line svelte/prefer-svelte-reactivity -- local counting map, not state
   const counts = new Map<PRDraftFilter, number>();
   for (const pr of filtered) {
@@ -108,8 +113,7 @@ export function getPRCountByDraft(
 export function getPRCountByCI(
   sourceFilter: NotificationSource | 'all'
 ): ReadonlyMap<PRCIFilter, number> {
-  const filtered =
-    sourceFilter === 'all' ? pullRequests : pullRequests.filter((pr) => pr.source === sourceFilter);
+  const filtered = prsForSource(sourceFilter);
   // eslint-disable-next-line svelte/prefer-svelte-reactivity -- local counting map, not state
   const counts = new Map<PRCIFilter, number>();
   for (const pr of filtered) {
@@ -120,11 +124,29 @@ export function getPRCountByCI(
   return counts;
 }
 
+export function countPRsByMerge(
+  prs: readonly UnifiedPullRequest[]
+): ReadonlyMap<PRMergeFilter, number> {
+  // eslint-disable-next-line svelte/prefer-svelte-reactivity -- local counting map, not state
+  const counts = new Map<PRMergeFilter, number>();
+  for (const pr of prs) {
+    if (pr.mergeStatus === 'mergeable') {
+      counts.set('mergeable', (counts.get('mergeable') ?? 0) + 1);
+    }
+  }
+  return counts;
+}
+
+export function getPRCountByMerge(
+  sourceFilter: NotificationSource | 'all'
+): ReadonlyMap<PRMergeFilter, number> {
+  return countPRsByMerge(prsForSource(sourceFilter));
+}
+
 export function getPRCountByProject(
   sourceFilter: NotificationSource | 'all'
 ): ReadonlyMap<string, number> {
-  const filtered =
-    sourceFilter === 'all' ? pullRequests : pullRequests.filter((pr) => pr.source === sourceFilter);
+  const filtered = prsForSource(sourceFilter);
   // eslint-disable-next-line svelte/prefer-svelte-reactivity -- local counting map, not state
   const counts = new Map<string, number>();
   for (const pr of filtered) {
@@ -133,39 +155,59 @@ export function getPRCountByProject(
   return counts;
 }
 
-export function getFilteredPRs(
-  sourceFilter: NotificationSource | 'all',
-  roleFilter: PRRoleFilter = 'all',
-  sort: PRSortMode = 'updated',
-  draftFilter: PRDraftFilter = 'all',
-  ciFilter: PRCIFilter = 'all',
-  // eslint-disable-next-line svelte/prefer-svelte-reactivity -- parameter default, not reactive state
-  projectsFilter: ReadonlySet<string> = new Set()
-): readonly UnifiedPullRequest[] {
-  let filtered = [...pullRequests];
+export interface PRFilterOptions {
+  readonly source?: NotificationSource | 'all';
+  readonly role?: PRRoleFilter;
+  readonly sort?: PRSortMode;
+  readonly draft?: PRDraftFilter;
+  readonly ci?: PRCIFilter;
+  readonly merge?: PRMergeFilter;
+  readonly projects?: ReadonlySet<string>;
+}
 
-  if (sourceFilter !== 'all') {
-    filtered = filtered.filter((pr) => pr.source === sourceFilter);
+/** Pure so the filter combinations stay testable without seeding store state. */
+export function filterAndSortPRs(
+  prs: readonly UnifiedPullRequest[],
+  options: PRFilterOptions = {}
+): readonly UnifiedPullRequest[] {
+  const {
+    source = 'all',
+    role = 'all',
+    sort = 'updated',
+    draft = 'all',
+    ci = 'all',
+    merge = 'all',
+    projects
+  } = options;
+
+  let filtered = [...prs];
+
+  if (source !== 'all') {
+    filtered = filtered.filter((pr) => pr.source === source);
   }
 
-  if (roleFilter === 'authored') {
+  if (role === 'authored') {
     filtered = filtered.filter((pr) => !pr.reviewRequestedFromMe);
-  } else if (roleFilter === 'review_requested') {
+  } else if (role === 'review_requested') {
     filtered = filtered.filter((pr) => pr.reviewRequestedFromMe);
   }
 
-  if (draftFilter === 'ready') {
+  if (draft === 'ready') {
     filtered = filtered.filter((pr) => !pr.draft);
-  } else if (draftFilter === 'draft') {
+  } else if (draft === 'draft') {
     filtered = filtered.filter((pr) => pr.draft);
   }
 
-  if (ciFilter !== 'all') {
-    filtered = filtered.filter((pr) => pr.ciStatus === ciFilter);
+  if (ci !== 'all') {
+    filtered = filtered.filter((pr) => pr.ciStatus === ci);
   }
 
-  if (projectsFilter.size > 0) {
-    filtered = filtered.filter((pr) => projectsFilter.has(pr.repository));
+  if (merge === 'mergeable') {
+    filtered = filtered.filter((pr) => pr.mergeStatus === 'mergeable');
+  }
+
+  if (projects?.size) {
+    filtered = filtered.filter((pr) => projects.has(pr.repository));
   }
 
   const dateKey = sort === 'created' ? 'createdAt' : 'updatedAt';
@@ -173,6 +215,10 @@ export function getFilteredPRs(
   filtered.sort((a, b) => new Date(b[dateKey]).getTime() - new Date(a[dateKey]).getTime());
 
   return filtered;
+}
+
+export function getFilteredPRs(options: PRFilterOptions = {}): readonly UnifiedPullRequest[] {
+  return filterAndSortPRs(pullRequests, options);
 }
 
 function updatePRs(updated: readonly UnifiedPullRequest[]): void {
