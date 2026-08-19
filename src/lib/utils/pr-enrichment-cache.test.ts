@@ -34,6 +34,17 @@ describe('mergeCachedEnrichment', () => {
     expect(merged[0].mergeStatus).toBe('mergeable');
   });
 
+  it('does not restore a cached mergeable for GitLab, whose transient states map to unknown', () => {
+    const previous = [
+      makePR({ source: 'gitlab', enrichment: 'enriched', mergeStatus: 'mergeable' })
+    ];
+    const fresh = [makePR({ source: 'gitlab', enrichment: 'pending', mergeStatus: 'unknown' })];
+
+    const merged = mergeCachedEnrichment(fresh, previous);
+
+    expect(merged[0].mergeStatus).toBe('unknown');
+  });
+
   it('keeps a fresh merge status, since GitLab delivers it in the list response', () => {
     const previous = [
       makePR({ source: 'gitlab', enrichment: 'enriched', mergeStatus: 'mergeable' })

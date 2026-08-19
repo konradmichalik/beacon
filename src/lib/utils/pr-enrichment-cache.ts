@@ -25,10 +25,14 @@ export function mergeCachedEnrichment(
         ciStatus: cached.ciStatus,
         failingCheck: cached.failingCheck,
         reviewDecision: cached.reviewDecision,
-        // GitLab already carries a merge status in the list response, GitHub only
-        // learns it while enriching. Reuse the cached one only where the fresh
-        // value has nothing to say.
-        mergeStatus: pr.mergeStatus === 'unknown' ? cached.mergeStatus : pr.mergeStatus,
+        // GitHub only learns the merge status while enriching, so the cached one
+        // has to survive. GitLab carries it in every list response, and its
+        // transient states map to `unknown` — restoring a cached `mergeable`
+        // there would claim mergeable while GitLab is still checking.
+        mergeStatus:
+          pr.source === 'github' && pr.mergeStatus === 'unknown'
+            ? cached.mergeStatus
+            : pr.mergeStatus,
         reviewedByMe: cached.reviewedByMe,
         enrichment: 'enriched' as const
       };

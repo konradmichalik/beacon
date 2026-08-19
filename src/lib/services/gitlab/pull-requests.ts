@@ -75,14 +75,19 @@ const GITLAB_BLOCKED_STATUSES = new Set([
   'need_rebase',
   'not_open',
   'requested_changes',
-  'security_policy_violations'
+  'security_policy_violations',
+  'security_policy_pipeline_check',
+  'status_checks_must_pass',
+  'locked_paths',
+  'locked_lfs_files',
+  'title_regex'
 ]);
 
 /**
  * The deprecated `merge_status` is deliberately not used as a fallback: its
  * `can_be_merged` ignores approval rules and would claim mergeable on exactly
  * the projects that require approvals. Everything not explicitly blocked falls
- * through to unknown: the transient states (`checking`, `preparing`,
+ * through to unknown: the transient states (`unchecked`, `checking`, `preparing`,
  * `approvals_syncing`) and any status GitLab adds after this was written.
  */
 export function mapMergeStatus(detailed: string | undefined): MergeStatus {

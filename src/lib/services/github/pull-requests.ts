@@ -74,22 +74,19 @@ export function firstFailingCheck(runs: readonly GitHubCheckRun[]): FailingCheck
   return { name: failed.name, url: failed.html_url };
 }
 
-const GITHUB_BLOCKED_STATES = new Set([
-  'blocked',
-  'behind',
-  'dirty',
-  'unstable',
-  'draft',
-  'has_hooks'
-]);
+const GITHUB_MERGEABLE_STATES = new Set(['clean', 'has_hooks']);
+
+const GITHUB_BLOCKED_STATES = new Set(['blocked', 'behind', 'dirty', 'unstable', 'draft']);
 
 /**
  * `unstable` means GitHub allows the merge while non-required checks are red or
  * still running. It maps to blocked so the badge stays conservative and matches
- * GitLab, which keeps an MR blocked while its pipeline runs.
+ * GitLab, which keeps an MR blocked while its pipeline runs. `has_hooks` in
+ * contrast is mergeable with a passing commit status, the pre-receive hooks run
+ * at merge time.
  */
 export function mapMergeStatus(state: string | null | undefined): MergeStatus {
-  if (state === 'clean') return 'mergeable';
+  if (GITHUB_MERGEABLE_STATES.has(state ?? '')) return 'mergeable';
   if (GITHUB_BLOCKED_STATES.has(state ?? '')) return 'blocked';
   return 'unknown';
 }

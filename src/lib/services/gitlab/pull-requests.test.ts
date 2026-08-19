@@ -24,12 +24,17 @@ describe('GitLab MRs: mapMergeStatus', () => {
     'need_rebase',
     'not_open',
     'requested_changes',
-    'security_policy_violations'
+    'security_policy_violations',
+    'security_policy_pipeline_check',
+    'status_checks_must_pass',
+    'locked_paths',
+    'locked_lfs_files',
+    'title_regex'
   ])('reports blocked for %s', (status) => {
     expect(mapMergeStatus(status)).toBe('blocked');
   });
 
-  it.each(['checking', 'preparing', 'approvals_syncing'])(
+  it.each(['checking', 'preparing', 'approvals_syncing', 'unchecked'])(
     'reports unknown while GitLab is still computing (%s)',
     (status) => {
       expect(mapMergeStatus(status)).toBe('unknown');

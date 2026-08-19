@@ -70,8 +70,12 @@ describe('GitHub PRs: mapMergeStatus', () => {
     expect(mapMergeStatus('unstable')).toBe('blocked');
   });
 
-  it.each(['behind', 'dirty', 'draft', 'has_hooks'])('reports blocked for %s', (state) => {
+  it.each(['behind', 'dirty', 'draft'])('reports blocked for %s', (state) => {
     expect(mapMergeStatus(state)).toBe('blocked');
+  });
+
+  it('reports mergeable for has_hooks, which GitHub defines as mergeable behind pre-receive hooks', () => {
+    expect(mapMergeStatus('has_hooks')).toBe('mergeable');
   });
 
   it('reports unknown while GitHub is still computing mergeability', () => {
