@@ -16,6 +16,7 @@ function makePR(overrides: Partial<UnifiedPullRequest> = {}): UnifiedPullRequest
     updatedAt: '2026-03-17T12:00:00Z',
     ciStatus: 'unknown',
     reviewDecision: null,
+    mergeStatus: 'unknown',
     reviewRequestedFromMe: false,
     reviewedByMe: false,
     enrichment: 'pending',
@@ -24,6 +25,26 @@ function makePR(overrides: Partial<UnifiedPullRequest> = {}): UnifiedPullRequest
 }
 
 describe('mergeCachedEnrichment', () => {
+  it('carries the merge status over, since GitHub only learns it during enrichment', () => {
+    const previous = [makePR({ enrichment: 'enriched', mergeStatus: 'mergeable' })];
+    const fresh = [makePR({ enrichment: 'pending', mergeStatus: 'unknown' })];
+
+    const merged = mergeCachedEnrichment(fresh, previous);
+
+    expect(merged[0].mergeStatus).toBe('mergeable');
+  });
+
+  it('keeps a fresh merge status, since GitLab delivers it in the list response', () => {
+    const previous = [
+      makePR({ source: 'gitlab', enrichment: 'enriched', mergeStatus: 'mergeable' })
+    ];
+    const fresh = [makePR({ source: 'gitlab', enrichment: 'pending', mergeStatus: 'blocked' })];
+
+    const merged = mergeCachedEnrichment(fresh, previous);
+
+    expect(merged[0].mergeStatus).toBe('blocked');
+  });
+
   it('reuses enriched fields when id and updatedAt match', () => {
     const previous = [
       makePR({

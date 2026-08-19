@@ -4,7 +4,7 @@ const safeFetch = vi.fn();
 vi.mock('$lib/utils/fetch', () => ({ safeFetch: (...args: unknown[]) => safeFetch(...args) }));
 vi.mock('$lib/utils/logger', () => ({ error: vi.fn(), info: vi.fn() }));
 
-import { fetchGitHubPullRequestsBasic } from './pull-requests';
+import { fetchGitHubPullRequestsBasic, mapMergeStatus } from './pull-requests';
 
 function searchItem(overrides: Record<string, unknown> = {}) {
   return {
@@ -54,5 +54,36 @@ describe('GitHub PRs: fetchGitHubPullRequestsBasic', () => {
     safeFetch.mockResolvedValue({ ok: false, status: 500 });
     const prs = await fetchGitHubPullRequestsBasic('token', 'me');
     expect(prs).toEqual([]);
+  });
+});
+
+describe('GitHub PRs: mapMergeStatus', () => {
+  it('reports mergeable only for a clean state', () => {
+    expect(mapMergeStatus('clean')).toBe('mergeable');
+  });
+
+  it('reports blocked when required reviews or checks are missing', () => {
+    expect(mapMergeStatus('blocked')).toBe('blocked');
+  });
+
+  it('reports blocked for unstable, where GitHub allows the merge but optional checks are red', () => {
+    expect(mapMergeStatus('unstable')).toBe('blocked');
+  });
+
+  it.each(['behind', 'dirty', 'draft', 'has_hooks'])('reports blocked for %s', (state) => {
+    expect(mapMergeStatus(state)).toBe('blocked');
+  });
+
+  it('reports unknown while GitHub is still computing mergeability', () => {
+    expect(mapMergeStatus('unknown')).toBe('unknown');
+  });
+
+  it('reports unknown when the detail fetch yielded nothing', () => {
+    expect(mapMergeStatus(null)).toBe('unknown');
+    expect(mapMergeStatus(undefined)).toBe('unknown');
+  });
+
+  it('reports unknown for a state value it does not know yet', () => {
+    expect(mapMergeStatus('some_future_state')).toBe('unknown');
   });
 });

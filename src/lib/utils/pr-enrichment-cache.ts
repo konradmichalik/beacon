@@ -1,7 +1,7 @@
 import type { UnifiedPullRequest } from '$lib/types';
 
 /**
- * Carry enrichment (CI status, review decision, base branch) over from the
+ * Carry enrichment (CI status, review decision, merge status, base branch) over from the
  * previous poll for pull requests that have not changed, so they do not have to
  * be re-fetched.
  *
@@ -25,6 +25,10 @@ export function mergeCachedEnrichment(
         ciStatus: cached.ciStatus,
         failingCheck: cached.failingCheck,
         reviewDecision: cached.reviewDecision,
+        // GitLab already carries a merge status in the list response, GitHub only
+        // learns it while enriching. Reuse the cached one only where the fresh
+        // value has nothing to say.
+        mergeStatus: pr.mergeStatus === 'unknown' ? cached.mergeStatus : pr.mergeStatus,
         reviewedByMe: cached.reviewedByMe,
         enrichment: 'enriched' as const
       };

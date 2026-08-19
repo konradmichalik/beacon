@@ -1,4 +1,10 @@
-import type { UnifiedPullRequest, CIStatus, ReviewDecision, FailingCheck } from '$lib/types';
+import type {
+  UnifiedPullRequest,
+  CIStatus,
+  ReviewDecision,
+  MergeStatus,
+  FailingCheck
+} from '$lib/types';
 import { safeFetch } from '$lib/utils/fetch';
 import { error as logError, info as logInfo } from '$lib/utils/logger';
 
@@ -66,6 +72,26 @@ export function firstFailingCheck(runs: readonly GitHubCheckRun[]): FailingCheck
   const failed = runs.find((r) => r.conclusion === 'failure' && r.html_url);
   if (!failed || !failed.html_url) return null;
   return { name: failed.name, url: failed.html_url };
+}
+
+const GITHUB_BLOCKED_STATES = new Set([
+  'blocked',
+  'behind',
+  'dirty',
+  'unstable',
+  'draft',
+  'has_hooks'
+]);
+
+/**
+ * `unstable` means GitHub allows the merge while non-required checks are red or
+ * still running. It maps to blocked so the badge stays conservative and matches
+ * GitLab, which keeps an MR blocked while its pipeline runs.
+ */
+export function mapMergeStatus(state: string | null | undefined): MergeStatus {
+  if (state === 'clean') return 'mergeable';
+  if (GITHUB_BLOCKED_STATES.has(state ?? '')) return 'blocked';
+  return 'unknown';
 }
 
 export function mapReviewDecision(reviews: readonly GitHubReview[]): ReviewDecision | null {
@@ -136,7 +162,7 @@ async function fetchPRDetail(
   repo: string,
   number: number,
   signal?: AbortSignal
-): Promise<{ headSha: string; baseBranch: string } | null> {
+): Promise<{ headSha: string; baseBranch: string; mergeableState: string | null } | null> {
   try {
     const response = await safeFetch(`${GITHUB_API}/repos/${repo}/pulls/${number}`, {
       headers: HEADERS(token),
@@ -146,8 +172,13 @@ async function fetchPRDetail(
     const data = (await response.json()) as {
       head: { sha: string };
       base: { ref: string };
+      mergeable_state?: string;
     };
-    return { headSha: data.head.sha, baseBranch: data.base.ref };
+    return {
+      headSha: data.head.sha,
+      baseBranch: data.base.ref,
+      mergeableState: data.mergeable_state ?? null
+    };
   } catch {
     return null;
   }
@@ -167,6 +198,7 @@ function mapBasicPR(item: GitHubSearchItem, reviewRequested: boolean): UnifiedPu
     updatedAt: item.updated_at,
     ciStatus: 'unknown',
     reviewDecision: null,
+    mergeStatus: 'unknown',
     reviewRequestedFromMe: reviewRequested,
     reviewedByMe: false,
     enrichment: 'pending'
@@ -239,6 +271,7 @@ export async function enrichGitHubPR(
     ciStatus: checkStatus.status,
     failingCheck: checkStatus.failingCheck ?? undefined,
     reviewDecision: reviewStatus.reviewDecision,
+    mergeStatus: mapMergeStatus(detail?.mergeableState),
     reviewedByMe: reviewStatus.reviewedByMe,
     enrichment: 'enriched'
   };

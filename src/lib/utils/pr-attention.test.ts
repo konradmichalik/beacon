@@ -16,6 +16,7 @@ function makePR(overrides: Partial<UnifiedPullRequest> = {}): UnifiedPullRequest
     updatedAt: '2026-08-17T10:00:00Z',
     ciStatus: 'unknown',
     reviewDecision: null,
+    mergeStatus: 'unknown',
     reviewRequestedFromMe: false,
     reviewedByMe: false,
     enrichment: 'enriched',
