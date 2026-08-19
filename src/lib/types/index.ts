@@ -25,9 +25,11 @@ export type {
 export type {
   CIStatus,
   ReviewDecision,
+  MergeStatus,
   PRRoleFilter,
   PRDraftFilter,
   PRCIFilter,
+  PRMergeFilter,
   EnrichmentState,
   FailingCheck,
   UnifiedPullRequest

@@ -2,9 +2,11 @@ import type { NotificationSource, NotificationAuthor } from './notifications';
 
 export type CIStatus = 'pending' | 'success' | 'failure' | 'unknown';
 export type ReviewDecision = 'approved' | 'changes_requested' | 'review_required';
+export type MergeStatus = 'mergeable' | 'blocked' | 'unknown';
 export type PRRoleFilter = 'all' | 'authored' | 'review_requested';
 export type PRDraftFilter = 'all' | 'ready' | 'draft';
 export type PRCIFilter = 'all' | 'success' | 'failure' | 'pending';
+export type PRMergeFilter = 'all' | 'mergeable';
 export type EnrichmentState = 'pending' | 'enriched' | 'skipped';
 
 export interface FailingCheck {
@@ -25,6 +27,7 @@ export interface UnifiedPullRequest {
   readonly updatedAt: string;
   readonly ciStatus: CIStatus;
   readonly reviewDecision: ReviewDecision | null;
+  readonly mergeStatus: MergeStatus;
   readonly reviewRequestedFromMe: boolean;
   readonly reviewedByMe: boolean;
   readonly baseBranch?: string;

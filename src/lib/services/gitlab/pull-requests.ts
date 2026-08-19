@@ -1,4 +1,10 @@
-import type { UnifiedPullRequest, CIStatus, ReviewDecision, FailingCheck } from '$lib/types';
+import type {
+  UnifiedPullRequest,
+  CIStatus,
+  ReviewDecision,
+  MergeStatus,
+  FailingCheck
+} from '$lib/types';
 import { safeFetch } from '$lib/utils/fetch';
 import { error as logError, info as logInfo } from '$lib/utils/logger';
 
@@ -22,6 +28,7 @@ interface GitLabMergeRequest {
     readonly status: string;
     readonly web_url: string | null;
   } | null;
+  readonly detailed_merge_status?: string;
   readonly target_branch: string;
   readonly source_project_id: number;
   readonly target_project_id: number;
@@ -52,6 +59,41 @@ export function mapCIStatus(pipelineStatus: string | null): CIStatus {
     default:
       return 'unknown';
   }
+}
+
+const GITLAB_BLOCKED_STATUSES = new Set([
+  'not_approved',
+  'ci_must_pass',
+  'ci_still_running',
+  'commits_status',
+  'conflict',
+  'discussions_not_resolved',
+  'draft_status',
+  'jira_association_missing',
+  'merge_request_blocked',
+  'merge_time',
+  'need_rebase',
+  'not_open',
+  'requested_changes',
+  'security_policy_violations',
+  'security_policy_pipeline_check',
+  'status_checks_must_pass',
+  'locked_paths',
+  'locked_lfs_files',
+  'title_regex'
+]);
+
+/**
+ * The deprecated `merge_status` is deliberately not used as a fallback: its
+ * `can_be_merged` ignores approval rules and would claim mergeable on exactly
+ * the projects that require approvals. Everything not explicitly blocked falls
+ * through to unknown: the transient states (`unchecked`, `checking`, `preparing`,
+ * `approvals_syncing`) and any status GitLab adds after this was written.
+ */
+export function mapMergeStatus(detailed: string | undefined): MergeStatus {
+  if (detailed === 'mergeable') return 'mergeable';
+  if (GITLAB_BLOCKED_STATUSES.has(detailed ?? '')) return 'blocked';
+  return 'unknown';
 }
 
 /**
@@ -150,6 +192,7 @@ function mapBasicMR(mr: GitLabMergeRequest, reviewRequested: boolean): UnifiedPu
     ciStatus: mapCIStatus(mr.head_pipeline?.status ?? null),
     failingCheck: mapFailingCheck(mr.head_pipeline) ?? undefined,
     reviewDecision: mapReviewDecision(mr),
+    mergeStatus: mapMergeStatus(mr.detailed_merge_status),
     reviewRequestedFromMe: reviewRequested,
     reviewedByMe: false,
     baseBranch: mr.target_branch,

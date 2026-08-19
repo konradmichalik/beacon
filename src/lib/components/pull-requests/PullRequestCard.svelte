@@ -19,7 +19,8 @@
     ClipboardCopy,
     CircleCheckBig,
     Star,
-    GitBranch
+    GitBranch,
+    GitMerge
   } from '@lucide/svelte';
   import { isStarred, toggleStar } from '$lib/stores/starred-prs.svelte';
   import { getAttentionState, type AttentionState } from '$lib/utils/pr-attention';
@@ -244,6 +245,16 @@
           >
             <ReviewIcon size={9} />
             {reviewInfo.label}
+          </span>
+        {/if}
+
+        {#if pullRequest.mergeStatus === 'mergeable'}
+          <span
+            class="flex shrink-0 items-center gap-0.5 text-[10px] font-medium text-success-text"
+            title="All merge requirements are met"
+          >
+            <GitMerge size={9} />
+            Mergeable
           </span>
         {/if}
 
