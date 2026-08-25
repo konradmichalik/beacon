@@ -14,6 +14,7 @@ interface FilterState {
   statuses: SvelteSet<StatusFilter>;
   authors: SvelteSet<string>;
   draftFilter: NotificationDraftFilter;
+  query: string;
 }
 
 export const filterState: FilterState = $state({
@@ -24,7 +25,8 @@ export const filterState: FilterState = $state({
   projects: new SvelteSet(),
   statuses: new SvelteSet(),
   authors: new SvelteSet(),
-  draftFilter: 'all'
+  draftFilter: 'all',
+  query: ''
 });
 
 export function setSourceFilter(source: NotificationSource | 'all'): void {
@@ -92,12 +94,17 @@ export function setDraftFilter(filter: NotificationDraftFilter): void {
   filterState.draftFilter = filter;
 }
 
+export function setQuery(query: string): void {
+  filterState.query = query;
+}
+
 export function clearAllFilters(): void {
   filterState.types.clear();
   filterState.projects.clear();
   filterState.statuses.clear();
   filterState.authors.clear();
   filterState.draftFilter = 'all';
+  filterState.query = '';
 }
 
 export function hasActiveFilters(): boolean {
@@ -106,7 +113,8 @@ export function hasActiveFilters(): boolean {
     filterState.projects.size > 0 ||
     filterState.statuses.size > 0 ||
     filterState.authors.size > 0 ||
-    filterState.draftFilter !== 'all'
+    filterState.draftFilter !== 'all' ||
+    filterState.query.trim() !== ''
   );
 }
 
@@ -119,4 +127,5 @@ export function resetFilters(): void {
   filterState.statuses.clear();
   filterState.authors.clear();
   filterState.draftFilter = 'all';
+  filterState.query = '';
 }

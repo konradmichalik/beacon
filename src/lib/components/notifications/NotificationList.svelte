@@ -9,6 +9,7 @@
   import { filterState } from '$lib/stores/filters.svelte';
   import { hasAnyServiceConfigured } from '$lib/stores/connections.svelte';
   import { isTauri } from '$lib/utils/storage';
+  import { filterByQuery } from '$lib/utils/filter-tokens';
   import NotificationCard from './NotificationCard.svelte';
   import EmptyState from './EmptyState.svelte';
   import GitHubIcon from '$lib/components/icons/GitHubIcon.svelte';
@@ -28,7 +29,8 @@
       filterState.projects,
       filterState.statuses,
       filterState.authors,
-      filterState.draftFilter
+      filterState.draftFilter,
+      filterState.query
     )
   );
   let isLoading = $derived(getIsLoading());
@@ -39,13 +41,16 @@
   let showRead = $state(false);
 
   // getFilteredNotifications already excludes snoozed items, so the snoozed
-  // list is built from the unfiltered set — matching only source/project, the
+  // list is built from the unfiltered set — matching source/project/query, the
   // same scope the hidden-count reasoning elsewhere in the app uses.
   let snoozedItems = $derived(
-    getSnoozedNotifications(getNotifications()).filter(
-      (n) =>
-        (filterState.source === 'all' || n.source === filterState.source) &&
-        (!filterState.project || n.repository === filterState.project)
+    filterByQuery(
+      getSnoozedNotifications(getNotifications()).filter(
+        (n) =>
+          (filterState.source === 'all' || n.source === filterState.source) &&
+          (!filterState.project || n.repository === filterState.project)
+      ),
+      filterState.query
     )
   );
   let showSnoozed = $state(false);
@@ -62,7 +67,8 @@
       filterState.projects,
       filterState.statuses,
       filterState.authors,
-      filterState.draftFilter
+      filterState.draftFilter,
+      filterState.query
     )
   );
 

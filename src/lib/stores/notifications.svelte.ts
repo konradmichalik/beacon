@@ -9,6 +9,7 @@ import { demoNotifications } from '$lib/utils/demo-data';
 import { playNotificationSound } from '$lib/services/notification-sound';
 import { showToast } from '$lib/stores/toast.svelte';
 import { parseGitLabTargetUrl } from '$lib/utils/gitlab-target';
+import { filterByQuery } from '$lib/utils/filter-tokens';
 import {
   isSyntheticNotification,
   syntheticNotificationPrId
@@ -253,7 +254,8 @@ export function getFilteredUnreadCount(): number {
     filterState.projects,
     filterState.statuses,
     filterState.authors,
-    filterState.draftFilter
+    filterState.draftFilter,
+    filterState.query
   ).filter((n) => n.unread).length;
 }
 
@@ -270,7 +272,8 @@ export function getCountBySource(source: NotificationSource): number {
     filterState.projects,
     filterState.statuses,
     filterState.authors,
-    filterState.draftFilter
+    filterState.draftFilter,
+    filterState.query
   ).filter((n) => n.unread).length;
 }
 
@@ -308,7 +311,8 @@ function applyVisibleFilters(
   projectsFilter: ReadonlySet<string>,
   statusFilter: ReadonlySet<StatusFilter>,
   authorsFilter: ReadonlySet<string>,
-  draftFilter: NotificationDraftFilter
+  draftFilter: NotificationDraftFilter,
+  query: string = ''
 ): UnifiedNotification[] {
   let filtered: UnifiedNotification[] = [...notifications];
 
@@ -344,6 +348,7 @@ function applyVisibleFilters(
   } else if (draftFilter === 'draft') {
     filtered = filtered.filter((n) => n.draft === true);
   }
+  filtered = filterByQuery(filtered, query);
 
   return filtered;
 }
@@ -360,7 +365,8 @@ export function getFilteredNotifications(
   statusFilter: ReadonlySet<StatusFilter> = new Set(),
   // eslint-disable-next-line svelte/prefer-svelte-reactivity -- default param, not state
   authorsFilter: ReadonlySet<string> = new Set(),
-  draftFilter: NotificationDraftFilter = 'all'
+  draftFilter: NotificationDraftFilter = 'all',
+  query: string = ''
 ): readonly UnifiedNotification[] {
   let filtered = applyVisibleFilters(
     sourceFilter,
@@ -369,7 +375,8 @@ export function getFilteredNotifications(
     projectsFilter,
     statusFilter,
     authorsFilter,
-    draftFilter
+    draftFilter,
+    query
   );
   filtered = filtered.filter((n) => !isNotificationMuted(n) && !isSnoozed(n));
 
@@ -402,7 +409,8 @@ export function getHiddenCount(
   statusFilter: ReadonlySet<StatusFilter> = new Set(),
   // eslint-disable-next-line svelte/prefer-svelte-reactivity -- default param, not state
   authorsFilter: ReadonlySet<string> = new Set(),
-  draftFilter: NotificationDraftFilter = 'all'
+  draftFilter: NotificationDraftFilter = 'all',
+  query: string = ''
 ): number {
   const withinScope = applyVisibleFilters(
     sourceFilter,
@@ -411,7 +419,8 @@ export function getHiddenCount(
     projectsFilter,
     statusFilter,
     authorsFilter,
-    draftFilter
+    draftFilter,
+    query
   );
   return withinScope.filter((n) => isNotificationMuted(n) || isSnoozed(n)).length;
 }

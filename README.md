@@ -19,7 +19,7 @@
 - **My PRs overview** — see open pull requests you authored or need to review, with CI, review and merge status at a glance
 - **Issues overview** _(opt-in)_ — open issues you created or are assigned to, grouped by role; enable it in Settings
 - **Menu bar popup** — lives quietly in the tray, one click to open
-- **Filter & sort** by source, project, type, or read status
+- **Filter & sort** by source, project, type, or read status — or type qualifiers like `repo:owner/name`, `author:login`, `type:pr` (with a leading `-` to exclude)
 - **Desktop notifications** — instant alerts or batched summaries
 - **Configurable badge** — unread count or a colored dot indicator
 
