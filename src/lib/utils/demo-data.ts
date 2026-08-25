@@ -149,5 +149,37 @@ export const demoNotifications: readonly UnifiedNotification[] = [
     author: { login: 'mwilliams', avatarUrl: '' },
     subjectState: 'open',
     draft: false
+  },
+  {
+    id: 'beacon:pr-ready:github-pr-demo-1',
+    source: 'github',
+    type: 'pull_request',
+    title: 'feat: add dark mode support for dashboard components',
+    repository: 'acme/frontend',
+    url: 'https://github.com/acme/frontend/pull/342',
+    reason: 'ready_for_review',
+    unread: true,
+    updatedAt: ago(5),
+    createdAt: ago(120),
+    author: { login: 'sarah-chen', avatarUrl: '' },
+    subjectState: 'open',
+    draft: false,
+    synthetic: true
+  },
+  {
+    id: 'beacon:pr-mergeable:github-pr-demo-3',
+    source: 'github',
+    type: 'pull_request',
+    title: 'refactor: migrate auth middleware to edge runtime',
+    repository: 'acme/frontend',
+    url: 'https://github.com/acme/frontend/pull/339',
+    reason: 'mergeable',
+    unread: true,
+    updatedAt: ago(26),
+    createdAt: ago(480),
+    author: { login: 'you', avatarUrl: '' },
+    subjectState: 'open',
+    draft: false,
+    synthetic: true
   }
 ];
