@@ -13,6 +13,7 @@
   import { openExternalUrl } from '$lib/utils/open-url';
   import { clampMenuPosition, menuPositionFromElement } from '$lib/utils/context-menu';
   import { parseGitLabTargetUrl } from '$lib/utils/gitlab-target';
+  import { isSyntheticNotification } from '$lib/utils/synthetic-notifications';
   import { getGitLabConfig } from '$lib/stores/connections.svelte';
   import { focusTrap } from '$lib/actions/focusTrap';
   import GitHubIcon from '$lib/components/icons/GitHubIcon.svelte';
@@ -42,7 +43,8 @@
     BellMinus,
     FileEdit,
     Archive,
-    AlarmClock
+    AlarmClock,
+    Sparkles
   } from '@lucide/svelte';
   import MuteModal from './MuteModal.svelte';
   import SnoozeModal from './SnoozeModal.svelte';
@@ -105,7 +107,9 @@
     author: { label: 'Authored', icon: Tag },
     unmergeable: { label: 'Unmergeable', icon: AlertTriangle },
     merge_train_removed: { label: 'Merge train removed', icon: TrainFront },
-    member_access_requested: { label: 'Access requested', icon: UserPlus }
+    member_access_requested: { label: 'Access requested', icon: UserPlus },
+    ready_for_review: { label: 'Ready for review', icon: GitPullRequest },
+    mergeable: { label: 'Ready to merge', icon: GitMerge }
   };
 
   let reasonInfo = $derived.by(() => {
@@ -212,10 +216,14 @@
   // GitHub threads can always be unsubscribed from. GitLab todos need an iid
   // parsed out of the target URL, which only works for merge requests and
   // issues — pipelines and other target types have no unsubscribe endpoint.
+  // Synthetic entries have no server-side thread — GitHub/GitLab never
+  // sent this notification, so there is nothing to unsubscribe from or
+  // mark done there.
   let canUnsubscribe = $derived(
-    notification.source === 'github' ||
-      (notification.source === 'gitlab' &&
-        parseGitLabTargetUrl(notification.url, getGitLabConfig()?.baseUrl ?? '') !== null)
+    !isSyntheticNotification(notification) &&
+      (notification.source === 'github' ||
+        (notification.source === 'gitlab' &&
+          parseGitLabTargetUrl(notification.url, getGitLabConfig()?.baseUrl ?? '') !== null))
   );
 
   function handleContextUnsubscribe(): void {
@@ -328,6 +336,15 @@
         >
           {typeInfo.short}
         </span>
+        {#if isSyntheticNotification(notification)}
+          <span
+            title="Detected locally by Beacon — GitHub/GitLab did not send this notification"
+            class="flex shrink-0 items-center gap-0.5 rounded bg-primary/10 px-1.5 py-0.5 text-[10px] font-medium text-primary"
+          >
+            <Sparkles size={10} />
+            Beacon
+          </span>
+        {/if}
         {#if stateInfo}
           {@const StateIcon = stateInfo.icon}
           <span
@@ -429,7 +446,7 @@
         Mark all from @{notification.author.login} as read ({unreadIdsByAuthor.size})
       </button>
     {/if}
-    {#if notification.source === 'github'}
+    {#if notification.source === 'github' && !isSyntheticNotification(notification)}
       <button
         type="button"
         onclick={handleContextMarkDone}
