@@ -6,6 +6,7 @@
     toggleStatusFilter,
     toggleAuthorFilter,
     setDraftFilter,
+    setQuery,
     clearTypeFilters,
     clearProjectFilters,
     clearStatusFilters,
@@ -27,7 +28,7 @@
   import { NOTIFICATION_TYPE_LABELS } from '$lib/types';
   import GitHubIcon from '$lib/components/icons/GitHubIcon.svelte';
   import GitLabIcon from '$lib/components/icons/GitLabIcon.svelte';
-  import { X } from '@lucide/svelte';
+  import { X, Search } from '@lucide/svelte';
   import { focusTrap } from '$lib/actions/focusTrap';
 
   let { onClose }: { onClose: () => void } = $props();
@@ -89,6 +90,26 @@
     </div>
 
     <div class="space-y-3 p-3">
+      <!-- Search query -->
+      <div>
+        <label
+          for="notification-query"
+          class="mb-1.5 block text-[10px] font-semibold uppercase tracking-wide text-muted-foreground"
+          >Search</label
+        >
+        <div class="relative flex items-center">
+          <Search size={11} class="pointer-events-none absolute left-2 text-muted-foreground" />
+          <input
+            id="notification-query"
+            type="text"
+            value={filterState.query}
+            oninput={(e) => setQuery(e.currentTarget.value)}
+            placeholder="repo:owner/name author:login -bot"
+            class="w-full rounded-md border border-border bg-card py-1 pl-6 pr-2 text-[11px] text-foreground placeholder:text-muted-foreground/70 focus:outline-none focus:ring-1 focus:ring-primary"
+          />
+        </div>
+      </div>
+
       <!-- Type filter -->
       {#if availableTypes.length > 0}
         <div>

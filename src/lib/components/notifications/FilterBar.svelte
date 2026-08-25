@@ -4,7 +4,6 @@
     filterState,
     setSourceFilter,
     setSortMode,
-    setQuery,
     hasActiveFilters
   } from '$lib/stores/filters.svelte';
   import type { SortMode } from '$lib/stores/filters.svelte';
@@ -18,7 +17,7 @@
   import SourceToggle from '$lib/components/ui/SourceToggle.svelte';
   import SortMenu from '$lib/components/ui/SortMenu.svelte';
   import FilterPopover from './FilterPopover.svelte';
-  import { CheckCheck, Filter, ChevronDown, Search } from '@lucide/svelte';
+  import { CheckCheck, Filter, ChevronDown } from '@lucide/svelte';
 
   let totalCount = $derived(getFilteredUnreadCount());
   let githubCount = $derived(getCountBySource('github'));
@@ -91,19 +90,6 @@
     {initialLoading}
     onSourceChange={setSourceFilter}
   />
-
-  <label for="notification-query" class="sr-only">Filter notifications</label>
-  <div class="relative flex items-center">
-    <Search size={11} class="pointer-events-none absolute left-2 text-muted-foreground" />
-    <input
-      id="notification-query"
-      type="text"
-      value={filterState.query}
-      oninput={(e) => setQuery(e.currentTarget.value)}
-      placeholder="repo:owner/name author:login -bot"
-      class="w-44 rounded-full border border-border bg-card py-1 pl-6 pr-2 text-[11px] text-foreground placeholder:text-muted-foreground/70 focus:outline-none focus:ring-1 focus:ring-primary"
-    />
-  </div>
 
   <div class="ml-auto flex items-center gap-1.5">
     <!-- Mark as read (split button) -->
