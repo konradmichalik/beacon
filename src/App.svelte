@@ -29,7 +29,8 @@
     loadDemoData,
     setupNotificationListener,
     loadPersistedReadIds,
-    loadPersistedDismissedIds
+    loadPersistedDismissedIds,
+    loadPersistedSyntheticNotifications
   } from './lib/stores/notifications.svelte';
   import { setupPlatformStatusListener } from './lib/stores/platform-status.svelte';
   import {
@@ -118,6 +119,7 @@
         // Restore persisted read/dismissed state before listening for updates
         await loadPersistedReadIds();
         await loadPersistedDismissedIds();
+        await loadPersistedSyntheticNotifications();
 
         // Listen for notification updates from Rust backend
         unlistenNotifications = await setupNotificationListener();

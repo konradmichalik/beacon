@@ -201,11 +201,17 @@ function mapBasicMR(mr: GitLabMergeRequest, reviewRequested: boolean): UnifiedPu
   };
 }
 
+export interface BasicMergeRequestsResult {
+  readonly items: UnifiedPullRequest[];
+  /** False when any fetch failed or rejected, so callers know the list may be partial. */
+  readonly complete: boolean;
+}
+
 export async function fetchGitLabMergeRequestsBasic(
   token: string,
   baseUrl: string,
   username: string
-): Promise<UnifiedPullRequest[]> {
+): Promise<BasicMergeRequestsResult> {
   const api = `${baseUrl.replace(/\/$/, '')}/api/v4`;
   const headers = { Authorization: `Bearer ${token}` };
 
@@ -227,6 +233,8 @@ export async function fetchGitLabMergeRequestsBasic(
     logError('gitlab-mr', `reviewer MRs fetch failed: HTTP ${reviewRes.status}`);
   }
 
+  const complete = (authoredRes?.ok ?? false) && (reviewRes?.ok ?? false);
+
   const authored: GitLabMergeRequest[] = authoredRes?.ok ? await authoredRes.json() : [];
   const reviewRequested: GitLabMergeRequest[] = reviewRes?.ok ? await reviewRes.json() : [];
 
@@ -239,10 +247,13 @@ export async function fetchGitLabMergeRequestsBasic(
   const authoredIds = new Set(authored.map((mr) => mr.id));
   const reviewOnly = reviewRequested.filter((mr) => !authoredIds.has(mr.id));
 
-  return [
-    ...authored.map((mr) => mapBasicMR(mr, false)),
-    ...reviewOnly.map((mr) => mapBasicMR(mr, true))
-  ];
+  return {
+    items: [
+      ...authored.map((mr) => mapBasicMR(mr, false)),
+      ...reviewOnly.map((mr) => mapBasicMR(mr, true))
+    ],
+    complete
+  };
 }
 
 export async function enrichGitLabMR(

@@ -454,7 +454,8 @@
             <span class="text-xs font-medium text-foreground">Fetch CI & review status</span>
             <p class="text-[10px] text-muted-foreground">
               Fetches pipeline status and review decisions per PR. Disable for faster loading with
-              many PRs.
+              many PRs. Also required for the "ready to merge" notification on GitHub, which only
+              learns merge status this way.
             </p>
           </div>
           <button
