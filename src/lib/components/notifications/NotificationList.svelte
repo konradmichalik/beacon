@@ -28,7 +28,8 @@
       filterState.projects,
       filterState.statuses,
       filterState.authors,
-      filterState.draftFilter
+      filterState.draftFilter,
+      filterState.query
     )
   );
   let isLoading = $derived(getIsLoading());
@@ -62,7 +63,8 @@
       filterState.projects,
       filterState.statuses,
       filterState.authors,
-      filterState.draftFilter
+      filterState.draftFilter,
+      filterState.query
     )
   );
 
