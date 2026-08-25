@@ -43,17 +43,40 @@ describe('GitHub PRs: fetchGitHubPullRequestsBasic', () => {
       .mockResolvedValueOnce(okResponse([searchItem({ id: 1 })]))
       .mockResolvedValueOnce(okResponse([searchItem({ id: 1 }), searchItem({ id: 2, number: 7 })]));
 
-    const prs = await fetchGitHubPullRequestsBasic('token', 'me');
+    const { items, complete } = await fetchGitHubPullRequestsBasic('token', 'me');
 
-    expect(prs).toHaveLength(2);
-    expect(prs[0]).toMatchObject({ id: 'github-pr-1', reviewRequestedFromMe: false });
-    expect(prs[1]).toMatchObject({ id: 'github-pr-2', reviewRequestedFromMe: true });
+    expect(items).toHaveLength(2);
+    expect(items[0]).toMatchObject({ id: 'github-pr-1', reviewRequestedFromMe: false });
+    expect(items[1]).toMatchObject({ id: 'github-pr-2', reviewRequestedFromMe: true });
+    expect(complete).toBe(true);
   });
 
-  it('returns an empty list when both requests fail', async () => {
+  it('returns an empty, incomplete result when both requests fail', async () => {
     safeFetch.mockResolvedValue({ ok: false, status: 500 });
-    const prs = await fetchGitHubPullRequestsBasic('token', 'me');
-    expect(prs).toEqual([]);
+    const { items, complete } = await fetchGitHubPullRequestsBasic('token', 'me');
+    expect(items).toEqual([]);
+    expect(complete).toBe(false);
+  });
+
+  it('reports incomplete when only the review-requested request fails, while keeping the authored results', async () => {
+    safeFetch
+      .mockResolvedValueOnce(okResponse([searchItem({ id: 1 })]))
+      .mockResolvedValueOnce({ ok: false, status: 503 });
+
+    const { items, complete } = await fetchGitHubPullRequestsBasic('token', 'me');
+
+    expect(items).toHaveLength(1);
+    expect(complete).toBe(false);
+  });
+
+  it('reports incomplete when a request rejects outright (network error)', async () => {
+    safeFetch
+      .mockRejectedValueOnce(new Error('network down'))
+      .mockResolvedValueOnce(okResponse([]));
+
+    const { complete } = await fetchGitHubPullRequestsBasic('token', 'me');
+
+    expect(complete).toBe(false);
   });
 });
 

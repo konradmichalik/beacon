@@ -10,9 +10,15 @@ import { isServiceConnected, getGitHubConfig, getGitLabConfig } from './connecti
 import { fetchGitHubPullRequestsBasic, enrichGitHubPR } from '$lib/services/github/pull-requests';
 import { fetchGitLabMergeRequestsBasic, enrichGitLabMR } from '$lib/services/gitlab/pull-requests';
 import { settingsState } from './settings.svelte';
-import { isDemoMode } from './notifications.svelte';
+import {
+  isDemoMode,
+  addSyntheticNotifications,
+  pruneSyntheticNotifications
+} from './notifications.svelte';
 import { demoPullRequests } from '$lib/utils/demo-data-prs';
 import { mergeCachedEnrichment } from '$lib/utils/pr-enrichment-cache';
+import { detectPRTransitions, type PRStateSnapshot } from '$lib/utils/pr-transitions';
+import { buildSyntheticNotification } from '$lib/utils/synthetic-notifications';
 
 let pullRequests: UnifiedPullRequest[] = $state([]);
 let isLoading = $state(false);
@@ -221,10 +227,27 @@ export function getFilteredPRs(options: PRFilterOptions = {}): readonly UnifiedP
   return filterAndSortPRs(pullRequests, options);
 }
 
+// Baseline for detecting draft->ready and blocked->mergeable transitions.
+// Survives `pausePRInterval()` (popover hidden) intentionally: the first poll
+// after the popover reopens still compares against the last state seen before
+// it closed, so a transition during that window is not lost, only delayed.
+
+let transitionBaseline = new Map<string, PRStateSnapshot>();
+
+function runTransitionDetection(prs: readonly UnifiedPullRequest[]): void {
+  const { transitions, baseline } = detectPRTransitions(prs, transitionBaseline);
+  transitionBaseline = baseline;
+  if (transitions.length > 0) {
+    const now = new Date();
+    addSyntheticNotifications(transitions.map((t) => buildSyntheticNotification(t, now)));
+  }
+}
+
 function updatePRs(updated: readonly UnifiedPullRequest[]): void {
   if (updated.length === 0) return;
   const byId = new Map(updated.map((pr) => [pr.id, pr]));
   pullRequests = pullRequests.map((pr) => byId.get(pr.id) ?? pr);
+  runTransitionDetection(pullRequests);
 }
 
 const ENRICHMENT_BATCH_SIZE = 3;
@@ -288,17 +311,26 @@ export async function refreshPullRequests(): Promise<void> {
   try {
     const results: UnifiedPullRequest[] = [];
     const promises: Promise<void>[] = [];
+    // Tracks whether every source we actually attempted this poll came back
+    // complete, so a failed or partial fetch never wipes synthetic
+    // notifications for PRs the failed half of that same request would have
+    // returned (see the pruneSyntheticNotifications call below). A fetcher
+    // reports `complete: false` on a partial failure rather than throwing, so
+    // this cannot be inferred from promise rejection alone.
+    let allAttemptedSourcesSucceeded = true;
 
     if (isServiceConnected('github')) {
       const config = getGitHubConfig();
       if (config) {
         promises.push(
           fetchGitHubPullRequestsBasic(config.token, config.username)
-            .then((items) => {
+            .then(({ items, complete }) => {
               results.push(...items);
+              if (!complete) allAttemptedSourcesSucceeded = false;
             })
             .catch(() => {
               // Silently skip failed service
+              allAttemptedSourcesSucceeded = false;
             })
         );
       }
@@ -309,11 +341,13 @@ export async function refreshPullRequests(): Promise<void> {
       if (config) {
         promises.push(
           fetchGitLabMergeRequestsBasic(config.token, config.baseUrl, config.username)
-            .then((items) => {
+            .then(({ items, complete }) => {
               results.push(...items);
+              if (!complete) allAttemptedSourcesSucceeded = false;
             })
             .catch(() => {
               // Silently skip failed service
+              allAttemptedSourcesSucceeded = false;
             })
         );
       }
@@ -328,6 +362,13 @@ export async function refreshPullRequests(): Promise<void> {
     // Phase 1: Display immediately, reusing enrichment from the previous poll
     // for PRs that have not changed so unchanged PRs are not re-fetched.
     pullRequests = mergeCachedEnrichment(results, previousPRs);
+    runTransitionDetection(pullRequests);
+    pruneSyntheticNotifications(
+      allAttemptedSourcesSucceeded
+        ? // eslint-disable-next-line svelte/prefer-svelte-reactivity -- ephemeral id set, not state
+          new Set(pullRequests.map((pr) => pr.id))
+        : null
+    );
   } finally {
     isLoading = false;
     hasLoadedOnce = true;
@@ -356,9 +397,13 @@ function pausePRInterval(): void {
   }
 }
 
-// PR data feeds neither the tray badge nor desktop notifications, so there is
-// no reason to keep polling while the popover is hidden. Pause the interval on
-// hide and resume (with a throttled refresh) on show.
+// PR data now feeds synthetic notification entries (draft->ready,
+// blocked->mergeable), but polling still pauses while the popover is hidden —
+// running it in the background would mean continuous PR API polling with the
+// tray window closed, which this app deliberately avoids. `transitionBaseline`
+// survives the pause, so a transition that happened while hidden is still
+// detected by the first poll after the popover reopens, just later than a live
+// transition would be.
 function handlePRVisibility(): void {
   if (typeof document === 'undefined') return;
   if (document.hidden) {

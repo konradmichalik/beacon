@@ -202,10 +202,16 @@ function mapBasicPR(item: GitHubSearchItem, reviewRequested: boolean): UnifiedPu
   };
 }
 
+export interface BasicPullRequestsResult {
+  readonly items: UnifiedPullRequest[];
+  /** False when any fetch failed or rejected, so callers know the list may be partial. */
+  readonly complete: boolean;
+}
+
 export async function fetchGitHubPullRequestsBasic(
   token: string,
   username: string
-): Promise<UnifiedPullRequest[]> {
+): Promise<BasicPullRequestsResult> {
   const [authoredRes, reviewRes] = await Promise.all([
     safeFetch(
       `${GITHUB_API}/search/issues?q=type:pr+state:open+author:${encodeURIComponent(username)}&per_page=50&sort=updated`,
@@ -224,6 +230,8 @@ export async function fetchGitHubPullRequestsBasic(
     logError('github-pr', `review-requested PRs fetch failed: HTTP ${reviewRes.status}`);
   }
 
+  const complete = (authoredRes?.ok ?? false) && (reviewRes?.ok ?? false);
+
   const authored: GitHubSearchResponse = authoredRes?.ok
     ? await authoredRes.json()
     : { total_count: 0, items: [] };
@@ -240,10 +248,13 @@ export async function fetchGitHubPullRequestsBasic(
   const authoredIds = new Set(authored.items.map((i) => i.id));
   const reviewOnly = reviewRequested.items.filter((i) => !authoredIds.has(i.id));
 
-  return [
-    ...authored.items.slice(0, 50).map((item) => mapBasicPR(item, false)),
-    ...reviewOnly.slice(0, 50).map((item) => mapBasicPR(item, true))
-  ];
+  return {
+    items: [
+      ...authored.items.slice(0, 50).map((item) => mapBasicPR(item, false)),
+      ...reviewOnly.slice(0, 50).map((item) => mapBasicPR(item, true))
+    ],
+    complete
+  };
 }
 
 export async function enrichGitHubPR(
