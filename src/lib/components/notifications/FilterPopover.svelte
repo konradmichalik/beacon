@@ -33,8 +33,12 @@
 
   let { onClose }: { onClose: () => void } = $props();
 
+  const VISIBLE_LIMIT = 5;
+
+  let showAllProjects = $state(false);
+  let showAllAuthors = $state(false);
+
   let availableTypes = $derived(getUniqueTypes());
-  let availableAuthors = $derived(getUniqueAuthors());
   let unreadByType = $derived(getUnreadCountByType(filterState.source));
   let unreadByProject = $derived(getUnreadCountByProject(filterState.source));
   let unreadByStatus = $derived(getUnreadCountByStatus(filterState.source));
@@ -49,6 +53,21 @@
       return a.repository.localeCompare(b.repository);
     });
   });
+  let availableAuthors = $derived.by(() => {
+    const authors = getUniqueAuthors();
+    return [...authors].sort((a, b) => {
+      const countA = unreadByAuthor.get(a.login) ?? 0;
+      const countB = unreadByAuthor.get(b.login) ?? 0;
+      if (countB !== countA) return countB - countA;
+      return a.login.localeCompare(b.login);
+    });
+  });
+  let visibleProjects = $derived(
+    showAllProjects ? availableProjects : availableProjects.slice(0, VISIBLE_LIMIT)
+  );
+  let visibleAuthors = $derived(
+    showAllAuthors ? availableAuthors : availableAuthors.slice(0, VISIBLE_LIMIT)
+  );
   let filtersActive = $derived(hasActiveFilters());
 
   function handleKeydown(e: KeyboardEvent) {
@@ -70,14 +89,14 @@
 >
   <!-- Modal -->
   <div
-    class="z-50 w-72 rounded-lg border border-border bg-card shadow-lg"
+    class="z-50 flex max-h-[calc(100vh-2rem)] w-80 flex-col rounded-lg border border-border bg-card shadow-lg"
     role="dialog"
     aria-modal="true"
     use:focusTrap
   >
     <!-- Header -->
     <div
-      class="flex items-center justify-between rounded-t-lg border-b border-border bg-secondary/40 px-3 py-2"
+      class="flex shrink-0 items-center justify-between rounded-t-lg border-b border-border bg-secondary/40 px-3 py-2"
     >
       <span class="text-[11px] font-semibold text-foreground">Filters</span>
       <button
@@ -89,7 +108,7 @@
       </button>
     </div>
 
-    <div class="space-y-3 p-3">
+    <div class="min-h-0 space-y-3 overflow-y-auto p-3">
       <!-- Search query -->
       <div>
         <label
@@ -255,8 +274,8 @@
               >
             {/if}
           </div>
-          <div class="max-h-28 space-y-0.5 overflow-y-auto">
-            {#each availableProjects as project (project.repository)}
+          <div class="space-y-0.5">
+            {#each visibleProjects as project (project.repository)}
               {@const active = filterState.projects.has(project.repository)}
               {@const count = unreadByProject.get(project.repository) ?? 0}
               <label
@@ -291,6 +310,15 @@
                 {/if}
               </label>
             {/each}
+            {#if !showAllProjects && availableProjects.length > VISIBLE_LIMIT}
+              <button
+                type="button"
+                onclick={() => (showAllProjects = true)}
+                class="w-full rounded px-1.5 py-1 text-left text-[10px] text-primary hover:underline"
+              >
+                +{availableProjects.length - VISIBLE_LIMIT} more
+              </button>
+            {/if}
           </div>
         </div>
       {/if}
@@ -310,8 +338,8 @@
               >
             {/if}
           </div>
-          <div class="max-h-28 space-y-0.5 overflow-y-auto">
-            {#each availableAuthors as author (author.login)}
+          <div class="space-y-0.5">
+            {#each visibleAuthors as author (author.login)}
               {@const active = filterState.authors.has(author.login)}
               {@const count = unreadByAuthor.get(author.login) ?? 0}
               <label
@@ -344,6 +372,15 @@
                 {/if}
               </label>
             {/each}
+            {#if !showAllAuthors && availableAuthors.length > VISIBLE_LIMIT}
+              <button
+                type="button"
+                onclick={() => (showAllAuthors = true)}
+                class="w-full rounded px-1.5 py-1 text-left text-[10px] text-primary hover:underline"
+              >
+                +{availableAuthors.length - VISIBLE_LIMIT} more
+              </button>
+            {/if}
           </div>
         </div>
       {/if}
@@ -351,7 +388,7 @@
 
     <!-- Footer -->
     {#if filtersActive}
-      <div class="border-t border-border px-3 py-2">
+      <div class="shrink-0 border-t border-border px-3 py-2">
         <button
           type="button"
           onclick={() => {
