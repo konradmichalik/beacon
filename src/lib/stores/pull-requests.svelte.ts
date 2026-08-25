@@ -227,7 +227,8 @@ export function getFilteredPRs(options: PRFilterOptions = {}): readonly UnifiedP
   return filterAndSortPRs(pullRequests, options);
 }
 
-// Baseline for detecting draft->ready and blocked->mergeable transitions.
+// Baseline for detecting draft->ready, blocked->mergeable, mergeable->blocked
+// and CI success/pending->failure transitions.
 // Survives `pausePRInterval()` (popover hidden) intentionally: the first poll
 // after the popover reopens still compares against the last state seen before
 // it closed, so a transition during that window is not lost, only delayed.

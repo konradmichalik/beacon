@@ -34,6 +34,7 @@
     Bell,
     PenLine,
     AlertTriangle,
+    CircleX,
     TrainFront,
     UserPlus,
     ExternalLink,
@@ -109,7 +110,8 @@
     merge_train_removed: { label: 'Merge train removed', icon: TrainFront },
     member_access_requested: { label: 'Access requested', icon: UserPlus },
     ready_for_review: { label: 'Ready for review', icon: GitPullRequest },
-    mergeable: { label: 'Ready to merge', icon: GitMerge }
+    mergeable: { label: 'Ready to merge', icon: GitMerge },
+    ci_failed: { label: 'CI failed', icon: CircleX }
   };
 
   let reasonInfo = $derived.by(() => {
