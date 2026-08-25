@@ -132,6 +132,7 @@ export async function loadPersistedSyntheticNotifications(): Promise<void> {
     if (pruneSyntheticByAge()) persistSynthetic();
   }
   recompose();
+  updateTrayBadge(countBadgeUnread(notifications));
 }
 
 function syntheticReferenceTime(n: UnifiedNotification): number {
@@ -685,6 +686,14 @@ export function isDemoMode(): boolean {
 }
 
 export function loadDemoData(): void {
+  // App startup always restores persisted synthetic entries before checking
+  // demo mode (see App.svelte), so a real entry from a previous non-demo
+  // session could otherwise still be sitting in these maps and leak into the
+  // demo view. Clear in memory only — this must never persist the clear,
+  // since it would delete the user's real data.
+  syntheticNotificationsMap.clear();
+  syntheticReadAtMap.clear();
+
   // Synthetic fixtures must land in syntheticNotificationsMap, not
   // backendNotifications — otherwise marking one read leaves a duplicate
   // (the original backend copy plus the read copy the mark-read path writes

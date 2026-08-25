@@ -21,8 +21,15 @@ vi.mock('$lib/stores/toast.svelte', () => ({ showToast: vi.fn() }));
 // Deliberately NOT mocking $lib/utils/demo-data — this test exercises the real
 // demo fixtures, including the synthetic ones, to catch exactly the kind of
 // duplication a mocked-away demoNotifications list would hide.
-import { loadDemoData, getNotifications, markAsRead, markAllAsRead } from './notifications.svelte';
+import {
+  loadDemoData,
+  getNotifications,
+  markAsRead,
+  markAllAsRead,
+  addSyntheticNotifications
+} from './notifications.svelte';
 import { demoNotifications } from '$lib/utils/demo-data';
+import type { UnifiedNotification } from '$lib/types';
 
 describe('demo mode with synthetic fixtures', () => {
   beforeEach(() => {
@@ -57,5 +64,33 @@ describe('demo mode with synthetic fixtures', () => {
     const ids = getNotifications().map((n) => n.id);
     expect(ids.length).toBe(new Set(ids).size);
     expect(getNotifications().every((n) => !n.unread)).toBe(true);
+  });
+});
+
+describe('demo mode replacing a real session', () => {
+  it('does not leak a real synthetic entry restored before demo mode was entered', () => {
+    // App.svelte always restores persisted synthetic entries on startup
+    // before checking demo mode, so a real entry from an earlier non-demo
+    // session could still be sitting in the map when loadDemoData() runs.
+    const leftover: UnifiedNotification = {
+      id: 'beacon:pr-ready:github-pr-real-session',
+      source: 'github',
+      type: 'pull_request',
+      title: 'Real session leftover',
+      repository: 'acme/app',
+      url: 'https://github.com/acme/app/pull/1',
+      reason: 'ready_for_review',
+      unread: true,
+      updatedAt: '2026-08-01T00:00:00Z',
+      createdAt: '2026-08-01T00:00:00Z',
+      author: null,
+      subjectState: 'open',
+      synthetic: true
+    };
+    addSyntheticNotifications([leftover]);
+
+    loadDemoData();
+
+    expect(getNotifications().some((n) => n.id === leftover.id)).toBe(false);
   });
 });
