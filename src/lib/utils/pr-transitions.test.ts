@@ -40,7 +40,7 @@ describe('detectPRTransitions', () => {
 
   it('fires ready_for_review when draft flips to false for a review-requested PR', () => {
     const baseline = new Map<string, PRStateSnapshot>([
-      ['github-pr-1', { draft: true, mergeStatus: 'unknown' }]
+      ['github-pr-1', { draft: true, mergeStatus: 'unknown', ciStatus: 'unknown' }]
     ]);
     const pr = makePR({ draft: false, reviewRequestedFromMe: true });
 
@@ -51,7 +51,7 @@ describe('detectPRTransitions', () => {
 
   it('does not fire ready_for_review for a PR I authored myself', () => {
     const baseline = new Map<string, PRStateSnapshot>([
-      ['github-pr-1', { draft: true, mergeStatus: 'unknown' }]
+      ['github-pr-1', { draft: true, mergeStatus: 'unknown', ciStatus: 'unknown' }]
     ]);
     const pr = makePR({ draft: false, reviewRequestedFromMe: false });
 
@@ -62,7 +62,7 @@ describe('detectPRTransitions', () => {
 
   it('is silent again on the next poll once already fired', () => {
     const baseline = new Map<string, PRStateSnapshot>([
-      ['github-pr-1', { draft: true, mergeStatus: 'unknown' }]
+      ['github-pr-1', { draft: true, mergeStatus: 'unknown', ciStatus: 'unknown' }]
     ]);
     const pr = makePR({ draft: false, reviewRequestedFromMe: true });
 
@@ -74,7 +74,7 @@ describe('detectPRTransitions', () => {
 
   it('fires mergeable when mergeStatus flips from blocked to mergeable for the author', () => {
     const baseline = new Map<string, PRStateSnapshot>([
-      ['github-pr-1', { draft: false, mergeStatus: 'blocked' }]
+      ['github-pr-1', { draft: false, mergeStatus: 'blocked', ciStatus: 'unknown' }]
     ]);
     const pr = makePR({ mergeStatus: 'mergeable', reviewRequestedFromMe: false });
 
@@ -85,7 +85,7 @@ describe('detectPRTransitions', () => {
 
   it('does not fire mergeable for a PR I am only reviewing, not authoring', () => {
     const baseline = new Map<string, PRStateSnapshot>([
-      ['github-pr-1', { draft: false, mergeStatus: 'blocked' }]
+      ['github-pr-1', { draft: false, mergeStatus: 'blocked', ciStatus: 'unknown' }]
     ]);
     const pr = makePR({ mergeStatus: 'mergeable', reviewRequestedFromMe: true });
 
@@ -96,7 +96,7 @@ describe('detectPRTransitions', () => {
 
   it('never fires when mergeStatus goes from unknown to mergeable', () => {
     const baseline = new Map<string, PRStateSnapshot>([
-      ['github-pr-1', { draft: false, mergeStatus: 'unknown' }]
+      ['github-pr-1', { draft: false, mergeStatus: 'unknown', ciStatus: 'unknown' }]
     ]);
     const pr = makePR({ mergeStatus: 'mergeable', reviewRequestedFromMe: false });
 
@@ -107,7 +107,7 @@ describe('detectPRTransitions', () => {
 
   it('does not let a transient unknown erase a remembered blocked status', () => {
     const baseline = new Map<string, PRStateSnapshot>([
-      ['github-pr-1', { draft: false, mergeStatus: 'blocked' }]
+      ['github-pr-1', { draft: false, mergeStatus: 'blocked', ciStatus: 'unknown' }]
     ]);
     const unknownPoll = makePR({ mergeStatus: 'unknown', reviewRequestedFromMe: false });
     const mergeablePoll = makePR({ mergeStatus: 'mergeable', reviewRequestedFromMe: false });
@@ -121,7 +121,7 @@ describe('detectPRTransitions', () => {
 
   it('does not also fire mergeable right after ready_for_review once enrichment lands', () => {
     const baseline = new Map<string, PRStateSnapshot>([
-      ['github-pr-1', { draft: true, mergeStatus: 'blocked' }]
+      ['github-pr-1', { draft: true, mergeStatus: 'blocked', ciStatus: 'unknown' }]
     ]);
     const readyPoll = makePR({
       draft: false,
@@ -143,7 +143,7 @@ describe('detectPRTransitions', () => {
 
   it('does not fire mergeable for the author right after their own draft flip, once enrichment lands', () => {
     const baseline = new Map<string, PRStateSnapshot>([
-      ['github-pr-1', { draft: true, mergeStatus: 'blocked' }]
+      ['github-pr-1', { draft: true, mergeStatus: 'blocked', ciStatus: 'unknown' }]
     ]);
     // Authored by me (reviewRequestedFromMe: false), so only the mergeable
     // branch is reachable for this PR — the draft flip itself must still
@@ -168,7 +168,7 @@ describe('detectPRTransitions', () => {
 
   it('fires ready_for_review again after going ready, back to draft, then ready', () => {
     const baseline = new Map<string, PRStateSnapshot>([
-      ['github-pr-1', { draft: true, mergeStatus: 'unknown' }]
+      ['github-pr-1', { draft: true, mergeStatus: 'unknown', ciStatus: 'unknown' }]
     ]);
     const readyPoll = makePR({ draft: false, reviewRequestedFromMe: true });
     const afterFirstReady = detectPRTransitions([readyPoll], baseline);
@@ -185,9 +185,130 @@ describe('detectPRTransitions', () => {
     ]);
   });
 
+  it('fires unmergeable when a github PR regresses from mergeable to blocked for the author', () => {
+    const baseline = new Map<string, PRStateSnapshot>([
+      ['github-pr-1', { draft: false, mergeStatus: 'mergeable', ciStatus: 'unknown' }]
+    ]);
+    const pr = makePR({ mergeStatus: 'blocked', reviewRequestedFromMe: false });
+
+    const { transitions } = detectPRTransitions([pr], baseline);
+
+    expect(transitions).toEqual([{ kind: 'unmergeable', pr }]);
+  });
+
+  it('does not fire unmergeable when a ready mergeable PR is turned back into draft', () => {
+    const baseline = new Map<string, PRStateSnapshot>([
+      ['github-pr-1', { draft: false, mergeStatus: 'mergeable', ciStatus: 'unknown' }]
+    ]);
+    const pr = makePR({ draft: true, mergeStatus: 'blocked', reviewRequestedFromMe: false });
+
+    const { transitions } = detectPRTransitions([pr], baseline);
+
+    expect(transitions).toEqual([]);
+  });
+
+  it('does not fire unmergeable for a gitlab MR, since GitLab already sends a native notification', () => {
+    const baseline = new Map<string, PRStateSnapshot>([
+      ['gitlab-mr-1', { draft: false, mergeStatus: 'mergeable', ciStatus: 'unknown' }]
+    ]);
+    const pr = makePR({
+      id: 'gitlab-mr-1',
+      source: 'gitlab',
+      mergeStatus: 'blocked',
+      reviewRequestedFromMe: false
+    });
+
+    const { transitions } = detectPRTransitions([pr], baseline);
+
+    expect(transitions).toEqual([]);
+  });
+
+  it('does not fire unmergeable for a PR I am only reviewing, not authoring', () => {
+    const baseline = new Map<string, PRStateSnapshot>([
+      ['github-pr-1', { draft: false, mergeStatus: 'mergeable', ciStatus: 'unknown' }]
+    ]);
+    const pr = makePR({ mergeStatus: 'blocked', reviewRequestedFromMe: true });
+
+    const { transitions } = detectPRTransitions([pr], baseline);
+
+    expect(transitions).toEqual([]);
+  });
+
+  it('fires ci_failed when a github PR I authored goes from success to failure', () => {
+    const baseline = new Map<string, PRStateSnapshot>([
+      ['github-pr-1', { draft: false, mergeStatus: 'unknown', ciStatus: 'success' }]
+    ]);
+    const pr = makePR({ ciStatus: 'failure', reviewRequestedFromMe: false });
+
+    const { transitions } = detectPRTransitions([pr], baseline);
+
+    expect(transitions).toEqual([{ kind: 'ci_failed', pr }]);
+  });
+
+  it('fires ci_failed when a github PR I authored goes from pending to failure', () => {
+    const baseline = new Map<string, PRStateSnapshot>([
+      ['github-pr-1', { draft: false, mergeStatus: 'unknown', ciStatus: 'pending' }]
+    ]);
+    const pr = makePR({ ciStatus: 'failure', reviewRequestedFromMe: false });
+
+    const { transitions } = detectPRTransitions([pr], baseline);
+
+    expect(transitions).toEqual([{ kind: 'ci_failed', pr }]);
+  });
+
+  it('never fires ci_failed when ciStatus goes from unknown straight to failure', () => {
+    const baseline = new Map<string, PRStateSnapshot>([
+      ['github-pr-1', { draft: false, mergeStatus: 'unknown', ciStatus: 'unknown' }]
+    ]);
+    const pr = makePR({ ciStatus: 'failure', reviewRequestedFromMe: false });
+
+    const { transitions } = detectPRTransitions([pr], baseline);
+
+    expect(transitions).toEqual([]);
+  });
+
+  it('does not fire ci_failed again on the next poll once already failing', () => {
+    const baseline = new Map<string, PRStateSnapshot>([
+      ['github-pr-1', { draft: false, mergeStatus: 'unknown', ciStatus: 'success' }]
+    ]);
+    const pr = makePR({ ciStatus: 'failure', reviewRequestedFromMe: false });
+
+    const first = detectPRTransitions([pr], baseline);
+    const second = detectPRTransitions([pr], first.baseline);
+
+    expect(second.transitions).toEqual([]);
+  });
+
+  it('does not fire ci_failed for a gitlab MR, since GitLab already sends a native notification', () => {
+    const baseline = new Map<string, PRStateSnapshot>([
+      ['gitlab-mr-1', { draft: false, mergeStatus: 'unknown', ciStatus: 'success' }]
+    ]);
+    const pr = makePR({
+      id: 'gitlab-mr-1',
+      source: 'gitlab',
+      ciStatus: 'failure',
+      reviewRequestedFromMe: false
+    });
+
+    const { transitions } = detectPRTransitions([pr], baseline);
+
+    expect(transitions).toEqual([]);
+  });
+
+  it('does not fire ci_failed for a PR I am only reviewing, not authoring', () => {
+    const baseline = new Map<string, PRStateSnapshot>([
+      ['github-pr-1', { draft: false, mergeStatus: 'unknown', ciStatus: 'success' }]
+    ]);
+    const pr = makePR({ ciStatus: 'failure', reviewRequestedFromMe: true });
+
+    const { transitions } = detectPRTransitions([pr], baseline);
+
+    expect(transitions).toEqual([]);
+  });
+
   it('drops a PR from the returned baseline once it is no longer in the fresh list', () => {
     const baseline = new Map<string, PRStateSnapshot>([
-      ['github-pr-1', { draft: false, mergeStatus: 'blocked' }]
+      ['github-pr-1', { draft: false, mergeStatus: 'blocked', ciStatus: 'unknown' }]
     ]);
 
     const { baseline: nextBaseline } = detectPRTransitions([], baseline);
@@ -197,12 +318,16 @@ describe('detectPRTransitions', () => {
 
   it('does not mutate the baseline map passed in', () => {
     const baseline = new Map<string, PRStateSnapshot>([
-      ['github-pr-1', { draft: true, mergeStatus: 'unknown' }]
+      ['github-pr-1', { draft: true, mergeStatus: 'unknown', ciStatus: 'unknown' }]
     ]);
     const pr = makePR({ draft: false, reviewRequestedFromMe: true });
 
     detectPRTransitions([pr], baseline);
 
-    expect(baseline.get('github-pr-1')).toEqual({ draft: true, mergeStatus: 'unknown' });
+    expect(baseline.get('github-pr-1')).toEqual({
+      draft: true,
+      mergeStatus: 'unknown',
+      ciStatus: 'unknown'
+    });
   });
 });

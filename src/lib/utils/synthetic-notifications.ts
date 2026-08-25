@@ -5,7 +5,9 @@ const SYNTHETIC_ID_PREFIX = 'beacon:';
 
 const TRANSITION_SLUG: Record<PRTransitionKind, string> = {
   ready_for_review: 'pr-ready',
-  mergeable: 'pr-mergeable'
+  mergeable: 'pr-mergeable',
+  unmergeable: 'pr-unmergeable',
+  ci_failed: 'pr-ci-failed'
 };
 
 /**

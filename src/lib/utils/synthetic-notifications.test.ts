@@ -48,6 +48,15 @@ describe('syntheticNotificationId', () => {
     const mergeable = syntheticNotificationId('mergeable', 'github-pr-1');
     expect(ready).not.toBe(mergeable);
   });
+
+  it('differs between all four transition kinds for the same PR', () => {
+    const ids = new Set(
+      (['ready_for_review', 'mergeable', 'unmergeable', 'ci_failed'] as const).map((kind) =>
+        syntheticNotificationId(kind, 'github-pr-1')
+      )
+    );
+    expect(ids.size).toBe(4);
+  });
 });
 
 describe('syntheticNotificationPrId', () => {
@@ -120,5 +129,29 @@ describe('buildSyntheticNotification', () => {
 
     expect(notification.type).toBe('merge_request');
     expect(notification.reason).toBe('mergeable');
+  });
+
+  it('maps a github PR unmergeable transition to a pull_request notification', () => {
+    const pr = makePR({ source: 'github', mergeStatus: 'blocked' });
+    const transition: PRTransition = { kind: 'unmergeable', pr };
+    const now = new Date('2026-03-18T09:00:00Z');
+
+    const notification = buildSyntheticNotification(transition, now);
+
+    expect(notification.id).toBe(syntheticNotificationId('unmergeable', pr.id));
+    expect(notification.type).toBe('pull_request');
+    expect(notification.reason).toBe('unmergeable');
+  });
+
+  it('maps a github PR ci_failed transition to a pull_request notification', () => {
+    const pr = makePR({ source: 'github', ciStatus: 'failure' });
+    const transition: PRTransition = { kind: 'ci_failed', pr };
+    const now = new Date('2026-03-18T09:00:00Z');
+
+    const notification = buildSyntheticNotification(transition, now);
+
+    expect(notification.id).toBe(syntheticNotificationId('ci_failed', pr.id));
+    expect(notification.type).toBe('pull_request');
+    expect(notification.reason).toBe('ci_failed');
   });
 });
