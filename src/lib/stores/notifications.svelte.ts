@@ -9,8 +9,19 @@ import { demoNotifications } from '$lib/utils/demo-data';
 import { playNotificationSound } from '$lib/services/notification-sound';
 import { showToast } from '$lib/stores/toast.svelte';
 import { parseGitLabTargetUrl } from '$lib/utils/gitlab-target';
+import {
+  isSyntheticNotification,
+  syntheticNotificationPrId
+} from '$lib/utils/synthetic-notifications';
 
+// The reactive, composed view the UI reads: `backendNotifications` (from the
+// Rust polling loop) plus `syntheticNotificationsMap` (locally generated PR
+// transition entries), recomputed by `recompose()`. Kept separate because the
+// backend replaces its list wholesale on every emit, which would otherwise
+// wipe out synthetic entries that have no server-side counterpart to re-fetch.
 let notifications: UnifiedNotification[] = $state([]);
+
+let backendNotifications: UnifiedNotification[] = [];
 let isLoading = $state(false);
 let hasLoadedOnce = $state(false);
 let lastRefresh: string | null = $state(null);
@@ -71,6 +82,133 @@ export async function loadPersistedDismissedIds(): Promise<void> {
     if (now - ts < DISMISSED_IDS_MAX_AGE_MS) {
       dismissedIds.set(id, ts);
     }
+  }
+}
+
+// Synthetic PR-transition entries (draft -> ready, blocked -> mergeable) live
+// here, keyed by id, separate from `backendNotifications` since they have no
+// server-side thread to re-fetch and must survive a backend list replacement.
+// eslint-disable-next-line svelte/prefer-svelte-reactivity -- not reactive state, internal bookkeeping
+const syntheticNotificationsMap = new Map<string, UnifiedNotification>();
+const SYNTHETIC_STORAGE_KEY = 'syntheticNotifications';
+const SYNTHETIC_READ_MAX_AGE_MS = 3 * 24 * 60 * 60 * 1000; // 3 days
+const SYNTHETIC_UNREAD_MAX_AGE_MS = 14 * 24 * 60 * 60 * 1000; // 14 days
+
+// When a synthetic entry was actually marked read, separate from `updatedAt`
+// (the detection timestamp) — the 3-day read-pruning window must count from
+// there, not from detection, or an entry read long after it was detected
+// vanishes on the very next poll.
+// eslint-disable-next-line svelte/prefer-svelte-reactivity -- not reactive state, internal bookkeeping
+const syntheticReadAtMap = new Map<string, number>();
+const SYNTHETIC_READ_AT_STORAGE_KEY = 'syntheticNotificationsReadAt';
+
+let syntheticPersistTimer: ReturnType<typeof setTimeout> | null = null;
+
+function persistSynthetic(): void {
+  if (syntheticPersistTimer) return;
+  syntheticPersistTimer = setTimeout(() => {
+    syntheticPersistTimer = null;
+    setStorageItem(SYNTHETIC_STORAGE_KEY, Object.fromEntries(syntheticNotificationsMap)).catch(
+      () => {}
+    );
+    setStorageItem(SYNTHETIC_READ_AT_STORAGE_KEY, Object.fromEntries(syntheticReadAtMap)).catch(
+      () => {}
+    );
+  }, 500);
+}
+
+export async function loadPersistedSyntheticNotifications(): Promise<void> {
+  const stored = await getStorageItem<Record<string, UnifiedNotification>>(SYNTHETIC_STORAGE_KEY);
+  const storedReadAt = await getStorageItem<Record<string, number>>(SYNTHETIC_READ_AT_STORAGE_KEY);
+  if (storedReadAt) {
+    for (const [id, ts] of Object.entries(storedReadAt)) {
+      syntheticReadAtMap.set(id, ts);
+    }
+  }
+  if (stored) {
+    for (const [id, notification] of Object.entries(stored)) {
+      syntheticNotificationsMap.set(id, notification);
+    }
+    if (pruneSyntheticByAge()) persistSynthetic();
+  }
+  recompose();
+}
+
+function syntheticReferenceTime(n: UnifiedNotification): number {
+  if (n.unread) return new Date(n.updatedAt).getTime();
+  return syntheticReadAtMap.get(n.id) ?? new Date(n.updatedAt).getTime();
+}
+
+function pruneSyntheticByAge(): boolean {
+  const now = Date.now();
+  let changed = false;
+  for (const [id, n] of syntheticNotificationsMap) {
+    const maxAge = n.unread ? SYNTHETIC_UNREAD_MAX_AGE_MS : SYNTHETIC_READ_MAX_AGE_MS;
+    if (now - syntheticReferenceTime(n) >= maxAge) {
+      syntheticNotificationsMap.delete(id);
+      syntheticReadAtMap.delete(id);
+      changed = true;
+    }
+  }
+  return changed;
+}
+
+/**
+ * Also drops entries whose PR is no longer in the current list (merged,
+ * closed, unassigned), but only when `openPrIds` is known — a failed fetch
+ * for one source must never wipe out every synthetic entry.
+ */
+export function pruneSyntheticNotifications(openPrIds: ReadonlySet<string> | null): void {
+  let changed = pruneSyntheticByAge();
+  if (openPrIds !== null) {
+    for (const id of syntheticNotificationsMap.keys()) {
+      if (!openPrIds.has(syntheticNotificationPrId(id))) {
+        syntheticNotificationsMap.delete(id);
+        syntheticReadAtMap.delete(id);
+        changed = true;
+      }
+    }
+  }
+  if (changed) {
+    persistSynthetic();
+    recompose();
+    updateTrayBadge(countBadgeUnread(notifications));
+  }
+}
+
+/** Pure composition of the backend list and the synthetic list, newest first. */
+export function composeNotifications(
+  backend: readonly UnifiedNotification[],
+  synthetic: readonly UnifiedNotification[]
+): UnifiedNotification[] {
+  return [...backend, ...synthetic].sort(
+    // eslint-disable-next-line svelte/prefer-svelte-reactivity -- date parsing for sort comparison
+    (a, b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime()
+  );
+}
+
+function recompose(): void {
+  notifications = composeNotifications(backendNotifications, [
+    ...syntheticNotificationsMap.values()
+  ]);
+}
+
+/**
+ * Adds or resurfaces synthetic PR-transition entries. Called only when
+ * `detectPRTransitions` reports a genuine transition, so every call here is a
+ * real event worth a sound, never a re-poll echo of an existing one.
+ */
+export function addSyntheticNotifications(items: readonly UnifiedNotification[]): void {
+  if (items.length === 0) return;
+  for (const item of items) {
+    syntheticNotificationsMap.set(item.id, item);
+  }
+  persistSynthetic();
+  recompose();
+  updateTrayBadge(countBadgeUnread(notifications));
+  const audible = items.some((n) => !isNotificationMuted(n) && !isSnoozed(n));
+  if (audible && settingsState.notifyMode !== 'disabled') {
+    playNotificationSound(settingsState.notifySound);
   }
 }
 
@@ -476,7 +614,8 @@ export function updateFromBackend(items: UnifiedNotification[]): void {
   knownUnreadIds = currentUnreadIds;
   isFirstLoad = false;
 
-  notifications = effectiveItems;
+  backendNotifications = effectiveItems;
+  recompose();
   // eslint-disable-next-line svelte/prefer-svelte-reactivity -- timestamp string, not reactive Date
   lastRefresh = new Date().toISOString();
 
@@ -546,7 +685,17 @@ export function isDemoMode(): boolean {
 }
 
 export function loadDemoData(): void {
-  notifications = [...demoNotifications];
+  // Synthetic fixtures must land in syntheticNotificationsMap, not
+  // backendNotifications — otherwise marking one read leaves a duplicate
+  // (the original backend copy plus the read copy the mark-read path writes
+  // into the map) once recompose() merges both lists.
+  backendNotifications = demoNotifications.filter((n) => !isSyntheticNotification(n));
+  for (const n of demoNotifications) {
+    if (isSyntheticNotification(n)) {
+      syntheticNotificationsMap.set(n.id, n);
+    }
+  }
+  recompose();
   // eslint-disable-next-line svelte/prefer-svelte-reactivity -- timestamp string, not reactive Date
   lastRefresh = new Date().toISOString();
 }
@@ -557,18 +706,39 @@ export function markAllAsRead(ids?: ReadonlySet<string>): void {
   const unread = notifications.filter((n) => n.unread && (!ids || ids.has(n.id)));
   if (unread.length === 0) return;
 
-  // Snapshot unread counts before mutating state (used by markOnServers)
-  const totalGhUnread = notifications.filter((n) => n.source === 'github' && n.unread).length;
-  const totalGlUnread = notifications.filter((n) => n.source === 'gitlab' && n.unread).length;
+  const unreadReal = unread.filter((n) => !isSyntheticNotification(n));
+  const unreadSynthetic = unread.filter(isSyntheticNotification);
+
+  // Snapshot unread counts before mutating state (used by markOnServers) —
+  // scoped to the backend list only, synthetic entries never sync to a server
+  // and must not skew the bulk-vs-per-item threshold there.
+  const totalGhUnread = backendNotifications.filter(
+    (n) => n.source === 'github' && n.unread
+  ).length;
+  const totalGlUnread = backendNotifications.filter(
+    (n) => n.source === 'gitlab' && n.unread
+  ).length;
 
   const now = Date.now();
-  for (const n of unread) {
+  // eslint-disable-next-line svelte/prefer-svelte-reactivity -- local lookup set, not state
+  const unreadRealIds = new Set(unreadReal.map((n) => n.id));
+  for (const n of unreadReal) {
     locallyReadIds.set(n.id, now);
   }
-  persistReadIds();
-  notifications = notifications.map((n) =>
-    n.unread && (!ids || ids.has(n.id)) ? { ...n, unread: false } : n
+  if (unreadReal.length > 0) persistReadIds();
+  backendNotifications = backendNotifications.map((n) =>
+    n.unread && unreadRealIds.has(n.id) ? { ...n, unread: false } : n
   );
+
+  if (unreadSynthetic.length > 0) {
+    for (const n of unreadSynthetic) {
+      syntheticNotificationsMap.set(n.id, { ...n, unread: false });
+      syntheticReadAtMap.set(n.id, now);
+    }
+    persistSynthetic();
+  }
+
+  recompose();
   const unreadCount = countBadgeUnread(notifications);
   updateTrayBadge(unreadCount);
 
@@ -577,8 +747,10 @@ export function markAllAsRead(ids?: ReadonlySet<string>): void {
     playNotificationSound('ripple');
   }
 
-  // Mark on servers (best-effort)
-  markOnServers(unread, { totalGhUnread, totalGlUnread }).catch(() => {});
+  // Mark on servers (best-effort), real notifications only
+  if (unreadReal.length > 0) {
+    markOnServers(unreadReal, { totalGhUnread, totalGlUnread }).catch(() => {});
+  }
 
   showToast(unread.length === 1 ? 'Marked as read' : `${unread.length} marked as read`);
 }
@@ -587,13 +759,34 @@ export function markAsRead(id: string): void {
   const notification = notifications.find((n) => n.id === id);
   if (!notification || !notification.unread) return;
 
+  if (isSyntheticNotification(notification)) {
+    syntheticNotificationsMap.set(id, { ...notification, unread: false });
+    syntheticReadAtMap.set(id, Date.now());
+    persistSynthetic();
+    recompose();
+    const unreadCount = countBadgeUnread(notifications);
+    updateTrayBadge(unreadCount);
+    if (unreadCount === 0) {
+      playNotificationSound('ripple');
+    }
+    showToast('Marked as read');
+    return;
+  }
+
   // Snapshot unread counts before mutating state
-  const totalGhUnread = notifications.filter((n) => n.source === 'github' && n.unread).length;
-  const totalGlUnread = notifications.filter((n) => n.source === 'gitlab' && n.unread).length;
+  const totalGhUnread = backendNotifications.filter(
+    (n) => n.source === 'github' && n.unread
+  ).length;
+  const totalGlUnread = backendNotifications.filter(
+    (n) => n.source === 'gitlab' && n.unread
+  ).length;
 
   locallyReadIds.set(id, Date.now());
   persistReadIds();
-  notifications = notifications.map((n) => (n.id === id ? { ...n, unread: false } : n));
+  backendNotifications = backendNotifications.map((n) =>
+    n.id === id ? { ...n, unread: false } : n
+  );
+  recompose();
   const unreadCount = countBadgeUnread(notifications);
   updateTrayBadge(unreadCount);
 
@@ -613,12 +806,13 @@ export function markAsRead(id: string): void {
  */
 export function markAsDone(id: string): void {
   const found = notifications.find((n) => n.id === id);
-  if (!found || found.source !== 'github') return;
+  if (!found || found.source !== 'github' || isSyntheticNotification(found)) return;
   const notification: UnifiedNotification = found;
 
   dismissedIds.set(id, Date.now());
   persistDismissedIds();
-  notifications = notifications.filter((n) => n.id !== id);
+  backendNotifications = backendNotifications.filter((n) => n.id !== id);
+  recompose();
   updateTrayBadge(countBadgeUnread(notifications));
 
   const threadId = notification.id.replace('github-', '');
@@ -626,8 +820,9 @@ export function markAsDone(id: string): void {
   function rollback(): void {
     dismissedIds.delete(id);
     persistDismissedIds();
-    if (!notifications.some((n) => n.id === id)) {
-      notifications = [...notifications, notification];
+    if (!backendNotifications.some((n) => n.id === id)) {
+      backendNotifications = [...backendNotifications, notification];
+      recompose();
     }
     updateTrayBadge(countBadgeUnread(notifications));
     showToast('Could not mark as done on GitHub');
@@ -660,7 +855,7 @@ export function markAsDone(id: string): void {
  */
 export async function unsubscribeFromNotification(id: string): Promise<void> {
   const notification = notifications.find((n) => n.id === id);
-  if (!notification) return;
+  if (!notification || isSyntheticNotification(notification)) return;
 
   try {
     if (notification.source === 'github') {
