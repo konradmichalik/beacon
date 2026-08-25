@@ -156,4 +156,31 @@ describe('PR draft-to-ready transitions surface as synthetic notifications', () 
     await flushMicrotasks();
     expect(synthetic('beacon:pr-ready:github-pr-3')).toBeUndefined();
   });
+
+  it('still fires the transition after an incomplete poll temporarily drops the PR', async () => {
+    // Poll 1 (complete): baseline established for a draft, review-requested PR.
+    fetchGitHubPullRequestsBasic.mockResolvedValueOnce({
+      items: [basicPR({ id: 'github-pr-4', draft: true })],
+      complete: true
+    });
+    await refreshPullRequests();
+    await flushMicrotasks();
+
+    // Poll 2 (incomplete): the fetch failed entirely, so the PR is absent from
+    // this poll's results — the baseline for it must survive regardless.
+    fetchGitHubPullRequestsBasic.mockResolvedValueOnce({ items: [], complete: false });
+    await refreshPullRequests();
+    await flushMicrotasks();
+
+    // Poll 3 (complete): the PR is now ready. This must still be recognized
+    // as a transition from the poll-1 baseline, not as a first observation.
+    fetchGitHubPullRequestsBasic.mockResolvedValueOnce({
+      items: [basicPR({ id: 'github-pr-4', draft: false, updatedAt: '2026-08-03T00:00:00Z' })],
+      complete: true
+    });
+    await refreshPullRequests();
+    await flushMicrotasks();
+
+    expect(synthetic('beacon:pr-ready:github-pr-4')).toBeDefined();
+  });
 });

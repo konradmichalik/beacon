@@ -234,7 +234,19 @@ export function getFilteredPRs(options: PRFilterOptions = {}): readonly UnifiedP
 
 let transitionBaseline = new Map<string, PRStateSnapshot>();
 
+// True only for the most recent poll's currently configured sources all
+// returning complete results. `detectPRTransitions` drops any PR absent from
+// the list it is given, which is correct when that PR is genuinely gone but
+// wrong when it is merely missing because a fetch failed — that would erase
+// its baseline, and a later successful poll would then see it as a first
+// observation and silently suppress its transition. So skip detection (and
+// the baseline overwrite that comes with it) entirely on an incomplete poll,
+// covering both this poll's phase-1 call and any phase-2 enrichment batches
+// still landing for it.
+let lastPollComplete = true;
+
 function runTransitionDetection(prs: readonly UnifiedPullRequest[]): void {
+  if (!lastPollComplete) return;
   const { transitions, baseline } = detectPRTransitions(prs, transitionBaseline);
   transitionBaseline = baseline;
   if (transitions.length > 0) {
@@ -362,6 +374,7 @@ export async function refreshPullRequests(): Promise<void> {
     // Phase 1: Display immediately, reusing enrichment from the previous poll
     // for PRs that have not changed so unchanged PRs are not re-fetched.
     pullRequests = mergeCachedEnrichment(results, previousPRs);
+    lastPollComplete = allAttemptedSourcesSucceeded;
     runTransitionDetection(pullRequests);
     pruneSyntheticNotifications(
       allAttemptedSourcesSucceeded
