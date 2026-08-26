@@ -216,6 +216,11 @@ struct Author {
 pub struct Poller {
     client: reqwest::Client,
     inner: Mutex<PollerInner>,
+    /// URL to open when the app is next activated (e.g. by a notification
+    /// click), if that activation should route to a single item instead of
+    /// just focusing the window. Guarded separately from `inner` (a tokio
+    /// mutex) since it's read from a synchronous, non-async callback.
+    pending_click_url: std::sync::Mutex<Option<String>>,
 }
 
 struct PollerInner {
@@ -260,7 +265,20 @@ impl Poller {
                 backoff_until: None,
                 last_emit_fingerprint: None,
             }),
+            pending_click_url: std::sync::Mutex::new(None),
         }
+    }
+
+    /// Sets (or clears) the URL that a subsequent app activation should open,
+    /// rather than just focusing the window. Non-`http(s)` URLs are dropped.
+    fn set_pending_click_url(&self, url: Option<String>) {
+        let url = url.filter(|u| u.starts_with("https://") || u.starts_with("http://"));
+        *self.pending_click_url.lock().unwrap() = url;
+    }
+
+    /// Reads and clears the pending click URL, if any, so it's only acted on once.
+    pub fn take_pending_click_url(&self) -> Option<String> {
+        self.pending_click_url.lock().unwrap().take()
     }
 }
 
@@ -817,13 +835,21 @@ fn send_native(app: &AppHandle, title: &str, body: &str) {
     let _ = app.notification().builder().title(title).body(body).show();
 }
 
+/// Returns `url()` when `count` is exactly 1, so a batch of one item can be
+/// remembered for click-through while a batch of several is not.
+fn single_click_url(count: usize, url: impl FnOnce() -> String) -> Option<String> {
+    (count == 1).then(url)
+}
+
 fn process_new(
     app: &AppHandle,
+    poller: &Poller,
     inner: &mut PollerInner,
     items: &[UnifiedNotification],
     settings: &Settings,
 ) {
     if settings.notify_mode == NotifyMode::Disabled {
+        poller.set_pending_click_url(None);
         return;
     }
 
@@ -861,6 +887,9 @@ fn process_new(
                     &format!("{} new notifications", new_items.len()),
                 );
             }
+            poller.set_pending_click_url(single_click_url(new_items.len(), || {
+                new_items[0].url.clone()
+            }));
         }
         NotifyMode::Summary => {
             inner
@@ -882,6 +911,9 @@ fn process_new(
                     format!("{count} new across {} projects", repos.len())
                 };
                 send_native(app, "Beacon", &body);
+                poller.set_pending_click_url(single_click_url(count, || {
+                    inner.summary_buffer[0].url.clone()
+                }));
                 inner.summary_buffer.clear();
                 inner.last_summary_flush = std::time::Instant::now();
             }
@@ -1010,7 +1042,7 @@ async fn do_poll(app: &AppHandle, force_emit: bool) {
             &format!("poll complete: {} total, {} unread", results.len(), unread),
         );
 
-        process_new(app, &mut inner, &results, &settings);
+        process_new(app, &poller, &mut inner, &results, &settings);
 
         // Skip re-emitting an unchanged list to the frontend (unless the caller
         // forces it, e.g. a manual refresh or the initial load).
@@ -1434,5 +1466,45 @@ mod tests {
     #[test]
     fn fingerprint_of_empty_list_is_stable() {
         assert_eq!(results_fingerprint(&[]), results_fingerprint(&[]));
+    }
+
+    // ── Notification click-through target ──────────────────────────
+
+    #[test]
+    fn single_click_url_returns_url_for_exactly_one() {
+        assert_eq!(
+            single_click_url(1, || "https://example.com/pr/1".to_string()),
+            Some("https://example.com/pr/1".to_string())
+        );
+    }
+
+    #[test]
+    fn single_click_url_is_none_for_zero_or_many() {
+        assert_eq!(single_click_url(0, || "unused".to_string()), None);
+        assert_eq!(single_click_url(2, || "unused".to_string()), None);
+    }
+
+    #[test]
+    fn pending_click_url_round_trips_and_clears_on_take() {
+        let poller = Poller::new();
+        assert_eq!(poller.take_pending_click_url(), None);
+
+        poller.set_pending_click_url(Some("https://example.com/pr/1".to_string()));
+        assert_eq!(
+            poller.take_pending_click_url(),
+            Some("https://example.com/pr/1".to_string())
+        );
+        // Consumed — a second read finds nothing to act on.
+        assert_eq!(poller.take_pending_click_url(), None);
+    }
+
+    #[test]
+    fn pending_click_url_rejects_non_http_schemes() {
+        let poller = Poller::new();
+        poller.set_pending_click_url(Some("file:///etc/passwd".to_string()));
+        assert_eq!(poller.take_pending_click_url(), None);
+
+        poller.set_pending_click_url(Some("javascript:alert(1)".to_string()));
+        assert_eq!(poller.take_pending_click_url(), None);
     }
 }
