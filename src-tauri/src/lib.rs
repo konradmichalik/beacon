@@ -567,13 +567,26 @@ pub fn run() {
                         ];
                     }
 
-                    // Show window when app is activated (e.g. native notification click).
-                    // With ActivationPolicy::Accessory + NonactivatingPanel the app is
-                    // only activated through notification clicks, never via tray interaction.
+                    // Handle app activation (e.g. native notification click). With
+                    // ActivationPolicy::Accessory + NonactivatingPanel the app is only
+                    // activated through notification clicks, never via tray interaction.
+                    // If the most recent notification was about a single item, open it
+                    // directly instead of just focusing the window.
                     let activation_block = {
                         let app_handle = app.handle().clone();
                         block2::RcBlock::new(move |_: std::ptr::NonNull<AnyObject>| {
-                            tray::show_main_window(&app_handle);
+                            use tauri_plugin_shell::ShellExt;
+                            let poller = app_handle.state::<std::sync::Arc<polling::Poller>>();
+                            match poller.take_pending_click_url() {
+                                Some(url) => {
+                                    // Matches the shell-open pattern used app-wide
+                                    // (src/lib/utils/open-url.ts); tauri-plugin-opener
+                                    // isn't a dependency here.
+                                    #[allow(deprecated)]
+                                    let _ = app_handle.shell().open(url, None);
+                                }
+                                None => tray::show_main_window(&app_handle),
+                            }
                         })
                     };
                     unsafe {
