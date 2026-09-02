@@ -100,6 +100,12 @@
     const ttlSeconds = settingsState.pollingInterval;
 
     const timer = setTimeout(() => {
+      // Re-checked here and after the dynamic import below: this callback
+      // can no longer be canceled once it fires, so if the user disabled the
+      // export in the meantime, a stale write must not resurrect the file
+      // right after delete_export_data ran.
+      if (!settingsState.exportData) return;
+
       const snapshot = buildExportSnapshot({
         displayName: __APP_NAME__,
         ttlSeconds,
@@ -113,6 +119,7 @@
       });
       if (!snapshot || !isTauri()) return;
       import('@tauri-apps/api/core').then(({ invoke }) => {
+        if (!settingsState.exportData) return;
         invoke('write_export_data', { payload: JSON.stringify(snapshot) }).catch(() => {
           // best-effort
         });
