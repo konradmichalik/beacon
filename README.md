@@ -54,7 +54,10 @@ On first launch, open **Settings** via the gear icon or the tray context menu an
 > GitLab supports self-hosted instances — set your instance's base URL in the GitLab settings panel.
 
 > [!NOTE]
-> Tokens are stored locally on your Mac, in the app's private application-support directory. Nothing is sent to any server other than GitHub and GitLab.
+> Tokens are stored in the macOS Keychain, not in a plain file. Nothing is sent to any server other than GitHub and GitLab.
+
+> [!TIP]
+> The first time Beacon reads or writes a token, macOS shows a one-time "Beacon wants to use your confidential information stored in Keychain" prompt. Choose **Always Allow**. A signed release build only asks again after a signing-identity change; an unsigned local dev build asks on every launch, since its signature changes with every build — see [`CLAUDE.md`](./CLAUDE.md) if that's you.
 
 ### Export data for external apps
 
