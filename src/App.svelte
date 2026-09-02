@@ -11,6 +11,7 @@
     setGlobalShortcutChangeCallback,
     setDebugLogChangeCallback,
     setIssuesChangeCallback,
+    setExportDataChangeCallback,
     listenForExternalSettingsChanges
   } from './lib/stores/settings.svelte';
   import {
@@ -112,6 +113,13 @@
           } else {
             logInfo('app', 'debug log disabled');
             stopConsoleCapture();
+          }
+        });
+        setExportDataChangeCallback((enabled) => {
+          if (!enabled) {
+            invoke('delete_export_data').catch(() => {
+              // best-effort
+            });
           }
         });
         await initializeConnections();

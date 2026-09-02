@@ -571,6 +571,43 @@
         {/if}
       </section>
     </div>
+
+    <hr class="border-border" />
+
+    <!-- ── Export ── -->
+    <div class="space-y-4">
+      <h3 class="text-[10px] font-semibold uppercase tracking-widest text-muted-foreground/60">
+        Export
+      </h3>
+
+      <section>
+        <label class="flex cursor-pointer items-center justify-between gap-3">
+          <div>
+            <span class="text-xs font-medium text-foreground">Export data for external apps</span>
+            <p class="text-[10px] text-muted-foreground">
+              Writes a small JSON snapshot to disk after every refresh, for external tools like a
+              Stream Deck plugin to read.
+            </p>
+          </div>
+          <button
+            type="button"
+            role="switch"
+            aria-label="Toggle export data for external apps"
+            aria-checked={settingsState.exportData}
+            onclick={() => updateSettings({ exportData: !settingsState.exportData })}
+            class="relative inline-flex h-5 w-9 shrink-0 items-center rounded-full transition-colors {settingsState.exportData
+              ? 'bg-primary'
+              : 'bg-secondary'}"
+          >
+            <span
+              class="inline-block h-3.5 w-3.5 rounded-full bg-white shadow-sm transition-transform {settingsState.exportData
+                ? 'translate-x-4'
+                : 'translate-x-0.5'}"
+            ></span>
+          </button>
+        </label>
+      </section>
+    </div>
   {:else if activeTab === 'alerts'}
     <!-- Notification Mode -->
     <section>
