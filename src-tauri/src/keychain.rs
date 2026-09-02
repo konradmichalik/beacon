@@ -166,10 +166,16 @@ fn strip_token(
     Some((account, token.to_string(), Value::Object(rewritten)))
 }
 
+/// Host, including a non-default port. Two self-hosted GitLab instances on
+/// the same host but different ports must not collapse onto one Keychain
+/// account.
 fn host_from_url(base_url: &str) -> Option<String> {
-    url::Url::parse(base_url)
-        .ok()
-        .and_then(|u| u.host_str().map(str::to_string))
+    let url = url::Url::parse(base_url).ok()?;
+    let host = url.host_str()?;
+    Some(match url.port() {
+        Some(port) => format!("{host}:{port}"),
+        None => host.to_string(),
+    })
 }
 
 #[cfg(test)]
@@ -254,16 +260,30 @@ mod tests {
     }
 
     #[test]
-    fn host_from_url_strips_scheme_path_and_port() {
+    fn host_from_url_strips_scheme_and_path_but_keeps_a_non_default_port() {
         assert_eq!(
             host_from_url("https://gitlab.example.com/api/v4"),
             Some("gitlab.example.com".to_string())
         );
         assert_eq!(
             host_from_url("https://gitlab.example.com:8443"),
+            Some("gitlab.example.com:8443".to_string())
+        );
+        // The scheme's default port is not "non-default", so it's omitted,
+        // matching the JS side's `URL.host` behavior (WHATWG URL spec).
+        assert_eq!(
+            host_from_url("https://gitlab.example.com:443"),
             Some("gitlab.example.com".to_string())
         );
         assert_eq!(host_from_url("not a url"), None);
+    }
+
+    #[test]
+    fn host_from_url_distinguishes_same_host_different_ports() {
+        assert_ne!(
+            host_from_url("https://gitlab.example.com:8080"),
+            host_from_url("https://gitlab.example.com:9090")
+        );
     }
 
     // Round-trip against the real Keychain. Ignored by default: the test
