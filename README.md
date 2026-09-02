@@ -56,6 +56,14 @@ On first launch, open **Settings** via the gear icon or the tray context menu an
 > [!NOTE]
 > Tokens are stored locally on your Mac, in the app's private application-support directory. Nothing is sent to any server other than GitHub and GitLab.
 
+### Export data for external apps
+
+Enabling **Export data for external apps** in Settings writes a small JSON snapshot to
+`~/Library/Application Support/com.beacon.notifications/data.json` after every refresh, so external
+tools (e.g. a Stream Deck plugin) can read Beacon's current unread/review/PR/issue counts without
+needing their own GitHub/GitLab credentials. The file is removed as soon as the setting is turned
+off.
+
 ## 💎 Credits
 
 Notification sounds from [Pixabay](https://pixabay.com).
