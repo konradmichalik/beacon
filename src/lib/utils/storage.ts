@@ -2,9 +2,13 @@ import type { Store } from '@tauri-apps/plugin-store';
 
 let storeInstance: Store | null = null;
 
-// Keys whose values contain access tokens. Outside Tauri the only storage is
-// browser localStorage (dev/demo runs on a public origin), so these must never
-// be persisted or read back there.
+// Keys whose values used to contain access tokens directly (the token now
+// lives in the macOS Keychain, see `keychain.ts`; these blobs only carry a
+// `keychainAccount` pointer). Kept as a guard rather than trusted to always
+// be token-free — outside Tauri the only storage is browser localStorage
+// (dev/demo runs on a public origin), and a config written by a version
+// predating the Keychain migration, or one that fell back after a failed
+// Keychain write, can still carry a plaintext token.
 const SENSITIVE_KEYS = new Set(['github-config', 'gitlab-config']);
 
 export function isSensitiveStorageKey(key: string): boolean {

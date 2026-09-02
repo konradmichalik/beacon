@@ -14,6 +14,8 @@ export type {
   ServiceId,
   GitHubConnectionConfig,
   GitLabConnectionConfig,
+  StoredGitHubConnectionConfig,
+  StoredGitLabConnectionConfig,
   ConnectionConfig,
   ConnectionStatus,
   ServiceState,
