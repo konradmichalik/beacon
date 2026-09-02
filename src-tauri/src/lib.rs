@@ -2,6 +2,7 @@ pub mod debug_log;
 mod export;
 mod platform_status;
 mod polling;
+mod settings_perms;
 mod tray;
 
 /// Custom NSPanel subclass that accepts keyboard input and suppresses NSBeep.
@@ -437,6 +438,7 @@ pub fn run() {
             use tauri::Manager;
             debug_log::init(app);
             export::init(app);
+            settings_perms::init(app);
 
             // Install a panic hook that writes to the debug log before abort.
             // With `panic = "abort"` the process dies immediately after the hook,
