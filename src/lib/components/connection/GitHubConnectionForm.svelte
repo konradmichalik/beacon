@@ -80,6 +80,12 @@
   </div>
 
   {#if status === 'connected'}
+    {#if error}
+      <p class="mt-2 flex items-center gap-1.5 text-[10px] text-warning">
+        <X size={10} />
+        {error}
+      </p>
+    {/if}
     {#if platformStatus && platformStatus.indicator !== 'ok'}
       <p
         class="mt-2 flex items-center gap-1.5 text-[10px] {PLATFORM_STATUS_CLASS[

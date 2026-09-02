@@ -4,10 +4,24 @@ import type {
   ServiceState,
   GitHubConnectionConfig,
   GitLabConnectionConfig,
+  StoredGitHubConnectionConfig,
+  StoredGitLabConnectionConfig,
   ServiceId
 } from '$lib/types';
 import { getStorageItem, setStorageItem, removeStorageItem } from '$lib/utils/storage';
 import { normalizeGitLabBaseUrl } from '$lib/utils/gitlab-url';
+import { buildKeychainAccount, setToken, getToken, deleteToken } from '$lib/utils/keychain';
+
+const KEYCHAIN_SAVE_FAILED =
+  'Connected, but the token could not be saved to the Keychain — you will need to reconnect after restarting Beacon.';
+
+// A config read back from `settings.json` before the Keychain migration ran
+// (e.g. the write succeeded but the Keychain write that has to precede it
+// failed) still carries the token inline instead of a `keychainAccount`
+// pointer. `initializeConnections` falls back to it rather than treating the
+// connection as lost.
+type PersistedGitHubConfig = StoredGitHubConnectionConfig | GitHubConnectionConfig;
+type PersistedGitLabConfig = StoredGitLabConnectionConfig | GitLabConnectionConfig;
 
 const STORAGE_KEYS = {
   GITHUB_CONFIG: 'github-config',
@@ -63,10 +77,32 @@ export async function connectGitHubWithPAT(token: string): Promise<void> {
     const user = (await response.json()) as { login: string };
     const config: GitHubConnectionConfig = { type: 'pat', token, username: user.login };
     githubConfig = config;
-    await setStorageItem(STORAGE_KEYS.GITHUB_CONFIG, config);
+
+    const account = buildKeychainAccount(user.login, 'github.com');
+    let keychainError: string | null = null;
+    try {
+      await setToken('github', account, token);
+    } catch {
+      keychainError = KEYCHAIN_SAVE_FAILED;
+    }
+
+    // Only persist the Keychain-only shape once the Keychain write actually
+    // succeeded. `initializeConnections` can call this with a legacy inline
+    // token still on disk (pre-migration); overwriting that working config
+    // with a `keychainAccount` pointer to a token that was never saved would
+    // turn a still-usable connection into one that needs reconnecting.
+    if (!keychainError) {
+      const stored: StoredGitHubConnectionConfig = {
+        type: 'pat',
+        username: user.login,
+        keychainAccount: account
+      };
+      await setStorageItem(STORAGE_KEYS.GITHUB_CONFIG, stored);
+    }
+
     connectionsState.github = {
       status: 'connected',
-      error: null,
+      error: keychainError,
       // eslint-disable-next-line svelte/prefer-svelte-reactivity -- not reactive state
       lastChecked: new Date().toISOString()
     };
@@ -111,10 +147,32 @@ export async function connectGitLabWithPAT(token: string, baseUrl: string): Prom
       username: user.username
     };
     gitlabConfig = config;
-    await setStorageItem(STORAGE_KEYS.GITLAB_CONFIG, config);
+
+    // `.host` (not `.hostname`) so two self-hosted instances on the same
+    // host but different ports don't collapse onto one Keychain account.
+    // eslint-disable-next-line svelte/prefer-svelte-reactivity -- one-shot URL parse, not reactive state
+    const account = buildKeychainAccount(user.username, new URL(normalizedBaseUrl).host);
+    let keychainError: string | null = null;
+    try {
+      await setToken('gitlab', account, token);
+    } catch {
+      keychainError = KEYCHAIN_SAVE_FAILED;
+    }
+
+    // See the matching comment in connectGitHubWithPAT.
+    if (!keychainError) {
+      const stored: StoredGitLabConnectionConfig = {
+        type: 'pat',
+        baseUrl: normalizedBaseUrl,
+        username: user.username,
+        keychainAccount: account
+      };
+      await setStorageItem(STORAGE_KEYS.GITLAB_CONFIG, stored);
+    }
+
     connectionsState.gitlab = {
       status: 'connected',
-      error: null,
+      error: keychainError,
       // eslint-disable-next-line svelte/prefer-svelte-reactivity -- not reactive state
       lastChecked: new Date().toISOString()
     };
@@ -131,9 +189,19 @@ export async function connectGitLabWithPAT(token: string, baseUrl: string): Prom
 
 export async function disconnectService(service: ServiceId): Promise<void> {
   if (service === 'github') {
+    const stored = await getStorageItem<PersistedGitHubConfig>(STORAGE_KEYS.GITHUB_CONFIG);
+    if (stored && 'keychainAccount' in stored) {
+      // Never block disconnect on the Keychain — a denied prompt here would
+      // trap the user in a connection they can't remove.
+      await deleteToken('github', stored.keychainAccount).catch(() => {});
+    }
     githubConfig = null;
     await removeStorageItem(STORAGE_KEYS.GITHUB_CONFIG);
   } else {
+    const stored = await getStorageItem<PersistedGitLabConfig>(STORAGE_KEYS.GITLAB_CONFIG);
+    if (stored && 'keychainAccount' in stored) {
+      await deleteToken('gitlab', stored.keychainAccount).catch(() => {});
+    }
     gitlabConfig = null;
     await removeStorageItem(STORAGE_KEYS.GITLAB_CONFIG);
   }
@@ -141,13 +209,39 @@ export async function disconnectService(service: ServiceId): Promise<void> {
 }
 
 export async function initializeConnections(): Promise<void> {
-  const storedGitHub = await getStorageItem<GitHubConnectionConfig>(STORAGE_KEYS.GITHUB_CONFIG);
+  const storedGitHub = await getStorageItem<PersistedGitHubConfig>(STORAGE_KEYS.GITHUB_CONFIG);
   if (storedGitHub) {
-    await connectGitHubWithPAT(storedGitHub.token);
+    const token =
+      'token' in storedGitHub
+        ? storedGitHub.token
+        : await getToken('github', storedGitHub.keychainAccount);
+    if (token) {
+      await connectGitHubWithPAT(token);
+    } else {
+      connectionsState.github = {
+        status: 'error',
+        error:
+          'GitHub token not found in the Keychain — reconnect to continue receiving notifications.',
+        lastChecked: null
+      };
+    }
   }
 
-  const storedGitLab = await getStorageItem<GitLabConnectionConfig>(STORAGE_KEYS.GITLAB_CONFIG);
+  const storedGitLab = await getStorageItem<PersistedGitLabConfig>(STORAGE_KEYS.GITLAB_CONFIG);
   if (storedGitLab) {
-    await connectGitLabWithPAT(storedGitLab.token, storedGitLab.baseUrl);
+    const token =
+      'token' in storedGitLab
+        ? storedGitLab.token
+        : await getToken('gitlab', storedGitLab.keychainAccount);
+    if (token) {
+      await connectGitLabWithPAT(token, storedGitLab.baseUrl);
+    } else {
+      connectionsState.gitlab = {
+        status: 'error',
+        error:
+          'GitLab token not found in the Keychain — reconnect to continue receiving notifications.',
+        lastChecked: null
+      };
+    }
   }
 }

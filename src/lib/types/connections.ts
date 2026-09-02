@@ -13,6 +13,18 @@ export interface GitLabConnectionConfig {
   readonly username: string;
 }
 
+/** Persisted shape of a GitHub connection: the token lives in the macOS
+ * Keychain, `keychainAccount` is the lookup pointer stored alongside the
+ * non-secret fields in `settings.json`. */
+export type StoredGitHubConnectionConfig = Omit<GitHubConnectionConfig, 'token'> & {
+  readonly keychainAccount: string;
+};
+
+/** Persisted shape of a GitLab connection, see `StoredGitHubConnectionConfig`. */
+export type StoredGitLabConnectionConfig = Omit<GitLabConnectionConfig, 'token'> & {
+  readonly keychainAccount: string;
+};
+
 export type ConnectionConfig = GitHubConnectionConfig | GitLabConnectionConfig;
 
 export type ConnectionStatus = 'disconnected' | 'connecting' | 'connected' | 'error';

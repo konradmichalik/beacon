@@ -9,18 +9,31 @@ use tokio::sync::Mutex;
 
 // ── Config types (mirrors JS store) ─────────────────────────────
 
+// `token` is no longer persisted in `settings.json` (see `keychain.rs`), so
+// it must deserialize with a default rather than being required — an empty
+// string here means "not yet resolved from the Keychain", filled in by
+// `resolve_github`/`resolve_gitlab` before a config reaches `fetch_github`/
+// `fetch_gitlab`. `keychain_account` is the lookup pointer written by the
+// frontend at connect time (or by the startup migration for a pre-Keychain
+// install).
 #[derive(Deserialize)]
 struct GitHubConfig {
+    #[serde(default)]
     token: String,
     username: String,
+    #[serde(default, rename = "keychainAccount")]
+    keychain_account: String,
 }
 
 #[derive(Deserialize)]
 #[serde(rename_all = "camelCase")]
 struct GitLabConfig {
+    #[serde(default)]
     token: String,
     base_url: String,
     username: String,
+    #[serde(default)]
+    keychain_account: String,
 }
 
 #[derive(Deserialize)]
@@ -307,6 +320,69 @@ pub(crate) fn github_is_configured(app: &AppHandle) -> bool {
 
 pub(crate) fn gitlab_is_configured(app: &AppHandle) -> bool {
     read_store(app).1.is_some()
+}
+
+/// A config's readiness to be polled, once its token has been resolved
+/// against the Keychain. Kept distinct from a plain `Option` so a transient
+/// Keychain failure (denied prompt, locked keychain) can be told apart from
+/// "never configured" at the call site — see `do_poll`, where the two must
+/// not be handled the same way: the former keeps the previously fetched
+/// results on screen, the latter clears them.
+enum TokenReady<C> {
+    NotConfigured,
+    Unavailable,
+    Ready(C),
+}
+
+/// Resolves `config.token` from the Keychain. Runs the actual Keychain call
+/// via `spawn_blocking` since it can show a modal authorization prompt
+/// (denied item, or every launch of an unsigned/ad-hoc dev build) and must
+/// not stall the poll loop's async task while that's up.
+async fn resolve_github(config: Option<GitHubConfig>) -> TokenReady<GitHubConfig> {
+    let Some(config) = config else {
+        return TokenReady::NotConfigured;
+    };
+    if config.keychain_account.is_empty() {
+        return TokenReady::Unavailable;
+    }
+    let account = config.keychain_account.clone();
+    let resolved = tauri::async_runtime::spawn_blocking(move || {
+        crate::keychain::get_token("github", &account)
+    })
+    .await
+    .ok()
+    .and_then(Result::ok)
+    .flatten();
+
+    match resolved {
+        Some(token) => TokenReady::Ready(GitHubConfig { token, ..config }),
+        None => TokenReady::Unavailable,
+    }
+}
+
+/// GitLab counterpart of `resolve_github`. Kept as a separate, near-identical
+/// function rather than a shared generic: the two config types differ and
+/// there are only these two call sites.
+async fn resolve_gitlab(config: Option<GitLabConfig>) -> TokenReady<GitLabConfig> {
+    let Some(config) = config else {
+        return TokenReady::NotConfigured;
+    };
+    if config.keychain_account.is_empty() {
+        return TokenReady::Unavailable;
+    }
+    let account = config.keychain_account.clone();
+    let resolved = tauri::async_runtime::spawn_blocking(move || {
+        crate::keychain::get_token("gitlab", &account)
+    })
+    .await
+    .ok()
+    .and_then(Result::ok)
+    .flatten();
+
+    match resolved {
+        Some(token) => TokenReady::Ready(GitLabConfig { token, ..config }),
+        None => TokenReady::Unavailable,
+    }
 }
 
 // ── GitHub fetching ─────────────────────────────────────────────
@@ -970,10 +1046,24 @@ async fn do_poll(app: &AppHandle, force_emit: bool) {
         )
     };
 
+    let (gh_ready, gl_ready) = tokio::join!(resolve_github(gh_config), resolve_gitlab(gl_config));
+    if matches!(gh_ready, TokenReady::Unavailable) {
+        crate::debug_log::warn("github", "configured but token unavailable this cycle");
+    }
+    if matches!(gl_ready, TokenReady::Unavailable) {
+        crate::debug_log::warn("gitlab", "configured but token unavailable this cycle");
+    }
+
     let (gh_fetch, gl) = tokio::join!(
         async {
-            match gh_config {
-                Some(ref c) => Some(
+            match &gh_ready {
+                TokenReady::NotConfigured => None,
+                // Configured, but the Keychain didn't yield a token this
+                // cycle — behave like a transient API failure (keep the
+                // previously fetched results) rather than "not configured"
+                // (which clears them).
+                TokenReady::Unavailable => Some(GhFetch::Failed),
+                TokenReady::Ready(c) => Some(
                     fetch_github(
                         &poller.client,
                         c,
@@ -982,13 +1072,12 @@ async fn do_poll(app: &AppHandle, force_emit: bool) {
                     )
                     .await,
                 ),
-                None => None,
             }
         },
         async {
-            match gl_config {
-                Some(ref c) => fetch_gitlab(&poller.client, c).await,
-                None => vec![],
+            match &gl_ready {
+                TokenReady::Ready(c) => fetch_gitlab(&poller.client, c).await,
+                TokenReady::NotConfigured | TokenReady::Unavailable => vec![],
             }
         }
     );

@@ -25,6 +25,7 @@ image = "0.25"
 reqwest = { version = "0.12", default-features = false, features = ["json", "rustls-tls"] }
 tokio = { version = "1", features = ["sync", "time"] }
 time = { version = "0.3", features = ["formatting"] }
+url = "2"
 
 [target.'cfg(target_os = "macos")'.dependencies]
 objc2 = "0.6.4"
@@ -37,6 +38,8 @@ block2 = "0.6"
 # (tauri-apps/tauri#9332). Version must match what Tauri pulls in
 # transitively (currently 0.21.x).
 tray-icon = { version = "0.21", default-features = false }
+security-framework = "3"
+security-framework-sys = "2"
 
 [profile.release]
 panic = "abort"
