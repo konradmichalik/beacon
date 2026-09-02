@@ -57,7 +57,7 @@ describe('connectGitHubWithPAT', () => {
     expect(connectionsState.github.error).toBeNull();
   });
 
-  it('stays connected with a warning when the Keychain write fails, and never persists a token', async () => {
+  it('stays connected with a warning when the Keychain write fails, and never persists anything', async () => {
     safeFetch.mockResolvedValue({ ok: true, json: async () => ({ login: 'octocat' }) });
     setToken.mockRejectedValue(new Error('denied'));
 
@@ -65,8 +65,7 @@ describe('connectGitHubWithPAT', () => {
 
     expect(connectionsState.github.status).toBe('connected');
     expect(connectionsState.github.error).toMatch(/Keychain/);
-    const persisted = setStorageItem.mock.calls[0]?.[1] as Record<string, unknown>;
-    expect(persisted).not.toHaveProperty('token');
+    expect(setStorageItem).not.toHaveBeenCalled();
   });
 });
 
@@ -81,6 +80,16 @@ describe('connectGitLabWithPAT', () => {
       'gitlab-config',
       expect.objectContaining({ keychainAccount: 'kmichalik@gitlab.example.com' })
     );
+  });
+
+  it('keeps a non-default port in the Keychain account, so same-host instances on different ports do not collide', async () => {
+    safeFetch.mockResolvedValue({ ok: true, json: async () => ({ username: 'kmichalik' }) });
+
+    await connectGitLabWithPAT('glpat-a', 'https://gitlab.example.com:8080');
+    expect(setToken).toHaveBeenCalledWith('gitlab', 'kmichalik@gitlab.example.com:8080', 'glpat-a');
+
+    await connectGitLabWithPAT('glpat-b', 'https://gitlab.example.com:9090');
+    expect(setToken).toHaveBeenCalledWith('gitlab', 'kmichalik@gitlab.example.com:9090', 'glpat-b');
   });
 });
 
@@ -117,6 +126,22 @@ describe('initializeConnections', () => {
       'https://api.github.com/user',
       expect.objectContaining({ headers: { Authorization: 'Bearer ghp_legacy' } })
     );
+  });
+
+  it('leaves a legacy config on disk untouched when migrating it to the Keychain fails', async () => {
+    getStorageItem.mockImplementation(async (key: string) =>
+      key === 'github-config' ? { type: 'pat', username: 'octocat', token: 'ghp_legacy' } : null
+    );
+    safeFetch.mockResolvedValue({ ok: true, json: async () => ({ login: 'octocat' }) });
+    setToken.mockRejectedValue(new Error('denied'));
+
+    await initializeConnections();
+
+    // The still-working legacy token must survive on disk so migration can
+    // retry next launch, instead of being replaced by a keychainAccount
+    // pointer to a token that was never actually saved.
+    expect(setStorageItem).not.toHaveBeenCalled();
+    expect(connectionsState.github.status).toBe('connected');
   });
 
   it('surfaces an error state when neither an inline token nor a Keychain token is available', async () => {

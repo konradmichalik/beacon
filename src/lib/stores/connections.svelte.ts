@@ -86,12 +86,19 @@ export async function connectGitHubWithPAT(token: string): Promise<void> {
       keychainError = KEYCHAIN_SAVE_FAILED;
     }
 
-    const stored: StoredGitHubConnectionConfig = {
-      type: 'pat',
-      username: user.login,
-      keychainAccount: account
-    };
-    await setStorageItem(STORAGE_KEYS.GITHUB_CONFIG, stored);
+    // Only persist the Keychain-only shape once the Keychain write actually
+    // succeeded. `initializeConnections` can call this with a legacy inline
+    // token still on disk (pre-migration); overwriting that working config
+    // with a `keychainAccount` pointer to a token that was never saved would
+    // turn a still-usable connection into one that needs reconnecting.
+    if (!keychainError) {
+      const stored: StoredGitHubConnectionConfig = {
+        type: 'pat',
+        username: user.login,
+        keychainAccount: account
+      };
+      await setStorageItem(STORAGE_KEYS.GITHUB_CONFIG, stored);
+    }
 
     connectionsState.github = {
       status: 'connected',
@@ -141,8 +148,10 @@ export async function connectGitLabWithPAT(token: string, baseUrl: string): Prom
     };
     gitlabConfig = config;
 
+    // `.host` (not `.hostname`) so two self-hosted instances on the same
+    // host but different ports don't collapse onto one Keychain account.
     // eslint-disable-next-line svelte/prefer-svelte-reactivity -- one-shot URL parse, not reactive state
-    const account = buildKeychainAccount(user.username, new URL(normalizedBaseUrl).hostname);
+    const account = buildKeychainAccount(user.username, new URL(normalizedBaseUrl).host);
     let keychainError: string | null = null;
     try {
       await setToken('gitlab', account, token);
@@ -150,13 +159,16 @@ export async function connectGitLabWithPAT(token: string, baseUrl: string): Prom
       keychainError = KEYCHAIN_SAVE_FAILED;
     }
 
-    const stored: StoredGitLabConnectionConfig = {
-      type: 'pat',
-      baseUrl: normalizedBaseUrl,
-      username: user.username,
-      keychainAccount: account
-    };
-    await setStorageItem(STORAGE_KEYS.GITLAB_CONFIG, stored);
+    // See the matching comment in connectGitHubWithPAT.
+    if (!keychainError) {
+      const stored: StoredGitLabConnectionConfig = {
+        type: 'pat',
+        baseUrl: normalizedBaseUrl,
+        username: user.username,
+        keychainAccount: account
+      };
+      await setStorageItem(STORAGE_KEYS.GITLAB_CONFIG, stored);
+    }
 
     connectionsState.gitlab = {
       status: 'connected',
