@@ -1,5 +1,6 @@
 pub mod debug_log;
 mod export;
+mod keychain;
 mod platform_status;
 mod polling;
 mod settings_perms;
@@ -439,6 +440,7 @@ pub fn run() {
             debug_log::init(app);
             export::init(app);
             settings_perms::init(app);
+            keychain::init(app);
 
             // Install a panic hook that writes to the debug log before abort.
             // With `panic = "abort"` the process dies immediately after the hook,
@@ -700,6 +702,9 @@ pub fn run() {
             debug_log::reveal_log_in_finder,
             export::write_export_data,
             export::delete_export_data,
+            keychain::keychain_set_token,
+            keychain::keychain_get_token,
+            keychain::keychain_delete_token,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
