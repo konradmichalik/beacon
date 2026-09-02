@@ -1,4 +1,5 @@
 pub mod debug_log;
+mod export;
 mod platform_status;
 mod polling;
 mod tray;
@@ -435,6 +436,7 @@ pub fn run() {
         .setup(|app| {
             use tauri::Manager;
             debug_log::init(app);
+            export::init(app);
 
             // Install a panic hook that writes to the debug log before abort.
             // With `panic = "abort"` the process dies immediately after the hook,
@@ -694,6 +696,8 @@ pub fn run() {
             debug_log::write_log,
             debug_log::clear_log,
             debug_log::reveal_log_in_finder,
+            export::write_export_data,
+            export::delete_export_data,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
