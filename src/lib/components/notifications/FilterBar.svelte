@@ -10,7 +10,7 @@
   import {
     getFilteredUnreadCount,
     getCountBySource,
-    getFilteredNotifications,
+    getVisibleNotifications,
     getLastRefresh,
     markAllAsRead
   } from '$lib/stores/notifications.svelte';
@@ -23,19 +23,7 @@
   let githubCount = $derived(getCountBySource('github'));
   let gitlabCount = $derived(getCountBySource('gitlab'));
 
-  let filteredNotifications = $derived(
-    getFilteredNotifications(
-      filterState.source,
-      filterState.project,
-      filterState.sort,
-      filterState.types,
-      filterState.projects,
-      filterState.statuses,
-      filterState.authors,
-      filterState.draftFilter,
-      filterState.query
-    )
-  );
+  let filteredNotifications = $derived(getVisibleNotifications());
 
   let filteredIds = $derived(new Set(filteredNotifications.map((n) => n.id)));
 
