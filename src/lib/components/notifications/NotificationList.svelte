@@ -1,6 +1,6 @@
 <script lang="ts">
   import {
-    getFilteredNotifications,
+    getVisibleNotifications,
     getHiddenCount,
     getIsLoading,
     getNotifications
@@ -20,19 +20,7 @@
   import { roving } from '$lib/actions/roving';
   import { formatWakeTime } from '$lib/utils/time';
 
-  let items = $derived(
-    getFilteredNotifications(
-      filterState.source,
-      filterState.project,
-      filterState.sort,
-      filterState.types,
-      filterState.projects,
-      filterState.statuses,
-      filterState.authors,
-      filterState.draftFilter,
-      filterState.query
-    )
-  );
+  let items = $derived(getVisibleNotifications());
   let isLoading = $derived(getIsLoading());
   let isConfigured = $derived(hasAnyServiceConfigured());
 

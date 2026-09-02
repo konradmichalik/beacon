@@ -11,6 +11,7 @@
     setGlobalShortcutChangeCallback,
     setDebugLogChangeCallback,
     setIssuesChangeCallback,
+    setExportDataChangeCallback,
     listenForExternalSettingsChanges
   } from './lib/stores/settings.svelte';
   import {
@@ -114,6 +115,20 @@
             stopConsoleCapture();
           }
         });
+        setExportDataChangeCallback((enabled) => {
+          if (!enabled) {
+            invoke('delete_export_data').catch(() => {
+              // best-effort
+            });
+          }
+        });
+        // Reconciles a leftover data.json from a process that exited between
+        // persisting the disabled setting and deleting the file.
+        if (!settingsState.exportData) {
+          invoke('delete_export_data').catch(() => {
+            // best-effort
+          });
+        }
         await initializeConnections();
 
         // Restore persisted read/dismissed state before listening for updates

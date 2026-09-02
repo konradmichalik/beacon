@@ -37,4 +37,6 @@ export type {
 
 export type { IssueRole, IssueRoleFilter, UnifiedIssue } from './issues';
 
+export type { ExportViewState, ExportView, ExportSnapshotV1 } from './export';
+
 export type ViewTab = 'notifications' | 'pull-requests' | 'issues';

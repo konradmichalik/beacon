@@ -13,12 +13,24 @@
     startPolling,
     markAllSeen,
     isDemoMode,
-    refreshNotifications
+    refreshNotifications,
+    getVisibleNotifications,
+    getHasLoadedOnce
   } from '$lib/stores/notifications.svelte';
   import { showToast } from '$lib/stores/toast.svelte';
-  import { refreshPullRequests } from '$lib/stores/pull-requests.svelte';
-  import { refreshIssues } from '$lib/stores/issues.svelte';
+  import {
+    refreshPullRequests,
+    getFilteredPRs,
+    getPRHasLoadedOnce
+  } from '$lib/stores/pull-requests.svelte';
+  import {
+    refreshIssues,
+    getFilteredIssues,
+    getIssueHasLoadedOnce
+  } from '$lib/stores/issues.svelte';
   import { settingsState } from '$lib/stores/settings.svelte';
+  import { buildExportSnapshot } from '$lib/utils/export-snapshot';
+  import { isTauri } from '$lib/utils/storage';
   import { ArrowLeft, ArrowUp } from '@lucide/svelte';
   import { onMount, untrack } from 'svelte';
   import type {
@@ -60,6 +72,61 @@
     if (!settingsState.enableIssues && activeView === 'issues') {
       activeView = 'notifications';
     }
+  });
+
+  // Debounced export of data.json for external consumers (GH-124). The role
+  // toggles (prRoleFilter/issueRoleFilter) are display-only and deliberately
+  // excluded here — `reviews`/`mine`/`issues` are fixed semantic splits, not
+  // affected by which one the popup currently shows. Source/project/draft/CI/
+  // merge filters do apply, so the export matches what the popup shows.
+  $effect(() => {
+    if (!settingsState.exportData) return;
+
+    const filteredNotifications = getVisibleNotifications();
+    const notificationsLoaded = getHasLoadedOnce();
+    const filteredPRs = getFilteredPRs({
+      source: prSourceFilter,
+      draft: prDraftFilter,
+      ci: prCIFilter,
+      merge: prMergeFilter,
+      projects: prProjectsFilter
+    });
+    const prsLoaded = getPRHasLoadedOnce();
+    const issuesEnabled = settingsState.enableIssues;
+    const filteredIssues = issuesEnabled
+      ? getFilteredIssues(issueSourceFilter, 'assigned', issueSort, issueProjectsFilter)
+      : [];
+    const issuesLoaded = getIssueHasLoadedOnce();
+    const ttlSeconds = settingsState.pollingInterval;
+
+    const timer = setTimeout(() => {
+      // Re-checked here and after the dynamic import below: this callback
+      // can no longer be canceled once it fires, so if the user disabled the
+      // export in the meantime, a stale write must not resurrect the file
+      // right after delete_export_data ran.
+      if (!settingsState.exportData) return;
+
+      const snapshot = buildExportSnapshot({
+        displayName: __APP_NAME__,
+        ttlSeconds,
+        notificationsLoaded,
+        filteredNotifications,
+        prsLoaded,
+        filteredPRs,
+        issuesEnabled,
+        issuesLoaded,
+        filteredIssues
+      });
+      if (!snapshot || !isTauri()) return;
+      import('@tauri-apps/api/core').then(({ invoke }) => {
+        if (!settingsState.exportData) return;
+        invoke('write_export_data', { payload: JSON.stringify(snapshot) }).catch(() => {
+          // best-effort
+        });
+      });
+    }, 300);
+
+    return () => clearTimeout(timer);
   });
 
   async function toggleSettings(): Promise<void> {

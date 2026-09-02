@@ -41,6 +41,7 @@ interface Settings {
   enableIssues: boolean;
   globalShortcut: boolean;
   debugLog: boolean;
+  exportData: boolean;
 }
 
 const defaultSettings: Settings = {
@@ -56,7 +57,8 @@ const defaultSettings: Settings = {
   groupPullRequests: true,
   enableIssues: false,
   globalShortcut: true,
-  debugLog: false
+  debugLog: false,
+  exportData: false
 };
 
 export const settingsState: Settings = $state({ ...defaultSettings });
@@ -67,6 +69,7 @@ let onNotifyChange: (() => void) | null = null;
 let onGlobalShortcutChange: ((enabled: boolean) => void) | null = null;
 let onDebugLogChange: ((enabled: boolean) => void) | null = null;
 let onIssuesChange: ((enabled: boolean) => void) | null = null;
+let onExportDataChange: ((enabled: boolean) => void) | null = null;
 
 export function setPollingChangeCallback(callback: () => void): void {
   onPollingChange = callback;
@@ -90,6 +93,10 @@ export function setDebugLogChangeCallback(callback: (enabled: boolean) => void):
 
 export function setIssuesChangeCallback(callback: (enabled: boolean) => void): void {
   onIssuesChange = callback;
+}
+
+export function setExportDataChangeCallback(callback: (enabled: boolean) => void): void {
+  onExportDataChange = callback;
 }
 
 export async function initializeSettings(): Promise<void> {
@@ -178,6 +185,9 @@ export async function updateSettings(updates: Partial<Settings>): Promise<void> 
   if (updates.enableIssues !== undefined && onIssuesChange) {
     onIssuesChange(updates.enableIssues);
   }
+  if (updates.exportData !== undefined && onExportDataChange) {
+    onExportDataChange(updates.exportData);
+  }
 }
 
 function applyTheme(): void {
@@ -237,6 +247,9 @@ export async function listenForExternalSettingsChanges(): Promise<() => void> {
     }
     if (updated.enableIssues !== prev.enableIssues) {
       onIssuesChange?.(updated.enableIssues);
+    }
+    if (updated.exportData !== prev.exportData) {
+      onExportDataChange?.(updated.exportData);
     }
   });
 

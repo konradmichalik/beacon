@@ -392,6 +392,21 @@ export function getFilteredNotifications(
   return filtered;
 }
 
+/** `getFilteredNotifications` applied to the current `filterState` — the list the inbox shows. */
+export function getVisibleNotifications(): readonly UnifiedNotification[] {
+  return getFilteredNotifications(
+    filterState.source,
+    filterState.project,
+    filterState.sort,
+    filterState.types,
+    filterState.projects,
+    filterState.statuses,
+    filterState.authors,
+    filterState.draftFilter,
+    filterState.query
+  );
+}
+
 /**
  * How many notifications within the current source/project/type/etc. scope
  * are hidden by a mute rule or a snooze. Scoped the same way as
