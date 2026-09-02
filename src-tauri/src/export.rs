@@ -65,13 +65,31 @@ fn remove_if_exists(path: &Path) -> std::io::Result<()> {
 #[tauri::command]
 pub fn write_export_data(payload: String) -> Result<(), String> {
     let path = export_path().ok_or("export not initialised")?;
-    write_atomic(path, &payload).map_err(|e| e.to_string())
+    match write_atomic(path, &payload) {
+        Ok(()) => {
+            crate::debug_log::info("export", "wrote data.json");
+            Ok(())
+        }
+        Err(e) => {
+            crate::debug_log::error("export", &format!("failed to write data.json: {e}"));
+            Err(e.to_string())
+        }
+    }
 }
 
 #[tauri::command]
 pub fn delete_export_data() -> Result<(), String> {
     let path = export_path().ok_or("export not initialised")?;
-    remove_if_exists(path).map_err(|e| e.to_string())
+    match remove_if_exists(path) {
+        Ok(()) => {
+            crate::debug_log::info("export", "deleted data.json");
+            Ok(())
+        }
+        Err(e) => {
+            crate::debug_log::error("export", &format!("failed to delete data.json: {e}"));
+            Err(e.to_string())
+        }
+    }
 }
 
 #[cfg(test)]
