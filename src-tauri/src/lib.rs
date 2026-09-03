@@ -589,10 +589,17 @@ pub fn run() {
                         let app_handle = app.handle().clone();
                         block2::RcBlock::new(move |_: std::ptr::NonNull<AnyObject>| {
                             use tauri_plugin_shell::ShellExt;
+                            let poller = app_handle.state::<std::sync::Arc<polling::Poller>>();
                             if tray::is_within_show_grace() {
+                                // Discard rather than merely skip: this activation is
+                                // (very likely) a side effect of our own show_and_focus()
+                                // call, so any URL still pending from an earlier
+                                // notification has nothing to do with it. Leaving it
+                                // queued would let it resurface on a later, unrelated
+                                // activation — the exact bug this guard exists to prevent.
+                                poller.take_pending_click_url();
                                 return;
                             }
-                            let poller = app_handle.state::<std::sync::Arc<polling::Poller>>();
                             match poller.take_pending_click_url() {
                                 Some(url) => {
                                     // Matches the shell-open pattern used app-wide
