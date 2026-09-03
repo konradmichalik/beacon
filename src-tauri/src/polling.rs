@@ -251,6 +251,17 @@ struct PollerInner {
     /// Detail-request results keyed by `(id, updated_at)`, so unchanged
     /// notifications skip their detail fetch on the next poll.
     gh_detail_cache: HashMap<(String, String), CachedDetail>,
+    /// Normalized GitLab notifications from the previous poll, reused on a
+    /// failed fetch (network error, non-2xx status, malformed JSON, or an
+    /// unresolved Keychain token) so a transient failure doesn't wipe the
+    /// displayed list. Updated only after a successful fetch.
+    gl_last_results: Vec<UnifiedNotification>,
+    /// Fingerprint (`username@base_url`) of the GitLab config that produced
+    /// `gl_last_results`. Reconnecting with a different account or instance
+    /// changes this before any fetch has run under the new identity, so a
+    /// subsequent failure clears the stale cache instead of resurfacing the
+    /// previous identity's notifications.
+    gl_last_identity: Option<String>,
     /// When GitHub reports a rate limit, the earliest instant the next poll may
     /// run. The poll loop waits at least until this point.
     backoff_until: Option<std::time::Instant>,
@@ -275,6 +286,8 @@ impl Poller {
                 gh_last_modified: None,
                 gh_last_results: Vec::new(),
                 gh_detail_cache: HashMap::new(),
+                gl_last_results: Vec::new(),
+                gl_last_identity: None,
                 backoff_until: None,
                 last_emit_fingerprint: None,
             }),
@@ -784,7 +797,17 @@ fn is_gitlab_draft_title(title: &str) -> bool {
     lower.starts_with("draft:") || lower.starts_with("wip:")
 }
 
-async fn fetch_gitlab(client: &reqwest::Client, config: &GitLabConfig) -> Vec<UnifiedNotification> {
+/// Outcome of a GitLab todos fetch. Unlike GitHub, GitLab has no conditional
+/// request or rate-limit signaling here, so this only distinguishes success
+/// from every failure mode (network error, non-2xx status, malformed JSON).
+/// The caller falls back to the previously cached results on `Failed` rather
+/// than treating it as "no notifications".
+enum GlFetch {
+    Failed,
+    Success(Vec<UnifiedNotification>),
+}
+
+async fn fetch_gitlab(client: &reqwest::Client, config: &GitLabConfig) -> GlFetch {
     let base = config.base_url.trim_end_matches('/');
     let mut items: Vec<GLTodo> = Vec::new();
     let mut page: u32 = 1;
@@ -836,20 +859,17 @@ async fn fetch_gitlab(client: &reqwest::Client, config: &GitLabConfig) -> Vec<Un
                     }
                     Err(e) => {
                         crate::debug_log::error("gitlab", &format!("JSON array parse failed: {e}"));
-                        items.clear();
-                        break;
+                        return GlFetch::Failed;
                     }
                 }
             }
             Ok(r) => {
                 crate::debug_log::error("gitlab", &format!("API error: HTTP {}", r.status()));
-                items.clear();
-                break;
+                return GlFetch::Failed;
             }
             Err(e) => {
                 crate::debug_log::error("gitlab", &format!("request failed: {e}"));
-                items.clear();
-                break;
+                return GlFetch::Failed;
             }
         };
 
@@ -862,7 +882,7 @@ async fn fetch_gitlab(client: &reqwest::Client, config: &GitLabConfig) -> Vec<Un
         }
     }
 
-    items
+    let results = items
         .into_iter()
         .filter(|t| t.author.username != config.username)
         .map(|t| {
@@ -902,7 +922,44 @@ async fn fetch_gitlab(client: &reqwest::Client, config: &GitLabConfig) -> Vec<Un
                 draft,
             }
         })
-        .collect()
+        .collect();
+
+    GlFetch::Success(results)
+}
+
+/// Applies a GitLab fetch outcome against the cached results: `None` (not
+/// configured) clears the cache, `Failed` (including an unresolved Keychain
+/// token) returns the cache untouched, and `Success` refreshes it. Mirrors
+/// how `do_poll` handles `GhFetch`, kept as its own function so the caching
+/// behavior is testable without a real HTTP fetch.
+///
+/// `identity` is the `username@base_url` fingerprint of the config used this
+/// cycle (`None` when not configured). When it differs from the identity
+/// that produced the cached results — reconnecting with a different account
+/// or a different self-hosted instance — the stale cache is dropped first,
+/// so a `Failed` fetch right after reconnecting can't resurface the
+/// previous identity's notifications.
+fn apply_gl_fetch(
+    inner: &mut PollerInner,
+    identity: Option<String>,
+    fetch: Option<GlFetch>,
+) -> Vec<UnifiedNotification> {
+    if inner.gl_last_identity != identity {
+        inner.gl_last_results = Vec::new();
+        inner.gl_last_identity = identity;
+    }
+
+    match fetch {
+        None => {
+            inner.gl_last_results = Vec::new();
+            Vec::new()
+        }
+        Some(GlFetch::Failed) => inner.gl_last_results.clone(),
+        Some(GlFetch::Success(items)) => {
+            inner.gl_last_results = items.clone();
+            items
+        }
+    }
 }
 
 // ── Desktop notifications ───────────────────────────────────────
@@ -1046,6 +1103,10 @@ async fn do_poll(app: &AppHandle, force_emit: bool) {
         )
     };
 
+    let gl_identity = gl_config
+        .as_ref()
+        .map(|c| format!("{}@{}", c.username, c.base_url));
+
     let (gh_ready, gl_ready) = tokio::join!(resolve_github(gh_config), resolve_gitlab(gl_config));
     if matches!(gh_ready, TokenReady::Unavailable) {
         crate::debug_log::warn("github", "configured but token unavailable this cycle");
@@ -1054,7 +1115,7 @@ async fn do_poll(app: &AppHandle, force_emit: bool) {
         crate::debug_log::warn("gitlab", "configured but token unavailable this cycle");
     }
 
-    let (gh_fetch, gl) = tokio::join!(
+    let (gh_fetch, gl_fetch) = tokio::join!(
         async {
             match &gh_ready {
                 TokenReady::NotConfigured => None,
@@ -1076,8 +1137,12 @@ async fn do_poll(app: &AppHandle, force_emit: bool) {
         },
         async {
             match &gl_ready {
-                TokenReady::Ready(c) => fetch_gitlab(&poller.client, c).await,
-                TokenReady::NotConfigured | TokenReady::Unavailable => vec![],
+                TokenReady::NotConfigured => None,
+                // Same reasoning as the GitHub branch above: an unresolved
+                // token this cycle is a transient failure, not "not
+                // configured", so the previous results are kept.
+                TokenReady::Unavailable => Some(GlFetch::Failed),
+                TokenReady::Ready(c) => Some(fetch_gitlab(&poller.client, c).await),
             }
         }
     );
@@ -1119,6 +1184,8 @@ async fn do_poll(app: &AppHandle, force_emit: bool) {
                 items
             }
         };
+
+        let gl = apply_gl_fetch(&mut inner, gl_identity, gl_fetch);
 
         let mut results = Vec::with_capacity(gh.len() + gl.len());
         results.extend(gh);
@@ -1206,6 +1273,8 @@ pub async fn start_polling(app: AppHandle) -> Result<(), String> {
     inner.gh_last_modified = None;
     inner.gh_last_results = Vec::new();
     inner.gh_detail_cache = HashMap::new();
+    inner.gl_last_results = Vec::new();
+    inner.gl_last_identity = None;
     inner.backoff_until = None;
     inner.last_emit_fingerprint = None;
 
@@ -1595,5 +1664,180 @@ mod tests {
 
         poller.set_pending_click_url(Some("javascript:alert(1)".to_string()));
         assert_eq!(poller.take_pending_click_url(), None);
+    }
+
+    // ── GitLab result caching ────────────────────────────────────
+
+    fn make_gl_unified(id: &str) -> UnifiedNotification {
+        UnifiedNotification {
+            id: id.into(),
+            source: "gitlab".into(),
+            kind: "merge_request".into(),
+            title: "Test MR".into(),
+            repository: "group/project".into(),
+            url: "https://gitlab.example.com/group/project/-/merge_requests/1".into(),
+            reason: "assign".into(),
+            unread: true,
+            updated_at: "2026-03-17T12:00:00Z".into(),
+            created_at: "2026-03-17T12:00:00Z".into(),
+            author: None,
+            subject_state: Some("open".into()),
+            draft: Some(false),
+        }
+    }
+
+    fn new_poller_inner() -> PollerInner {
+        PollerInner {
+            known_ids: HashSet::new(),
+            first_run: true,
+            summary_buffer: Vec::new(),
+            last_summary_flush: std::time::Instant::now(),
+            task_handle: None,
+            gh_last_modified: None,
+            gh_last_results: Vec::new(),
+            gh_detail_cache: HashMap::new(),
+            gl_last_results: Vec::new(),
+            gl_last_identity: None,
+            backoff_until: None,
+            last_emit_fingerprint: None,
+        }
+    }
+
+    const GL_IDENTITY_A: &str = "alice@https://gitlab.com";
+    const GL_IDENTITY_B: &str = "bob@https://gitlab.com";
+
+    #[test]
+    fn apply_gl_fetch_success_populates_cache() {
+        let mut inner = new_poller_inner();
+        let items = vec![make_gl_unified("gitlab-1")];
+
+        let result = apply_gl_fetch(
+            &mut inner,
+            Some(GL_IDENTITY_A.into()),
+            Some(GlFetch::Success(items.clone())),
+        );
+
+        assert_eq!(result.len(), 1);
+        assert_eq!(result[0].id, "gitlab-1");
+        assert_eq!(inner.gl_last_results.len(), 1);
+        assert_eq!(inner.gl_last_results[0].id, "gitlab-1");
+    }
+
+    #[test]
+    fn apply_gl_fetch_failed_returns_cached_results() {
+        // Simulates a failed fetch after a prior successful one. Every failure
+        // kind (network error, non-2xx status, malformed JSON, unresolved
+        // Keychain token) collapses to `GlFetch::Failed` before reaching this
+        // function, so this covers all of them uniformly.
+        let mut inner = new_poller_inner();
+        inner.gl_last_results = vec![make_gl_unified("gitlab-1")];
+        inner.gl_last_identity = Some(GL_IDENTITY_A.into());
+
+        let result = apply_gl_fetch(
+            &mut inner,
+            Some(GL_IDENTITY_A.into()),
+            Some(GlFetch::Failed),
+        );
+
+        assert_eq!(result.len(), 1);
+        assert_eq!(result[0].id, "gitlab-1");
+        // Cache itself is left untouched, not just the returned value.
+        assert_eq!(inner.gl_last_results.len(), 1);
+        assert_eq!(inner.gl_last_results[0].id, "gitlab-1");
+    }
+
+    #[test]
+    fn apply_gl_fetch_failed_with_empty_cache_returns_empty() {
+        // Also covers an unresolved Keychain token: `do_poll` surfaces that
+        // case as `Some(GlFetch::Failed)` too, so it takes the same path.
+        let mut inner = new_poller_inner();
+
+        let result = apply_gl_fetch(
+            &mut inner,
+            Some(GL_IDENTITY_A.into()),
+            Some(GlFetch::Failed),
+        );
+
+        assert!(result.is_empty());
+    }
+
+    #[test]
+    fn apply_gl_fetch_not_configured_clears_cache() {
+        // `None` means GitLab isn't configured at all, which — unlike a
+        // transient failure — should drop any previously cached results.
+        let mut inner = new_poller_inner();
+        inner.gl_last_results = vec![make_gl_unified("gitlab-1")];
+        inner.gl_last_identity = Some(GL_IDENTITY_A.into());
+
+        let result = apply_gl_fetch(&mut inner, None, None);
+
+        assert!(result.is_empty());
+        assert!(inner.gl_last_results.is_empty());
+    }
+
+    #[test]
+    fn apply_gl_fetch_success_after_failure_replaces_cache() {
+        let mut inner = new_poller_inner();
+        inner.gl_last_results = vec![make_gl_unified("gitlab-1")];
+        inner.gl_last_identity = Some(GL_IDENTITY_A.into());
+
+        // A failed poll keeps the old cache...
+        apply_gl_fetch(
+            &mut inner,
+            Some(GL_IDENTITY_A.into()),
+            Some(GlFetch::Failed),
+        );
+        assert_eq!(inner.gl_last_results.len(), 1);
+
+        // ...but a subsequent successful poll fully replaces it, including
+        // dropping entries that are no longer present upstream.
+        let result = apply_gl_fetch(
+            &mut inner,
+            Some(GL_IDENTITY_A.into()),
+            Some(GlFetch::Success(vec![make_gl_unified("gitlab-2")])),
+        );
+
+        assert_eq!(result.len(), 1);
+        assert_eq!(result[0].id, "gitlab-2");
+        assert_eq!(inner.gl_last_results.len(), 1);
+        assert_eq!(inner.gl_last_results[0].id, "gitlab-2");
+    }
+
+    #[test]
+    fn apply_gl_fetch_identity_change_drops_stale_cache_before_failure() {
+        // Reconnecting with a different account/instance changes the
+        // identity fingerprint. If the very next fetch under the new
+        // identity fails, the previous identity's cached results must not
+        // be resurfaced as if they belonged to the new one.
+        let mut inner = new_poller_inner();
+        inner.gl_last_results = vec![make_gl_unified("gitlab-1")];
+        inner.gl_last_identity = Some(GL_IDENTITY_A.into());
+
+        let result = apply_gl_fetch(
+            &mut inner,
+            Some(GL_IDENTITY_B.into()),
+            Some(GlFetch::Failed),
+        );
+
+        assert!(result.is_empty());
+        assert!(inner.gl_last_results.is_empty());
+        assert_eq!(inner.gl_last_identity, Some(GL_IDENTITY_B.into()));
+    }
+
+    #[test]
+    fn apply_gl_fetch_identity_change_then_success_populates_under_new_identity() {
+        let mut inner = new_poller_inner();
+        inner.gl_last_results = vec![make_gl_unified("gitlab-1")];
+        inner.gl_last_identity = Some(GL_IDENTITY_A.into());
+
+        let result = apply_gl_fetch(
+            &mut inner,
+            Some(GL_IDENTITY_B.into()),
+            Some(GlFetch::Success(vec![make_gl_unified("gitlab-2")])),
+        );
+
+        assert_eq!(result.len(), 1);
+        assert_eq!(result[0].id, "gitlab-2");
+        assert_eq!(inner.gl_last_identity, Some(GL_IDENTITY_B.into()));
     }
 }
