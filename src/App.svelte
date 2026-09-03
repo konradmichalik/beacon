@@ -41,6 +41,7 @@
     loadDemoPRs
   } from './lib/stores/pull-requests.svelte';
   import { startIssuePolling, stopIssuePolling, loadDemoIssues } from './lib/stores/issues.svelte';
+  import { initExportEffect } from './lib/stores/export.svelte';
   import Toast from './lib/components/ui/Toast.svelte';
   import { startConsoleCapture, stopConsoleCapture, info as logInfo } from './lib/utils/logger';
   import { onMount } from 'svelte';
@@ -55,6 +56,8 @@
     let unlistenSettings: (() => void) | undefined;
     let unlistenMuteRules: (() => void) | undefined;
     let unlistenPlatformStatus: (() => void) | undefined;
+    let stopExportEffect: (() => void) | undefined;
+    let destroyed = false;
 
     async function initialize(): Promise<void> {
       try {
@@ -129,6 +132,17 @@
             // best-effort
           });
         }
+        // Store-level, not component-level (GH-127): must keep running for
+        // the lifetime of this window regardless of whether the tray popup
+        // is ever opened, since that's where the export data is expected to
+        // come from in normal background use.
+        // The component may have unmounted while an earlier `await` above was
+        // still pending — in that case the cleanup below already ran (with
+        // `stopExportEffect` still undefined, a no-op) and starting the
+        // effect now would leak it for the rest of this JS context.
+        if (!destroyed) {
+          stopExportEffect = initExportEffect();
+        }
         await initializeConnections();
 
         // Restore persisted read/dismissed state before listening for updates
@@ -158,6 +172,7 @@
     initialize();
 
     return () => {
+      destroyed = true;
       stopPolling();
       stopPRPolling();
       stopIssuePolling();
@@ -165,6 +180,7 @@
       unlistenSettings?.();
       unlistenMuteRules?.();
       unlistenPlatformStatus?.();
+      stopExportEffect?.();
     };
   });
 </script>
