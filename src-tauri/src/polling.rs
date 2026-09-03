@@ -256,6 +256,12 @@ struct PollerInner {
     /// unresolved Keychain token) so a transient failure doesn't wipe the
     /// displayed list. Updated only after a successful fetch.
     gl_last_results: Vec<UnifiedNotification>,
+    /// Fingerprint (`username@base_url`) of the GitLab config that produced
+    /// `gl_last_results`. Reconnecting with a different account or instance
+    /// changes this before any fetch has run under the new identity, so a
+    /// subsequent failure clears the stale cache instead of resurfacing the
+    /// previous identity's notifications.
+    gl_last_identity: Option<String>,
     /// When GitHub reports a rate limit, the earliest instant the next poll may
     /// run. The poll loop waits at least until this point.
     backoff_until: Option<std::time::Instant>,
@@ -281,6 +287,7 @@ impl Poller {
                 gh_last_results: Vec::new(),
                 gh_detail_cache: HashMap::new(),
                 gl_last_results: Vec::new(),
+                gl_last_identity: None,
                 backoff_until: None,
                 last_emit_fingerprint: None,
             }),
@@ -925,7 +932,23 @@ async fn fetch_gitlab(client: &reqwest::Client, config: &GitLabConfig) -> GlFetc
 /// token) returns the cache untouched, and `Success` refreshes it. Mirrors
 /// how `do_poll` handles `GhFetch`, kept as its own function so the caching
 /// behavior is testable without a real HTTP fetch.
-fn apply_gl_fetch(inner: &mut PollerInner, fetch: Option<GlFetch>) -> Vec<UnifiedNotification> {
+///
+/// `identity` is the `username@base_url` fingerprint of the config used this
+/// cycle (`None` when not configured). When it differs from the identity
+/// that produced the cached results — reconnecting with a different account
+/// or a different self-hosted instance — the stale cache is dropped first,
+/// so a `Failed` fetch right after reconnecting can't resurface the
+/// previous identity's notifications.
+fn apply_gl_fetch(
+    inner: &mut PollerInner,
+    identity: Option<String>,
+    fetch: Option<GlFetch>,
+) -> Vec<UnifiedNotification> {
+    if inner.gl_last_identity != identity {
+        inner.gl_last_results = Vec::new();
+        inner.gl_last_identity = identity;
+    }
+
     match fetch {
         None => {
             inner.gl_last_results = Vec::new();
@@ -1080,6 +1103,10 @@ async fn do_poll(app: &AppHandle, force_emit: bool) {
         )
     };
 
+    let gl_identity = gl_config
+        .as_ref()
+        .map(|c| format!("{}@{}", c.username, c.base_url));
+
     let (gh_ready, gl_ready) = tokio::join!(resolve_github(gh_config), resolve_gitlab(gl_config));
     if matches!(gh_ready, TokenReady::Unavailable) {
         crate::debug_log::warn("github", "configured but token unavailable this cycle");
@@ -1158,7 +1185,7 @@ async fn do_poll(app: &AppHandle, force_emit: bool) {
             }
         };
 
-        let gl = apply_gl_fetch(&mut inner, gl_fetch);
+        let gl = apply_gl_fetch(&mut inner, gl_identity, gl_fetch);
 
         let mut results = Vec::with_capacity(gh.len() + gl.len());
         results.extend(gh);
@@ -1247,6 +1274,7 @@ pub async fn start_polling(app: AppHandle) -> Result<(), String> {
     inner.gh_last_results = Vec::new();
     inner.gh_detail_cache = HashMap::new();
     inner.gl_last_results = Vec::new();
+    inner.gl_last_identity = None;
     inner.backoff_until = None;
     inner.last_emit_fingerprint = None;
 
@@ -1669,17 +1697,25 @@ mod tests {
             gh_last_results: Vec::new(),
             gh_detail_cache: HashMap::new(),
             gl_last_results: Vec::new(),
+            gl_last_identity: None,
             backoff_until: None,
             last_emit_fingerprint: None,
         }
     }
+
+    const GL_IDENTITY_A: &str = "alice@https://gitlab.com";
+    const GL_IDENTITY_B: &str = "bob@https://gitlab.com";
 
     #[test]
     fn apply_gl_fetch_success_populates_cache() {
         let mut inner = new_poller_inner();
         let items = vec![make_gl_unified("gitlab-1")];
 
-        let result = apply_gl_fetch(&mut inner, Some(GlFetch::Success(items.clone())));
+        let result = apply_gl_fetch(
+            &mut inner,
+            Some(GL_IDENTITY_A.into()),
+            Some(GlFetch::Success(items.clone())),
+        );
 
         assert_eq!(result.len(), 1);
         assert_eq!(result[0].id, "gitlab-1");
@@ -1695,8 +1731,13 @@ mod tests {
         // function, so this covers all of them uniformly.
         let mut inner = new_poller_inner();
         inner.gl_last_results = vec![make_gl_unified("gitlab-1")];
+        inner.gl_last_identity = Some(GL_IDENTITY_A.into());
 
-        let result = apply_gl_fetch(&mut inner, Some(GlFetch::Failed));
+        let result = apply_gl_fetch(
+            &mut inner,
+            Some(GL_IDENTITY_A.into()),
+            Some(GlFetch::Failed),
+        );
 
         assert_eq!(result.len(), 1);
         assert_eq!(result[0].id, "gitlab-1");
@@ -1711,7 +1752,11 @@ mod tests {
         // case as `Some(GlFetch::Failed)` too, so it takes the same path.
         let mut inner = new_poller_inner();
 
-        let result = apply_gl_fetch(&mut inner, Some(GlFetch::Failed));
+        let result = apply_gl_fetch(
+            &mut inner,
+            Some(GL_IDENTITY_A.into()),
+            Some(GlFetch::Failed),
+        );
 
         assert!(result.is_empty());
     }
@@ -1722,8 +1767,9 @@ mod tests {
         // transient failure — should drop any previously cached results.
         let mut inner = new_poller_inner();
         inner.gl_last_results = vec![make_gl_unified("gitlab-1")];
+        inner.gl_last_identity = Some(GL_IDENTITY_A.into());
 
-        let result = apply_gl_fetch(&mut inner, None);
+        let result = apply_gl_fetch(&mut inner, None, None);
 
         assert!(result.is_empty());
         assert!(inner.gl_last_results.is_empty());
@@ -1733,15 +1779,21 @@ mod tests {
     fn apply_gl_fetch_success_after_failure_replaces_cache() {
         let mut inner = new_poller_inner();
         inner.gl_last_results = vec![make_gl_unified("gitlab-1")];
+        inner.gl_last_identity = Some(GL_IDENTITY_A.into());
 
         // A failed poll keeps the old cache...
-        apply_gl_fetch(&mut inner, Some(GlFetch::Failed));
+        apply_gl_fetch(
+            &mut inner,
+            Some(GL_IDENTITY_A.into()),
+            Some(GlFetch::Failed),
+        );
         assert_eq!(inner.gl_last_results.len(), 1);
 
         // ...but a subsequent successful poll fully replaces it, including
         // dropping entries that are no longer present upstream.
         let result = apply_gl_fetch(
             &mut inner,
+            Some(GL_IDENTITY_A.into()),
             Some(GlFetch::Success(vec![make_gl_unified("gitlab-2")])),
         );
 
@@ -1749,5 +1801,43 @@ mod tests {
         assert_eq!(result[0].id, "gitlab-2");
         assert_eq!(inner.gl_last_results.len(), 1);
         assert_eq!(inner.gl_last_results[0].id, "gitlab-2");
+    }
+
+    #[test]
+    fn apply_gl_fetch_identity_change_drops_stale_cache_before_failure() {
+        // Reconnecting with a different account/instance changes the
+        // identity fingerprint. If the very next fetch under the new
+        // identity fails, the previous identity's cached results must not
+        // be resurfaced as if they belonged to the new one.
+        let mut inner = new_poller_inner();
+        inner.gl_last_results = vec![make_gl_unified("gitlab-1")];
+        inner.gl_last_identity = Some(GL_IDENTITY_A.into());
+
+        let result = apply_gl_fetch(
+            &mut inner,
+            Some(GL_IDENTITY_B.into()),
+            Some(GlFetch::Failed),
+        );
+
+        assert!(result.is_empty());
+        assert!(inner.gl_last_results.is_empty());
+        assert_eq!(inner.gl_last_identity, Some(GL_IDENTITY_B.into()));
+    }
+
+    #[test]
+    fn apply_gl_fetch_identity_change_then_success_populates_under_new_identity() {
+        let mut inner = new_poller_inner();
+        inner.gl_last_results = vec![make_gl_unified("gitlab-1")];
+        inner.gl_last_identity = Some(GL_IDENTITY_A.into());
+
+        let result = apply_gl_fetch(
+            &mut inner,
+            Some(GL_IDENTITY_B.into()),
+            Some(GlFetch::Success(vec![make_gl_unified("gitlab-2")])),
+        );
+
+        assert_eq!(result.len(), 1);
+        assert_eq!(result[0].id, "gitlab-2");
+        assert_eq!(inner.gl_last_identity, Some(GL_IDENTITY_B.into()));
     }
 }
