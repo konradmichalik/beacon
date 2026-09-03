@@ -41,7 +41,7 @@
     loadDemoPRs
   } from './lib/stores/pull-requests.svelte';
   import { startIssuePolling, stopIssuePolling, loadDemoIssues } from './lib/stores/issues.svelte';
-  import { initExportEffect } from './lib/stores/export.svelte';
+  import { initExportEffect, requestExportDelete } from './lib/stores/export.svelte';
   import Toast from './lib/components/ui/Toast.svelte';
   import { startConsoleCapture, stopConsoleCapture, info as logInfo } from './lib/utils/logger';
   import { onMount } from 'svelte';
@@ -120,17 +120,13 @@
         });
         setExportDataChangeCallback((enabled) => {
           if (!enabled) {
-            invoke('delete_export_data').catch(() => {
-              // best-effort
-            });
+            requestExportDelete();
           }
         });
         // Reconciles a leftover data.json from a process that exited between
         // persisting the disabled setting and deleting the file.
         if (!settingsState.exportData) {
-          invoke('delete_export_data').catch(() => {
-            // best-effort
-          });
+          requestExportDelete();
         }
         // Store-level, not component-level (GH-127): must keep running for
         // the lifetime of this window regardless of whether the tray popup
