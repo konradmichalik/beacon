@@ -574,15 +574,32 @@ pub fn run() {
                     }
 
                     // Handle app activation (e.g. native notification click). With
-                    // ActivationPolicy::Accessory + NonactivatingPanel the app is only
-                    // activated through notification clicks, never via tray interaction.
-                    // If the most recent notification was about a single item, open it
-                    // directly instead of just focusing the window.
+                    // ActivationPolicy::Accessory + NonactivatingPanel the app is
+                    // *usually* only activated through notification clicks, never via
+                    // tray interaction — but that NonactivatingPanel style-mask bit can
+                    // drift out from under us (see ensure_panel_config's docs, FB16484811),
+                    // in which case a plain tray click's set_focus()/orderFrontRegardless()
+                    // genuinely activates the app too. Skip the pending-click handling
+                    // during the same grace window show_and_focus() uses to suppress
+                    // auto-hide, so a self-triggered activation (tray click, global
+                    // shortcut) can never be mistaken for a notification click and open
+                    // a stale URL. If the most recent *real* notification was about a
+                    // single item, open it directly instead of just focusing the window.
                     let activation_block = {
                         let app_handle = app.handle().clone();
                         block2::RcBlock::new(move |_: std::ptr::NonNull<AnyObject>| {
                             use tauri_plugin_shell::ShellExt;
                             let poller = app_handle.state::<std::sync::Arc<polling::Poller>>();
+                            if tray::is_within_show_grace() {
+                                // Discard rather than merely skip: this activation is
+                                // (very likely) a side effect of our own show_and_focus()
+                                // call, so any URL still pending from an earlier
+                                // notification has nothing to do with it. Leaving it
+                                // queued would let it resurface on a later, unrelated
+                                // activation — the exact bug this guard exists to prevent.
+                                poller.take_pending_click_url();
+                                return;
+                            }
                             match poller.take_pending_click_url() {
                                 Some(url) => {
                                     // Matches the shell-open pattern used app-wide

@@ -15,12 +15,18 @@ type TrayRect = (PhysicalPosition<i32>, (u32, u32));
 /// Last known tray icon position + size, used to position the window on activation.
 pub static LAST_TRAY_RECT: Mutex<Option<TrayRect>> = Mutex::new(None);
 
-/// Timestamp of the last show_and_focus call. Used to suppress auto-hide monitors
-/// that fire spuriously when opening the panel above a fullscreen app (macOS may
-/// briefly report a space change in that scenario).
+/// Timestamp of the last show_and_focus call. Used to suppress:
+/// - auto-hide monitors that fire spuriously when opening the panel above a
+///   fullscreen app (macOS may briefly report a space change in that scenario)
+/// - the app-activation handler in lib.rs, when a tray click's own
+///   set_focus()/orderFrontRegardless() genuinely activates the app due to
+///   NonactivatingPanel style-mask drift, so it isn't mistaken for a real
+///   notification click
 pub static LAST_SHOWN_AT: Mutex<Option<Instant>> = Mutex::new(None);
 
-/// Grace period after showing the panel during which auto-hide is suppressed.
+/// Grace period after showing the panel during which auto-hide and the
+/// activation handler's pending-click lookup are both suppressed (see
+/// [`LAST_SHOWN_AT`]).
 const SHOW_GRACE_MS: u128 = 600;
 
 /// Position a window centered below the tray icon using the stored tray rect.
@@ -35,8 +41,9 @@ pub fn position_window_at_tray(window: &tauri::WebviewWindow) {
     }
 }
 
-/// Returns `true` if the panel was shown recently enough that auto-hide should
-/// be suppressed (prevents space-change notifications from closing it immediately).
+/// Returns `true` if the panel was shown recently enough that auto-hide, or the
+/// activation handler's pending-click lookup, should be suppressed. See
+/// [`LAST_SHOWN_AT`] for the two call sites this guards.
 pub fn is_within_show_grace() -> bool {
     LAST_SHOWN_AT
         .lock()
