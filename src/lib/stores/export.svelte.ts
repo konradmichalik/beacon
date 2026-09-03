@@ -19,6 +19,18 @@ function clearPendingWrite(): void {
   }
 }
 
+// write_export_data and delete_export_data are two independent IPC calls; without
+// this queue a disable landing between the debounced write's re-check and its
+// invoke resolving could race the delete, leaving a stale data.json on disk if
+// the write happens to land after it (GH-134). Chaining both through the same
+// promise enforces the order they were requested in, regardless of which IPC
+// round-trip happens to finish first.
+let ipcQueue: Promise<void> = Promise.resolve();
+
+function enqueueIpc(task: () => Promise<void>): void {
+  ipcQueue = ipcQueue.then(task, task);
+}
+
 async function performWrite(payload: string): Promise<void> {
   if (!isTauri()) return;
   try {
@@ -28,6 +40,28 @@ async function performWrite(payload: string): Promise<void> {
   } catch (error) {
     logWarn(LOG_SOURCE, 'failed to write data.json', error);
   }
+}
+
+async function performDelete(): Promise<void> {
+  if (!isTauri()) return;
+  try {
+    const { invoke } = await import('@tauri-apps/api/core');
+    await invoke('delete_export_data');
+    logInfo(LOG_SOURCE, 'deleted data.json');
+  } catch (error) {
+    logWarn(LOG_SOURCE, 'failed to delete data.json', error);
+  }
+}
+
+/**
+ * Deletes data.json, serialized against any write still in flight so it can
+ * never be undone by a stale write that was already on its way to disk. Call
+ * this instead of invoking `delete_export_data` directly (e.g. from the
+ * export-toggle callback in App.svelte).
+ */
+export function requestExportDelete(): void {
+  clearPendingWrite();
+  enqueueIpc(performDelete);
 }
 
 /**
@@ -50,13 +84,16 @@ export function evaluateExport(input: ExportDecisionInput): void {
     debounceTimer = null;
     // Re-checked here: this callback can no longer be canceled once it
     // fires, so if the user disabled the export during the debounce window,
-    // a stale write must not resurrect the file right after delete_export_data
-    // ran (see setExportDataChangeCallback in App.svelte).
+    // a stale write must not resurrect the file right after a delete ran
+    // (see setExportDataChangeCallback in App.svelte). Routing the write
+    // through the same ipcQueue as requestExportDelete additionally covers
+    // the narrower race where a disable lands after this check but before
+    // the write's own invoke resolves.
     if (!settingsState.exportData) {
       logInfo(LOG_SOURCE, 'skipped: export disabled during debounce');
       return;
     }
-    performWrite(payload);
+    enqueueIpc(() => performWrite(payload));
   }, WRITE_DEBOUNCE_MS);
 }
 

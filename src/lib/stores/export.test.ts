@@ -11,7 +11,7 @@ vi.mock('$lib/utils/storage', () => ({ isTauri: () => true }));
 vi.mock('$lib/utils/logger', () => ({ info: logInfo, warn: logWarn }));
 vi.mock('@tauri-apps/api/core', () => ({ invoke }));
 
-import { evaluateExport } from './export.svelte';
+import { evaluateExport, requestExportDelete } from './export.svelte';
 
 function makeInput(overrides: Partial<ExportDecisionInput> = {}): ExportDecisionInput {
   return {
@@ -83,6 +83,37 @@ describe('evaluateExport', () => {
 
     expect(invoke).not.toHaveBeenCalled();
     expect(logInfo).toHaveBeenCalledWith('export', 'skipped: export disabled during debounce');
+  });
+
+  it('serializes a delete requested while a write is still in flight, so the delete always lands last (GH-134)', async () => {
+    let resolveWrite: (() => void) | undefined;
+    invoke.mockImplementationOnce(
+      () =>
+        new Promise<void>((resolve) => {
+          resolveWrite = resolve;
+        })
+    );
+
+    evaluateExport(makeInput());
+    await vi.advanceTimersByTimeAsync(300); // matches export.svelte.ts's WRITE_DEBOUNCE_MS
+
+    // The debounced write's re-check passed and its invoke is in flight but
+    // unresolved — this is the exact window the race in GH-134 landed in.
+    expect(invoke).toHaveBeenCalledTimes(1);
+    expect(invoke).toHaveBeenCalledWith('write_export_data', expect.anything());
+
+    settingsState.exportData = false;
+    requestExportDelete();
+
+    // The delete must wait for the in-flight write, not race it.
+    expect(invoke).toHaveBeenCalledTimes(1);
+
+    resolveWrite?.();
+    await vi.advanceTimersByTimeAsync(0);
+
+    expect(invoke).toHaveBeenCalledTimes(2);
+    expect(invoke).toHaveBeenNthCalledWith(2, 'delete_export_data');
+    expect(logInfo).toHaveBeenCalledWith('export', 'deleted data.json');
   });
 
   it('logs a warning when the write command rejects', async () => {
