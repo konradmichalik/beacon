@@ -1,7 +1,7 @@
 {
   "name": "beacon",
   "private": true,
-  "version": "0.17.1",
+  "version": "0.17.2",
   "description": "Beacon - GitHub & GitLab Notification Hub",
   "type": "module",
   "scripts": {
