@@ -30,11 +30,9 @@
 <a href="https://github.com/konradmichalik/homebrew-tap"><img src="https://img.shields.io/endpoint?url=https%3A%2F%2Fkonradmichalik.github.io%2Fhomebrew-tap%2Fbadges%2Fbeacon-downloads.json&style=flat-square&logo=homebrew" alt="Homebrew downloads"></a>
 
 ```bash
-brew install konradmichalik/tap/beacon
+brew tap konradmichalik/tap
+brew install beacon
 ```
-
-> [!NOTE]
-> Homebrew 6.0+ requires explicit trust for non-official taps. Installing the fully qualified formula above automatically trusts just `beacon` — no extra step needed. To trust the whole tap instead (e.g. for future short-name installs), run `brew tap konradmichalik/tap && brew trust konradmichalik/tap` first.
 
 ### Update
 
