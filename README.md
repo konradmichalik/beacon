@@ -23,6 +23,7 @@
 - **Filter & sort** by source, project, type, or read status — or type qualifiers like `repo:owner/name`, `author:login`, `type:pr` (with a leading `-` to exclude)
 - **Desktop notifications** — instant alerts or batched summaries
 - **Configurable badge** — unread count or a colored dot indicator
+- **Export for external tools** _(opt-in)_ — writes unread/review/PR/issue counts to a local JSON file other apps (e.g. a Stream Deck plugin) can read
 
 ## 🍺 Installation
 
@@ -56,14 +57,6 @@ On first launch, open **Settings** via the gear icon or the tray context menu an
 > Tokens are stored in the macOS Keychain, not in a plain file. Nothing is sent to any server other than GitHub and GitLab.
 > [!TIP]
 > The first time Beacon reads or writes a token, macOS shows a one-time "Beacon wants to use your confidential information stored in Keychain" prompt. Choose **Always Allow**. A signed release build only asks again after a signing-identity change; an unsigned local dev build asks on every launch, since its signature changes with every build — see [`CLAUDE.md`](./CLAUDE.md) if that's you.
-
-### Export data for external apps
-
-Enabling **Export data for external apps** in Settings writes a small JSON snapshot to
-`~/Library/Application Support/com.beacon.notifications/data.json` after every refresh, so external
-tools (e.g. a Stream Deck plugin) can read Beacon's current unread/review/PR/issue counts without
-needing their own GitHub/GitLab credentials. The file is removed as soon as the setting is turned
-off.
 
 ## 💎 Credits
 
