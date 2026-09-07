@@ -84,6 +84,18 @@ BEACON_DEMO=1 npm run tauri:dev
 
 Demo data is defined in `src/lib/utils/demo-data.ts`.
 
+## Icons
+
+The app icon set in `src-tauri/icons/` (`icon.png`, `icon.icns`, `32x32.png`, `128x128.png`, `128x128@2x.png`, referenced from `tauri.conf.json`) is generated from a single square source PNG:
+
+```bash
+npm run tauri -- icon path/to/source.png -o src-tauri/icons
+```
+
+The command also generates iOS/Android/Windows variants this project doesn't ship (targets are `app`/`dmg` only) — keep just the five files above and discard the rest.
+
+`icons/beacon-tray.png` (the menu bar tray icon) is a separate monochrome template image, not part of this generated set — update it by hand if the icon's silhouette changes.
+
 ## Project Structure
 
 ```
