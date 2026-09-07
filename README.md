@@ -1,5 +1,6 @@
 <p align="center">
-  <img src="assets/beacon-logo.svg" alt="Beacon" width="280">
+  <img src="assets/beacon-icon.png" alt="" width="96"><br>
+  <img src="assets/beacon-logo.svg" alt="Beacon" width="160">
 </p>
 
 <p align="center">
