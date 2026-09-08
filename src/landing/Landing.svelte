@@ -127,7 +127,7 @@
   <section class="hero">
     <div class="hero-inner">
       <div class="hero-brand">
-        <img src="/beacon-icon.png" alt="" width="72" height="72" />
+        <img src="beacon-icon.png" alt="" width="72" height="72" />
         <BeaconLogo height={32} class="hero-brand-wordmark" />
       </div>
       <h1>All your notifications.<br /><span class="gradient-text">One menu bar.</span></h1>

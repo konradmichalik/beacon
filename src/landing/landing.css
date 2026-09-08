@@ -70,7 +70,7 @@ body {
   text-decoration: none;
 }
 
-:global(.header-logo-svg) {
+.header-logo-svg {
   color: var(--landing-text-heading) !important;
 }
 
@@ -133,7 +133,7 @@ body {
   margin-bottom: 32px;
 }
 
-:global(.hero-brand-wordmark) {
+.hero-brand-wordmark {
   color: var(--landing-text-heading) !important;
 }
 
