@@ -710,6 +710,7 @@
     <ShortcutsTab />
   {:else if activeTab === 'about'}
     <div class="flex flex-col items-center gap-5 py-4">
+      <img src="/beacon-icon.png" alt="" width="64" height="64" />
       <BeaconLogo height={30} class="text-foreground" />
       <p class="text-center text-xs text-muted-foreground">
         Unified notifications and pull requests for GitHub & GitLab
