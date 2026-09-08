@@ -23,7 +23,7 @@
 - **Filter & sort** by source, project, type, or read status — or type qualifiers like `repo:owner/name`, `author:login`, `type:pr` (with a leading `-` to exclude)
 - **Desktop notifications** — instant alerts or batched summaries
 - **Configurable badge** — unread count or a colored dot indicator
-- **Export for external tools** _(opt-in)_ — writes unread/review/PR/issue counts to a local JSON file other apps (e.g. a Stream Deck plugin) can read
+- **Export for external tools** _(opt-in)_ — writes unread/review/PR/issue counts to `~/Library/Application Support/com.beacon.notifications/data.json` for external tools such as a Stream Deck plugin; disabling the setting removes the file
 
 ## 🍺 Installation
 
