@@ -36,8 +36,8 @@ block2 = "0.6"
 # Tauri's with_inner_tray_icon. Tauri's split set_icon / set_icon_as_template
 # has a known race condition that leaves the icon stuck non-template
 # (tauri-apps/tauri#9332). Version must match what Tauri pulls in
-# transitively (currently 0.21.x).
-tray-icon = { version = "0.21", default-features = false }
+# transitively (currently 0.25.x).
+tray-icon = { version = "0.25", default-features = false }
 security-framework = "3"
 security-framework-sys = "2"
 
