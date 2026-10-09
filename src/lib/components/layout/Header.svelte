@@ -1,7 +1,7 @@
 <script lang="ts">
-  import { Settings, RefreshCw, Power, Inbox, GitPullRequest, CircleDot } from '@lucide/svelte';
-  import { isTauri } from '$lib/utils/storage';
+  import { Settings, RefreshCw, Power } from '@lucide/svelte';
   import BeaconLogo from '$lib/components/icons/BeaconLogo.svelte';
+  import IconButton from '$lib/components/ui/IconButton.svelte';
   import {
     getIsLoading,
     getHasLoadedOnce,
@@ -23,6 +23,8 @@
   import { settingsState } from '$lib/stores/settings.svelte';
   import type { ViewTab } from '$lib/types';
 
+  // Beacon is quit from the tray menu. Only the landing page demo passes a
+  // handler, to simulate closing the app.
   let {
     onSettingsToggle,
     onQuit,
@@ -34,6 +36,10 @@
     activeView?: ViewTab;
     onTabChange: (tab: ViewTab) => void;
   } = $props();
+
+  // Fixed width keeps the sliding underline a plain transform.
+  const TAB_WIDTH = 88;
+  const UNDERLINE_INSET = 14;
 
   let isLoading = $derived.by(() => {
     if (activeView === 'notifications') return getIsLoading();
@@ -47,14 +53,18 @@
   let prsLoading = $derived(getIsPRLoading());
   let issuesLoading = $derived(getIsIssueLoading());
 
-  let tabs = $derived<{ id: ViewTab; label: string; icon: typeof Inbox; getCount: () => number }[]>(
-    [
-      { id: 'notifications', label: 'Inbox', icon: Inbox, getCount: () => unreadCount },
-      { id: 'pull-requests', label: 'My PRs', icon: GitPullRequest, getCount: () => prCount },
-      ...(settingsState.enableIssues
-        ? [{ id: 'issues' as const, label: 'Issues', icon: CircleDot, getCount: () => issueCount }]
-        : [])
-    ]
+  let tabs = $derived<{ id: ViewTab; label: string; getCount: () => number }[]>([
+    { id: 'notifications', label: 'Inbox', getCount: () => unreadCount },
+    { id: 'pull-requests', label: 'My PRs', getCount: () => prCount },
+    ...(settingsState.enableIssues
+      ? [{ id: 'issues' as const, label: 'Issues', getCount: () => issueCount }]
+      : [])
+  ]);
+  let activeIndex = $derived(
+    Math.max(
+      0,
+      tabs.findIndex((t) => t.id === activeView)
+    )
   );
 
   function handleTabKeydown(e: KeyboardEvent): void {
@@ -83,23 +93,23 @@
     }
   }
 
-  async function handleQuit(): Promise<void> {
-    if (onQuit) {
-      onQuit();
-      return;
-    }
-    if (isTauri()) {
-      const { invoke } = await import('@tauri-apps/api/core');
-      await invoke('quit_app');
-    }
+  function isFirstLoad(id: ViewTab): boolean {
+    return (
+      (id === 'notifications' && notificationsLoading && !getHasLoadedOnce()) ||
+      (id === 'pull-requests' && prsLoading && !getPRHasLoadedOnce()) ||
+      (id === 'issues' && issuesLoading && !getIssueHasLoadedOnce())
+    );
   }
 </script>
 
-{#snippet tabStrip(wrapperClass: string)}
+<header class="flex h-11 shrink-0 items-stretch border-b border-border pl-4 pr-2">
+  <div class="flex min-w-0 flex-1 basis-0 items-center">
+    <BeaconLogo height={18} class="text-foreground" />
+  </div>
+
   <!-- svelte-ignore a11y_interactive_supports_focus -->
-  <div class={wrapperClass} role="tablist" onkeydown={handleTabKeydown}>
+  <div class="relative flex items-stretch" role="tablist" onkeydown={handleTabKeydown}>
     {#each tabs as tab (tab.id)}
-      {@const TabIcon = tab.icon}
       {@const count = tab.getCount()}
       {@const isActive = activeView === tab.id}
       <button
@@ -108,78 +118,45 @@
         aria-selected={isActive}
         tabindex={isActive ? 0 : -1}
         onclick={() => onTabChange(tab.id)}
-        class="pointer-events-auto flex items-center gap-1.5 rounded-t-md px-2.5 py-1 text-[11px] font-medium transition-colors
-          {isActive
-          ? 'bg-accent text-foreground shadow-sm'
-          : 'text-muted-foreground hover:bg-secondary hover:text-foreground'}"
+        style="width: {TAB_WIDTH}px"
+        class="flex items-center justify-center gap-1.5 text-xs transition-colors {isActive
+          ? 'font-semibold text-foreground'
+          : 'font-medium text-muted-foreground hover:text-foreground'}"
       >
-        <TabIcon size={11} />
         {tab.label}
         {#if count > 0}
           <span
-            class="rounded-full px-1.5 py-px text-[9px] font-semibold leading-tight
-              {activeView === tab.id
-              ? 'bg-primary/15 text-primary'
-              : 'bg-secondary/80 text-muted-foreground'}"
+            class="inline-flex h-4 min-w-[18px] items-center justify-center rounded-full px-[5px] text-[10.5px] font-bold tabular-nums transition-colors {isActive
+              ? 'bg-primary text-primary-foreground'
+              : 'bg-muted text-muted-foreground'}"
           >
             {count}
           </span>
-        {:else if (tab.id === 'notifications' && notificationsLoading && !getHasLoadedOnce()) || (tab.id === 'pull-requests' && prsLoading && !getPRHasLoadedOnce()) || (tab.id === 'issues' && issuesLoading && !getIssueHasLoadedOnce())}
-          <span class="inline-block h-3 w-5 animate-pulse rounded-full bg-secondary/80"></span>
+        {:else if isFirstLoad(tab.id)}
+          <span class="inline-block h-4 w-[18px] animate-pulse rounded-full bg-muted"></span>
         {/if}
       </button>
     {/each}
+    <span
+      aria-hidden="true"
+      class="absolute -bottom-px left-0 h-0.5 rounded-full bg-primary"
+      style="width: {TAB_WIDTH - UNDERLINE_INSET * 2}px; transform: translateX({activeIndex *
+        TAB_WIDTH +
+        UNDERLINE_INSET}px); transition: transform var(--dur-slow) var(--ease-out);"
+    ></span>
   </div>
-{/snippet}
 
-{#snippet actions()}
-  <div class="flex items-center gap-0.5">
-    <button
-      type="button"
-      onclick={handleRefresh}
-      disabled={isLoading}
-      class="rounded-md p-1.5 text-muted-foreground transition-colors hover:bg-secondary hover:text-foreground disabled:opacity-50"
-      title="Refresh"
-    >
-      <RefreshCw size={14} class={isLoading ? 'animate-spin' : ''} />
-    </button>
-    <button
-      type="button"
-      onclick={onSettingsToggle}
-      class="rounded-md p-1.5 text-muted-foreground transition-colors hover:bg-secondary hover:text-foreground"
-      title="Settings"
-    >
+  <div class="flex min-w-0 flex-1 basis-0 items-center justify-end">
+    <IconButton label="Refresh" disabled={isLoading} onclick={handleRefresh}>
+      <RefreshCw size={15} class={isLoading ? 'animate-spin' : ''} />
+    </IconButton>
+    <IconButton label="Settings" onclick={onSettingsToggle}>
       <Settings size={15} />
-    </button>
-    <button
-      type="button"
-      onclick={handleQuit}
-      class="rounded-md p-1.5 text-muted-foreground transition-colors hover:bg-destructive/80 hover:text-white"
-      title="Quit Beacon"
-    >
-      <Power size={14} />
-    </button>
+    </IconButton>
+    {#if onQuit}
+      <IconButton label="Quit Beacon" onclick={onQuit}>
+        <Power size={15} />
+      </IconButton>
+    {/if}
   </div>
-{/snippet}
-
-{#if tabs.length > 2}
-  <!-- Two-row header: tabs get a dedicated row so three (or more) tabs never
-       overlap the action buttons. -->
-  <header class="flex flex-col border-b border-border px-4 py-2">
-    <div class="flex items-center justify-between">
-      <BeaconLogo height={18} class="text-foreground" />
-      {@render actions()}
-    </div>
-    {@render tabStrip('-mb-2 mt-1.5 flex justify-center gap-1')}
-  </header>
-{:else}
-  <!-- Single-row header: compact layout with tabs floating centered at the
-       bottom edge (fits comfortably with two tabs). -->
-  <header class="relative flex items-center justify-between border-b border-border px-4 py-2">
-    <div class="flex items-center">
-      <BeaconLogo height={18} class="text-foreground" />
-    </div>
-    {@render tabStrip('pointer-events-none absolute inset-x-0 bottom-0 flex justify-center gap-1')}
-    {@render actions()}
-  </header>
-{/if}
+</header>
