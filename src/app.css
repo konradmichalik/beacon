@@ -8,70 +8,81 @@
 html[data-color-mode='light'] {
   color-scheme: light;
   --ds-text: #2e3440;
-  --ds-text-subtle: #3b4455;
-  --ds-text-subtlest: #434c5e;
+  --ds-text-subtle: #4c566a;
+  --ds-text-subtlest: #5c6578;
   --ds-text-inverse: #eceff4;
-  --ds-text-brand: #5e81ac;
-  --ds-text-danger: #bf616a;
-  --ds-text-success: #7b9e64;
-  --ds-text-warning: #d08770;
-  --ds-text-discovery: #b48ead;
-  --ds-border: #2e344020;
+  --ds-text-brand: #4a6a91;
+  --ds-text-danger: #a3434d;
+  --ds-text-success: #4a6e35;
+  --ds-text-warning: #9a5236;
+  --ds-text-discovery: #7f5a79;
+  --ds-border: #2e34401a;
+  --ds-border-strong: #2e34402e;
   --ds-border-bold: #4c566a;
   --ds-border-focused: #88c0d0;
-  --ds-border-input: #d8dee9;
+  --ds-border-input: #858d9e;
   --ds-surface: #f5f7fa;
-  --ds-surface-hovered: #eceff4;
+  --ds-surface-hovered: #e9edf2;
   --ds-surface-raised: #ffffff;
-  --ds-surface-sunken: #eceff4;
+  --ds-surface-sunken: #e6eaf0;
   --ds-surface-overlay: #ffffff;
-  --ds-background-brand-bold: #5e81ac;
-  --ds-background-brand-bold-hovered: #507396;
+  --ds-background-brand-bold: #4a6a91;
+  --ds-background-brand-bold-hovered: #3f5d82;
   --ds-background-neutral: #2e344010;
   --ds-background-neutral-hovered: #2e344018;
   --ds-background-neutral-pressed: #2e344030;
-  --ds-background-selected: #e7ecf3;
-  --ds-background-danger: #faf0f1;
-  --ds-background-success: #f2f6ef;
-  --ds-background-warning: #fdf8ef;
-  --ds-background-discovery: #f7f2f6;
+  --ds-background-selected: #e3eaf3;
+  --ds-background-danger: #f8e5e7;
+  --ds-background-success: #e6efe0;
+  --ds-background-warning: #f8eae3;
+  --ds-background-discovery: #f1e7ef;
   --ds-background-input: #ffffff;
-  --ds-blanket: #2e344070;
+  --ds-blanket: #2e344047;
 }
 
 /* Beacon Design Tokens - Dark */
 html[data-color-mode='dark'] {
   color-scheme: dark;
-  --ds-text: #d8dee9;
-  --ds-text-subtle: #9ca3b4;
-  --ds-text-subtlest: #8892a2;
+  --ds-text: #e5e9f0;
+  --ds-text-subtle: #a3abbb;
+  --ds-text-subtlest: #8f99aa;
   --ds-text-inverse: #1e222a;
   --ds-text-brand: #88c0d0;
-  --ds-text-danger: #bf616a;
+  --ds-text-danger: #e0939a;
   --ds-text-success: #a3be8c;
   --ds-text-warning: #ebcb8b;
-  --ds-text-discovery: #b48ead;
-  --ds-border: #d8dee915;
+  --ds-text-discovery: #c9a6c2;
+  --ds-border: #d8dee917;
+  --ds-border-strong: #d8dee92e;
   --ds-border-bold: #4c566a;
   --ds-border-focused: #88c0d0;
-  --ds-border-input: #4c566a;
+  --ds-border-input: #7a8294;
   --ds-surface: #1e222a;
-  --ds-surface-hovered: #2e3440;
+  --ds-surface-hovered: #3b4252;
   --ds-surface-raised: #2e3440;
-  --ds-surface-sunken: #181c22;
+  --ds-surface-sunken: #2a303b;
   --ds-surface-overlay: #353c4a;
-  --ds-background-brand-bold: #81a1c1;
-  --ds-background-brand-bold-hovered: #88c0d0;
+  --ds-background-brand-bold: #88c0d0;
+  --ds-background-brand-bold-hovered: #9bcbd9;
   --ds-background-neutral: #d8dee910;
   --ds-background-neutral-hovered: #d8dee918;
   --ds-background-neutral-pressed: #d8dee928;
-  --ds-background-selected: #2a3545;
+  --ds-background-selected: #263240;
   --ds-background-danger: #3d2b2e;
   --ds-background-success: #2d3828;
   --ds-background-warning: #38331e;
   --ds-background-discovery: #362a3c;
   --ds-background-input: #2e3440;
-  --ds-blanket: #0d0f1390;
+  --ds-blanket: #00000073;
+}
+
+/* Motion tokens. Animate transform and opacity only, see docs/design/rules.md */
+:root {
+  --dur-fast: 120ms;
+  --dur-base: 200ms;
+  --dur-slow: 380ms;
+  --ease-out: cubic-bezier(0.16, 1, 0.3, 1);
+  --ease-std: cubic-bezier(0.2, 0, 0, 1);
 }
 
 /* shadcn-svelte variable mapping */
@@ -125,9 +136,16 @@ html[data-color-mode='dark'] {
   --color-input: var(--input);
   --color-ring: var(--ring);
 
-  /* Semantic colors */
+  --color-border-strong: var(--ds-border-strong);
+
+  /* Semantic colors: text tone and its chip background */
   --color-success-text: var(--ds-text-success);
+  --color-success-bg: var(--ds-background-success);
   --color-discovery: var(--ds-text-discovery);
+  --color-discovery-bg: var(--ds-background-discovery);
+  --color-warning-bg: var(--ds-background-warning);
+  --color-destructive-bg: var(--ds-background-danger);
+  --color-brand-bg: var(--ds-background-selected);
 
   /* Source-specific colors */
   --color-source-github: #5e81ac;
@@ -228,5 +246,19 @@ html[data-color-mode='dark'] {
   to {
     opacity: 0;
     transform: translateX(-50%) translateY(8px) scale(0.95);
+  }
+}
+
+/* Under Reduce Motion every change shows its end state at once */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  ::before,
+  ::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    animation-delay: 0s !important;
+    transition-duration: 0.01ms !important;
+    transition-delay: 0s !important;
+    scroll-behavior: auto !important;
   }
 }
