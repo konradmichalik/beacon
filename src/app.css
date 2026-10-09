@@ -40,7 +40,7 @@ html[data-color-mode='light'] {
   --ds-blanket: #2e344047;
   --ds-toast-background: #2e3440;
   --ds-toast-text: #eceff4;
-  --ds-toast-accent: #88c0d0;
+  --ds-toast-accent: #a3d4e0;
 }
 
 /* Beacon Design Tokens - Dark */
@@ -79,16 +79,14 @@ html[data-color-mode='dark'] {
   --ds-blanket: #00000073;
   --ds-toast-background: #e5e9f0;
   --ds-toast-text: #2e3440;
-  --ds-toast-accent: #4a6a91;
+  --ds-toast-accent: #3a5a80;
 }
 
 /* Motion tokens. Animate transform and opacity only, see docs/design/rules.md */
 :root {
-  --dur-fast: 120ms;
   --dur-base: 200ms;
   --dur-slow: 380ms;
   --ease-out: cubic-bezier(0.16, 1, 0.3, 1);
-  --ease-std: cubic-bezier(0.2, 0, 0, 1);
 }
 
 /* shadcn-svelte variable mapping */

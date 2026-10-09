@@ -42,7 +42,7 @@ All colours come from the `--ds-*` tokens in `src/app.css`, with a light and a d
 - Light values above replace the pastel Nord values (`#7b9e64`, `#d08770`, `#b48ead`, `#bf616a`, `#5e81ac`), which reach only 2.4 to 3.4:1 as chip text.
 - **Source colours never appear in data.** GitHub and GitLab are told apart by their icon, not by blue and orange.
 - **Avatar fallbacks** use the dark token values (`#4a6a91`, `#4a6e35`, `#7f5a79`, `#9a5236`, `#a3434d`, `#5c6578`) with white initials. Pastel Nord fills fail with white text.
-- The toast is inverted and has its own tokens: `--ds-toast-background` (`#2e3440` light, `#e5e9f0` dark), `--ds-toast-text` (`#eceff4` light, `#2e3440` dark) and `--ds-toast-accent` for its action (`#88c0d0` light, `#4a6a91` dark).
+- The toast is inverted and has its own tokens: `--ds-toast-background` (`#2e3440` light, `#e5e9f0` dark), `--ds-toast-text` (`#eceff4` light, `#2e3440` dark) and `--ds-toast-accent` for its action (`#a3d4e0` light, `#3a5a80` dark, both 4.5:1 or better on the action's fill).
 - Status colours differ from text in lightness, not only in hue, and never carry information alone: every coloured chip has an icon and a word.
 
 ## Typography
@@ -165,15 +165,13 @@ One row component for notifications, pull requests and issues.
 
 ## Motion
 
-Motion is added only inside `@media (prefers-reduced-motion: no-preference)`, or behind a check of `matchMedia('(prefers-reduced-motion: reduce)')` in Svelte transitions. Start from no motion and opt in. Under Reduce Motion every change shows its end state at once.
+Motion is opt-in for people who allow it. One rule in `src/app.css` cuts every CSS animation and transition to zero under `prefers-reduced-motion: reduce`, and Svelte transitions get their durations through `motionMs`, which returns 0 under Reduce Motion. Start from no motion and opt in: a new animation must work with both mechanisms. Under Reduce Motion every change shows its end state at once.
 
 | Token        | Value                           |
 | ------------ | ------------------------------- |
-| `--dur-fast` | 120ms                           |
 | `--dur-base` | 200ms                           |
 | `--dur-slow` | 380ms                           |
 | `--ease-out` | `cubic-bezier(0.16, 1, 0.3, 1)` |
-| `--ease-std` | `cubic-bezier(0.2, 0, 0, 1)`    |
 
 | Where                  | What                                                                                                                                          | Timing                          |
 | ---------------------- | --------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------- |

@@ -18,7 +18,7 @@
       : 'toast-in var(--dur-slow)'} var(--ease-out) forwards;"
   >
     <CheckCheck size={14} class="shrink-0" />
-    {#if action}
+    {#if action && !leaving}
       <span>{toastState.message}</span>
       <button
         type="button"

@@ -132,7 +132,7 @@ fn show_and_focus(window: &tauri::WebviewWindow) {
     let _ = window.set_focus();
     // Lets the frontend replay its open animation: the webview is only hidden,
     // never remounted, so there is no other signal that the popup reappeared.
-    let _ = window.emit("popup-shown", ());
+    let _ = window.emit_to(window.label(), "popup-shown", ());
 
     #[cfg(target_os = "macos")]
     if let Ok(ns_window) = window.ns_window() {
