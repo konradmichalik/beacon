@@ -46,6 +46,7 @@
   import { startConsoleCapture, stopConsoleCapture, info as logInfo } from './lib/utils/logger';
   import { onMount } from 'svelte';
   import { isTauri } from './lib/utils/storage';
+  import { playLogo } from './lib/stores/logo-motion.svelte';
 
   const isSettingsWindow = new URLSearchParams(window.location.search).get('window') === 'settings';
 
@@ -165,6 +166,7 @@
         }
       } finally {
         isInitializing = false;
+        playLogo('open');
       }
     }
 
@@ -175,6 +177,7 @@
       const unlisten = await listen('popup-shown', () => {
         opening = false;
         requestAnimationFrame(() => (opening = true));
+        playLogo('open');
       });
       if (destroyed) unlisten();
       else unlistenPopupShown = unlisten;
