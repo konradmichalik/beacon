@@ -8,6 +8,7 @@
   import { untrack } from 'svelte';
   import { ListFilter } from '@lucide/svelte';
   import Dialog from '$lib/components/ui/Dialog.svelte';
+  import Button from '$lib/components/ui/Button.svelte';
 
   let { notification, onClose }: { notification: UnifiedNotification; onClose: () => void } =
     $props();
@@ -131,20 +132,7 @@
   </p>
 
   {#snippet footer()}
-    <button
-      type="button"
-      onclick={onClose}
-      class="h-7 rounded-lg border border-border-strong bg-card px-3.5 text-[12.5px] font-medium text-foreground transition-colors hover:bg-surface-hovered"
-    >
-      Cancel
-    </button>
-    <button
-      type="button"
-      onclick={handleConfirm}
-      disabled={!canConfirm}
-      class="h-7 rounded-lg bg-primary px-3.5 text-[12.5px] font-semibold text-primary-foreground transition-colors hover:bg-[var(--ds-background-brand-bold-hovered)] disabled:opacity-40"
-    >
-      Mute
-    </button>
+    <Button onclick={onClose}>Cancel</Button>
+    <Button variant="primary" onclick={handleConfirm} disabled={!canConfirm}>Mute</Button>
   {/snippet}
 </Dialog>

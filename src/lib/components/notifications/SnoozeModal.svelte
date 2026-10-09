@@ -3,6 +3,8 @@
   import { snoozeNotification } from '$lib/stores/snooze.svelte';
   import { SNOOZE_PRESET_NAMES, presetTimeLabel, type SnoozePreset } from '$lib/utils/snooze';
   import Dialog from '$lib/components/ui/Dialog.svelte';
+  import Kbd from '$lib/components/ui/Kbd.svelte';
+  import Button from '$lib/components/ui/Button.svelte';
 
   let { notification, onClose }: { notification: UnifiedNotification; onClose: () => void } =
     $props();
@@ -34,11 +36,7 @@
       >
         <span class="flex-1">{SNOOZE_PRESET_NAMES[preset]}</span>
         <span class="text-xs tabular-nums text-subtlest">{presetTimeLabel(preset)}</span>
-        <kbd
-          class="inline-flex h-[18px] min-w-[18px] items-center justify-center rounded border border-border-strong px-1 font-sans text-[10.5px] text-subtlest"
-        >
-          {i + 1}
-        </kbd>
+        <Kbd>{i + 1}</Kbd>
       </button>
     {/each}
   </div>
@@ -58,12 +56,6 @@
   </label>
 
   {#snippet footer()}
-    <button
-      type="button"
-      onclick={onClose}
-      class="h-7 rounded-lg border border-border-strong bg-card px-3.5 text-[12.5px] font-medium text-foreground transition-colors hover:bg-surface-hovered"
-    >
-      Cancel
-    </button>
+    <Button onclick={onClose}>Cancel</Button>
   {/snippet}
 </Dialog>
