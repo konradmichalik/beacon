@@ -20,7 +20,7 @@ Beacon is a macOS menu bar app that provides a unified notification hub for GitH
   - `keychain.rs`: forge tokens in the macOS Keychain
   - `export.rs`: opt-in `data.json` export (atomic write, `0600`)
   - `debug_log.rs`: optional file logging with rotation
-- `docs/`: `DEVELOPMENT.md` and `RELEASE.md`
+- `docs/`: `DEVELOPMENT.md` and `RELEASE.md`, `docs/design/`: design rules and screen designs
 
 Frontend and backend talk through Tauri commands (`invoke(...)`, frontend to backend) and events (`notifications:update`, `notifications:summary`, backend to frontend). Settings, tokens and read state persist in the Tauri store plugin.
 
@@ -65,6 +65,11 @@ cd src-tauri && cargo clippy -- -D warnings
 - The `$lib` alias resolves to `src/lib`
 - The `state_referenced_locally` Svelte warning is suppressed on purpose
 - macOS only: uses the `macos-private-api` Tauri feature and `objc2` bindings
+
+## Design
+
+- Every change to the popup, the Settings window or the landing page demo follows [`docs/design/rules.md`](docs/design/rules.md). The target screens are listed in [`docs/design/screens.md`](docs/design/screens.md)
+- A change that needs to break a rule updates `rules.md` in the same pull request
 
 ## Git workflow
 
