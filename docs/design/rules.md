@@ -42,7 +42,7 @@ All colours come from the `--ds-*` tokens in `src/app.css`, with a light and a d
 - Light values above replace the pastel Nord values (`#7b9e64`, `#d08770`, `#b48ead`, `#bf616a`, `#5e81ac`), which reach only 2.4 to 3.4:1 as chip text.
 - **Source colours never appear in data.** GitHub and GitLab are told apart by their icon, not by blue and orange.
 - **Avatar fallbacks** use the dark token values (`#4a6a91`, `#4a6e35`, `#7f5a79`, `#9a5236`, `#a3434d`, `#5c6578`) with white initials. Pastel Nord fills fail with white text.
-- The toast is inverted: `--ds-text` as background, `--ds-text-inverse` as text, `#88c0d0` (light) or `#4a6a91` (dark) for its action.
+- The toast is inverted and has its own tokens: `--ds-toast-background` (`#2e3440` light, `#e5e9f0` dark), `--ds-toast-text` (`#eceff4` light, `#2e3440` dark) and `--ds-toast-accent` for its action (`#88c0d0` light, `#4a6a91` dark).
 - Status colours differ from text in lightness, not only in hue, and never carry information alone: every coloured chip has an icon and a word.
 
 ## Typography
@@ -133,12 +133,12 @@ One row component for notifications, pull requests and issues.
 
 ## Overlays
 
-| Overlay               | Rules                                                                                                                                                                                                                                             |
-| --------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Context menu          | Opens at the pointer, clamped inside the popup. Items with a shortcut show it as `kbd` on the right, and only for a key that really triggers that item. A divider separates read actions from the rest                                            |
-| Filter popover        | Single choices are segmented controls without counts. Multiple choices are toggle chips with counts (Type, Status) or checkboxes with visible labels (Project, Author). The footer with "Reset all filters" appears only while a filter is active |
-| Dialog (Snooze, Mute) | Title, one line of context (the item's title, or what the rule does), the choices, Cancel and at most one primary button. Snooze options show their time and a number key. Mute shows how many items the rule would hide before it is created     |
-| Toast                 | Bottom centre, above the Read footer, inverted colours, 3.6s. Bulk actions (mark all as read) carry Undo; single actions do not                                                                                                                   |
+| Overlay               | Rules                                                                                                                                                                                                                                                                        |
+| --------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Context menu          | Opens at the pointer, clamped inside the popup. Items with a shortcut show it as `kbd` on the right, and only for a key that really triggers that item. A divider separates read actions from the rest                                                                       |
+| Filter popover        | Single choices are segmented controls without counts. Multiple choices are toggle chips with counts (Type, Status) or checkboxes with visible labels (Project, Author). The footer with "Reset all filters" appears only while a filter is active                            |
+| Dialog (Snooze, Mute) | Title, one line of context (the item's title, or what the rule does), the choices, Cancel and at most one primary button. Snooze options show their time and a number key. Mute shows how many items the rule would hide before it is created                                |
+| Toast                 | Bottom centre, above the Read footer, inverted colours, 3.6s. Bulk actions (mark all as read) carry Undo; single actions do not. Undo is only honest because the server hears about a bulk action after the 3.6s window, GitHub and GitLab cannot mark a thread unread again |
 
 - Menus and popovers dismiss on outside click and Escape. Dialogs trap focus, close on Escape and return focus to the row.
 - Only one overlay at a time. Opening a dialog from the context menu replaces the menu.

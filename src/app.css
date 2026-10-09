@@ -38,6 +38,9 @@ html[data-color-mode='light'] {
   --ds-background-discovery: #f1e7ef;
   --ds-background-input: #ffffff;
   --ds-blanket: #2e344047;
+  --ds-toast-background: #2e3440;
+  --ds-toast-text: #eceff4;
+  --ds-toast-accent: #88c0d0;
 }
 
 /* Beacon Design Tokens - Dark */
@@ -74,6 +77,9 @@ html[data-color-mode='dark'] {
   --ds-background-discovery: #362a3c;
   --ds-background-input: #2e3440;
   --ds-blanket: #00000073;
+  --ds-toast-background: #e5e9f0;
+  --ds-toast-text: #2e3440;
+  --ds-toast-accent: #4a6a91;
 }
 
 /* Motion tokens. Animate transform and opacity only, see docs/design/rules.md */
@@ -147,6 +153,9 @@ html[data-color-mode='dark'] {
   --color-warning-bg: var(--ds-background-warning);
   --color-destructive-bg: var(--ds-background-danger);
   --color-brand-bg: var(--ds-background-selected);
+  --color-toast: var(--ds-toast-background);
+  --color-toast-foreground: var(--ds-toast-text);
+  --color-toast-accent: var(--ds-toast-accent);
 
   /* Source-specific colors */
   --color-source-github: #5e81ac;
@@ -231,7 +240,7 @@ html[data-color-mode='dark'] {
 @keyframes toast-in {
   from {
     opacity: 0;
-    transform: translateX(-50%) translateY(8px) scale(0.95);
+    transform: translateX(-50%) translateY(14px) scale(0.96);
   }
   to {
     opacity: 1;
@@ -246,7 +255,7 @@ html[data-color-mode='dark'] {
   }
   to {
     opacity: 0;
-    transform: translateX(-50%) translateY(8px) scale(0.95);
+    transform: translateX(-50%) translateY(14px) scale(0.96);
   }
 }
 
