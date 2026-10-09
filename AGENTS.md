@@ -68,7 +68,7 @@ cd src-tauri && cargo clippy -- -D warnings
 
 ## Design
 
-- Every change to the popup, the Settings window or the landing page demo follows [`docs/design/rules.md`](docs/design/rules.md). The target screens are listed in [`docs/design/screens.md`](docs/design/screens.md)
+- Every change to the popup (also where the landing page embeds it) or the Settings window follows [`docs/design/rules.md`](docs/design/rules.md). The target screens are listed in [`docs/design/screens.md`](docs/design/screens.md)
 - A change that needs to break a rule updates `rules.md` in the same pull request
 
 ## Git workflow

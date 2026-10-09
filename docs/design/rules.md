@@ -1,6 +1,6 @@
 # Design rules
 
-These rules are binding for every change to Beacon's popup, the Settings window and the landing page demo. When a change needs to break one, change the rule here first, in the same pull request, and say why.
+These rules are binding for every change to Beacon's popup and the Settings window. The landing page embeds the real popup, so the popup rules cover it there too; it has no screens of its own. When a change needs to break one, change the rule here first, in the same pull request, and say why.
 
 The screens these rules produce are listed in [screens.md](screens.md). The code moves over to them screen by screen; until a screen has moved, the canvas wins over the current markup.
 
