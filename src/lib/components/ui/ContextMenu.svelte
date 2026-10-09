@@ -1,5 +1,6 @@
 <script lang="ts">
   import { onMount } from 'svelte';
+  import { pop } from '$lib/utils/motion';
   import { focusTrap } from '$lib/actions/focusTrap';
   import { MENU_WIDTH, type MenuEntry } from '$lib/utils/context-menu';
 
@@ -33,7 +34,8 @@
 
 <div
   role="menu"
-  class="fixed z-50 rounded-[10px] border border-border bg-popover p-1 shadow-lg"
+  transition:pop|global
+  class="fixed z-50 origin-top-left rounded-[10px] border border-border bg-popover p-1 shadow-lg"
   style="left: {x}px; top: {y}px; width: {MENU_WIDTH}px;"
   use:focusTrap
 >

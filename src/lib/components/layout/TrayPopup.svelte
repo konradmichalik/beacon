@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { setTabDirection } from '$lib/utils/motion';
   import Header from './Header.svelte';
   import type { ViewTab } from '$lib/types';
   import NotificationList from '../notifications/NotificationList.svelte';
@@ -107,6 +108,14 @@
     }
   }
 
+  const TAB_ORDER: ViewTab[] = ['notifications', 'pull-requests', 'issues'];
+
+  function switchTab(tab: ViewTab): void {
+    if (tab === activeView) return;
+    setTabDirection(TAB_ORDER.indexOf(tab) > TAB_ORDER.indexOf(activeView) ? 1 : -1);
+    activeView = tab;
+  }
+
   function handleShortcuts(e: KeyboardEvent): void {
     if (showSettings) return;
     if (e.ctrlKey || e.altKey || e.metaKey) return;
@@ -115,10 +124,10 @@
     if (tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT') return;
 
     const actions: Record<string, () => void> = {
-      '1': () => (activeView = 'notifications'),
-      '2': () => (activeView = 'pull-requests'),
+      '1': () => switchTab('notifications'),
+      '2': () => switchTab('pull-requests'),
       '3': () => {
-        if (settingsState.enableIssues) activeView = 'issues';
+        if (settingsState.enableIssues) switchTab('issues');
       },
       r: () => handleRefresh(),
       '/': () => {
@@ -155,10 +164,11 @@
         ? ['notifications', 'pull-requests', 'issues']
         : ['notifications', 'pull-requests'];
       const idx = tabs.indexOf(activeView);
-      activeView =
+      switchTab(
         e.key === 'ArrowRight'
           ? tabs[(idx + 1) % tabs.length]
-          : tabs[(idx - 1 + tabs.length) % tabs.length];
+          : tabs[(idx - 1 + tabs.length) % tabs.length]
+      );
       return;
     }
 
@@ -219,12 +229,7 @@
       <SettingsView />
     </div>
   {:else}
-    <Header
-      onSettingsToggle={toggleSettings}
-      {onQuit}
-      {activeView}
-      onTabChange={(tab) => (activeView = tab)}
-    />
+    <Header onSettingsToggle={toggleSettings} {onQuit} {activeView} onTabChange={switchTab} />
     {#if activeView === 'notifications'}
       <FilterBar />
     {:else if activeView === 'issues'}

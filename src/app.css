@@ -209,32 +209,20 @@ html[data-color-mode='dark'] {
   border-radius: 9999px;
 }
 
-@keyframes fade-in {
+@keyframes popup-open {
   from {
     opacity: 0;
+    transform: translateY(-8px) scale(0.98);
   }
   to {
     opacity: 1;
+    transform: none;
   }
 }
 
-.animate-fade-in {
-  animation: fade-in 0.2s ease-out;
-}
-
-@keyframes slide-up {
-  from {
-    opacity: 0;
-    transform: translateY(6px);
-  }
-  to {
-    opacity: 1;
-    transform: translateY(0);
-  }
-}
-
-.animate-slide-up {
-  animation: slide-up 0.15s ease-out;
+.animate-popup-open {
+  transform-origin: 50% 0;
+  animation: popup-open var(--dur-slow) var(--ease-out);
 }
 
 @keyframes toast-in {

@@ -29,7 +29,6 @@
 
   let { notification }: { notification: UnifiedNotification } = $props();
 
-  let dismissing = $state(false);
   let timeLabel = $derived(timeShort(notification.updatedAt));
   let repoLine = $derived(
     `${repoShortName(notification.repository)} · ${NOTIFICATION_TYPE_LABELS[notification.type] ?? notification.type}`
@@ -47,27 +46,16 @@
   }
 
   function handleClick(event?: MouseEvent): void {
-    if (dismissing) return;
     openUrl();
-    if (notification.unread && !event?.altKey) {
-      dismissing = true;
-      setTimeout(() => markAsRead(notification.id), 350);
-    }
+    if (notification.unread && !event?.altKey) markAsRead(notification.id);
   }
 
   let contextMenu: { x: number; y: number } | null = $state(null);
   let showMuteModal = $state(false);
   let showSnoozeModal = $state(false);
 
-  function markReadAnimated(): void {
-    if (!notification.unread) return;
-    dismissing = true;
-    setTimeout(() => markAsRead(notification.id), 350);
-  }
-
-  function handleSnoozeShortcut(): void {
-    dismissing = true;
-    setTimeout(() => snoozeNotification(notification, 'tomorrow', true), 350);
+  function markReadNow(): void {
+    if (notification.unread) markAsRead(notification.id);
   }
 
   // GitHub threads can always be unsubscribed from. GitLab todos need an iid
@@ -94,9 +82,7 @@
     const authorIds = unreadIdsByAuthor;
     const author = notification.author;
     const readActions: MenuEntry[] = [
-      ...(notification.unread
-        ? [{ label: 'Mark as read', hint: 'M', onclick: markReadAnimated }]
-        : []),
+      ...(notification.unread ? [{ label: 'Mark as read', hint: 'M', onclick: markReadNow }] : []),
       ...(authorIds && author
         ? [
             {
@@ -110,10 +96,7 @@
             {
               label: 'Mark as done',
               title: 'Removes the thread from your GitHub notification inbox — cannot be undone',
-              onclick: () => {
-                dismissing = true;
-                setTimeout(() => markAsDone(notification.id), 350);
-              }
+              onclick: () => markAsDone(notification.id)
             }
           ]
         : [])
@@ -152,10 +135,10 @@
       handleClick();
     } else if (e.key === 'm' && notification.unread) {
       e.preventDefault();
-      markReadAnimated();
+      markReadNow();
     } else if (e.key === 'z') {
       e.preventDefault();
-      handleSnoozeShortcut();
+      snoozeNotification(notification, 'tomorrow', true);
     }
   }
 </script>
@@ -165,19 +148,14 @@
   data-roving-item
   tabindex="-1"
   onkeydown={handleCardKeydown}
-  class="overflow-hidden outline-none transition-all duration-300 ease-in-out focus:bg-surface-hovered focus:shadow-[inset_3px_0_0_var(--ds-border-focused)] {dismissing
-    ? 'max-h-0 border-b-0'
-    : 'max-h-40 border-b border-border'}"
-  style={dismissing ? 'margin-top: 0; margin-bottom: 0; padding-top: 0; padding-bottom: 0;' : ''}
+  class="border-b border-border outline-none focus:bg-surface-hovered focus:shadow-[inset_3px_0_0_var(--ds-border-focused)]"
 >
   <button
     type="button"
     tabindex={-1}
     onclick={handleClick}
     oncontextmenu={handleContextMenu}
-    class="group relative block w-full text-left transition-all duration-200 ease-in-out hover:bg-surface-hovered {dismissing
-      ? 'translate-x-full opacity-0'
-      : 'translate-x-0 opacity-100'}"
+    class="group relative block w-full text-left transition-colors hover:bg-surface-hovered"
   >
     <ListRow
       author={notification.author}
