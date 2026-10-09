@@ -41,6 +41,7 @@ html[data-color-mode='light'] {
   --ds-toast-background: #2e3440;
   --ds-toast-text: #eceff4;
   --ds-toast-accent: #a3d4e0;
+  --ds-brand-flash: #6fb3c9;
 }
 
 /* Beacon Design Tokens - Dark */
@@ -80,6 +81,7 @@ html[data-color-mode='dark'] {
   --ds-toast-background: #e5e9f0;
   --ds-toast-text: #2e3440;
   --ds-toast-accent: #3a5a80;
+  --ds-brand-flash: #d8f1f7;
 }
 
 /* Motion tokens. Animate transform and opacity only, see docs/design/rules.md */

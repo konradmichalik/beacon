@@ -37,6 +37,7 @@ All colours come from the `--ds-*` tokens in `src/app.css`, with a light and a d
 | `--ds-border-strong` (new)                          | `#2e3440` at 18 %     | `#d8dee9` at 18 %     | Secondary buttons, label pills, `kbd`            |
 | `--ds-border-input`                                 | `#858d9e`             | `#7a8294`             | Text input outlines                              |
 | `--ds-blanket`                                      | `#2e3440` at 28 %     | black at 45 %         | Scrim behind dialogs                             |
+| `--ds-brand-flash`                                  | `#6fb3c9`             | `#d8f1f7`             | Colour the logo arcs flash in                    |
 
 - **An outline that identifies a control reaches 3:1** against both sides (WCAG 1.4.11). Text inputs use `--ds-border-input` (3.3:1 on white, 3.7:1 on the dark field). Outlines that only decorate, because a label or the pill text already identifies the element, may use `--ds-border-strong`.
 - Light values above replace the pastel Nord values (`#7b9e64`, `#d08770`, `#b48ead`, `#bf616a`, `#5e81ac`), which reach only 2.4 to 3.4:1 as chip text.
@@ -212,6 +213,7 @@ Motion is opt-in for people who allow it. One rule in `src/app.css` cuts every C
 ## Brand
 
 - Wordmark `beacon` in lowercase, the `o` replaced by the signal mark in `--ds-text-brand` (`BeaconLogo`).
+- The arcs of the mark are the signal, the only part that moves: once when the popup opens and once when a poll brings new unread items. Never as a loop, static under Reduce Motion.
 - The beacon mark stands for Beacon only. GitHub and GitLab logos appear only to identify a source.
 
 ## Pull request checklist

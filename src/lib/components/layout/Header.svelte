@@ -2,6 +2,7 @@
   import { Settings, RefreshCw, Power } from '@lucide/svelte';
   import BeaconLogo from '$lib/components/icons/BeaconLogo.svelte';
   import IconButton from '$lib/components/ui/IconButton.svelte';
+  import { logoMotion } from '$lib/stores/logo-motion.svelte';
   import {
     getIsLoading,
     getHasLoadedOnce,
@@ -118,7 +119,7 @@
 
 <header class="flex h-11 shrink-0 items-stretch border-b border-border pl-4 pr-2">
   <div class="flex min-w-0 flex-1 basis-0 items-center">
-    <BeaconLogo height={18} class="text-foreground" />
+    <BeaconLogo height={18} class="text-foreground" motion={logoMotion.kind} />
   </div>
 
   <!-- svelte-ignore a11y_interactive_supports_focus -->
