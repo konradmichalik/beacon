@@ -1,48 +1,34 @@
 import { describe, it, expect, vi, afterEach } from 'vitest';
-import { timeAgo, formatRefreshTime, formatWakeTime } from './time';
+import { timeShort, formatRefreshTime, formatWakeTime } from './time';
 
 afterEach(() => {
   vi.useRealTimers();
 });
 
-describe('timeAgo', () => {
-  it('returns "just now" for timestamps less than 60 seconds ago', () => {
-    const now = new Date().toISOString();
-    expect(timeAgo(now)).toBe('just now');
+describe('timeShort', () => {
+  it('returns "now" for timestamps less than 60 seconds ago', () => {
+    expect(timeShort(new Date().toISOString())).toBe('now');
   });
 
-  it('returns minutes for timestamps less than an hour ago', () => {
+  it('returns minutes, hours and days without a suffix word', () => {
     vi.useFakeTimers();
     vi.setSystemTime(new Date('2026-03-17T12:00:00Z'));
-    expect(timeAgo('2026-03-17T11:45:00Z')).toBe('15m ago');
-    expect(timeAgo('2026-03-17T11:58:00Z')).toBe('2m ago');
+    expect(timeShort('2026-03-17T11:45:00Z')).toBe('15m');
+    expect(timeShort('2026-03-17T11:58:00Z')).toBe('2m');
+    expect(timeShort('2026-03-17T09:00:00Z')).toBe('3h');
+    expect(timeShort('2026-03-15T12:00:00Z')).toBe('2d');
   });
 
-  it('returns hours for timestamps less than a day ago', () => {
+  it('returns an English short date for timestamps older than a week', () => {
     vi.useFakeTimers();
     vi.setSystemTime(new Date('2026-03-17T12:00:00Z'));
-    expect(timeAgo('2026-03-17T09:00:00Z')).toBe('3h ago');
+    expect(timeShort('2026-03-01T12:00:00Z')).toBe('1 Mar');
   });
 
-  it('returns days for timestamps less than a week ago', () => {
+  it('includes the year for timestamps from a different year', () => {
     vi.useFakeTimers();
     vi.setSystemTime(new Date('2026-03-17T12:00:00Z'));
-    expect(timeAgo('2026-03-15T12:00:00Z')).toBe('2d ago');
-  });
-
-  it('returns formatted date for timestamps older than a week', () => {
-    vi.useFakeTimers();
-    vi.setSystemTime(new Date('2026-03-17T12:00:00Z'));
-    const result = timeAgo('2026-03-01T12:00:00Z');
-    // Should contain "1" and "März" or "Mar" depending on locale
-    expect(result).toMatch(/1/);
-  });
-
-  it('includes year for timestamps from a different year', () => {
-    vi.useFakeTimers();
-    vi.setSystemTime(new Date('2026-03-17T12:00:00Z'));
-    const result = timeAgo('2025-06-15T12:00:00Z');
-    expect(result).toMatch(/2025/);
+    expect(timeShort('2025-06-15T12:00:00Z')).toBe('15 Jun 2025');
   });
 });
 

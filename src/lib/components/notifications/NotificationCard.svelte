@@ -9,43 +9,24 @@
     unsubscribeFromNotification
   } from '$lib/stores/notifications.svelte';
   import { snoozeNotification } from '$lib/stores/snooze.svelte';
-  import { timeAgo } from '$lib/utils/time';
+  import { timeShort } from '$lib/utils/time';
   import { openExternalUrl } from '$lib/utils/open-url';
   import { clampMenuPosition, menuPositionFromElement } from '$lib/utils/context-menu';
   import { parseGitLabTargetUrl } from '$lib/utils/gitlab-target';
   import { isSyntheticNotification } from '$lib/utils/synthetic-notifications';
   import { getGitLabConfig } from '$lib/stores/connections.svelte';
   import { focusTrap } from '$lib/actions/focusTrap';
-  import GitHubIcon from '$lib/components/icons/GitHubIcon.svelte';
-  import GitLabIcon from '$lib/components/icons/GitLabIcon.svelte';
-  import Avatar from '$lib/components/ui/Avatar.svelte';
+  import ListRow from '$lib/components/ui/ListRow.svelte';
+  import { notificationChips, repoShortName } from '$lib/utils/row-chips';
+  import { NOTIFICATION_TYPE_LABELS } from '$lib/types';
   import {
-    CircleCheck,
-    GitMerge,
-    CircleDot,
-    AtSign,
-    MessageSquare,
-    Eye,
-    GitPullRequest,
-    UserCheck,
-    ShieldCheck,
-    Tag,
-    Users,
-    Bell,
-    PenLine,
-    AlertTriangle,
-    CircleX,
-    TrainFront,
-    UserPlus,
     ExternalLink,
     CheckCheck,
     ClipboardCopy,
     BellOff,
     BellMinus,
-    FileEdit,
     Archive,
-    AlarmClock,
-    Sparkles
+    AlarmClock
   } from '@lucide/svelte';
   import MuteModal from './MuteModal.svelte';
   import SnoozeModal from './SnoozeModal.svelte';
@@ -53,99 +34,16 @@
   let { notification }: { notification: UnifiedNotification } = $props();
 
   let dismissing = $state(false);
-  let timeLabel = $derived(timeAgo(notification.updatedAt));
-  let repoShort = $derived(notification.repository.split('/').slice(-2).join('/'));
+  let timeLabel = $derived(timeShort(notification.updatedAt));
+  let repoLine = $derived(
+    `${repoShortName(notification.repository)} · ${NOTIFICATION_TYPE_LABELS[notification.type] ?? notification.type}`
+  );
+  let chips = $derived(notificationChips(notification));
 
   let isNew = $derived.by(() => {
     const seen = getLastSeenAt();
     if (!seen) return false;
     return notification.unread && notification.updatedAt > seen;
-  });
-
-  const defaultBadge = 'bg-secondary text-muted-foreground';
-  const typeConfig: Record<string, { short: string; full: string; badge?: string }> = {
-    issue: { short: 'Issue', full: 'Issue', badge: 'bg-success-text/10 text-success-text' },
-    pull_request: {
-      short: 'PR',
-      full: 'Pull Request',
-      badge: 'bg-accent-foreground/10 text-accent-foreground'
-    },
-    merge_request: {
-      short: 'MR',
-      full: 'Merge Request',
-      badge: 'bg-accent-foreground/10 text-accent-foreground'
-    },
-    review: { short: 'Review', full: 'Review', badge: 'bg-discovery/10 text-discovery' },
-    pipeline: { short: 'Pipeline', full: 'Pipeline' },
-    release: { short: 'Release', full: 'Release' },
-    discussion: { short: 'Discussion', full: 'Discussion' },
-    other: { short: 'Other', full: 'Other' }
-  };
-
-  let typeInfo = $derived.by(() => {
-    const config = typeConfig[notification.type];
-    return {
-      short: config?.short ?? notification.type,
-      full: config?.full ?? notification.type,
-      badge: config?.badge ?? defaultBadge
-    };
-  });
-
-  const reasonMap: Record<string, { label: string; icon: typeof AtSign }> = {
-    mention: { label: 'Mentioned', icon: AtSign },
-    comment: { label: 'Commented', icon: MessageSquare },
-    review_requested: { label: 'Review requested', icon: Eye },
-    review_submitted: { label: 'Review submitted', icon: Eye },
-    change_requested: { label: 'Changes requested', icon: PenLine },
-    assign: { label: 'Assigned', icon: UserCheck },
-    subscribed: { label: 'Subscribed', icon: Bell },
-    state_change: { label: 'State changed', icon: GitPullRequest },
-    ci_activity: { label: 'CI activity', icon: GitPullRequest },
-    approved: { label: 'Approved', icon: ShieldCheck },
-    approval_requested: { label: 'Approval requested', icon: ShieldCheck },
-    security_alert: { label: 'Security alert', icon: ShieldCheck },
-    team_mention: { label: 'Team mentioned', icon: Users },
-    author: { label: 'Authored', icon: Tag },
-    unmergeable: { label: 'Unmergeable', icon: AlertTriangle },
-    merge_train_removed: { label: 'Merge train removed', icon: TrainFront },
-    member_access_requested: { label: 'Access requested', icon: UserPlus },
-    ready_for_review: { label: 'Ready for review', icon: GitPullRequest },
-    mergeable: { label: 'Ready to merge', icon: GitMerge },
-    ci_failed: { label: 'CI failed', icon: CircleX }
-  };
-
-  let reasonInfo = $derived.by(() => {
-    const mapped = reasonMap[notification.reason];
-    if (mapped) return mapped;
-    if (notification.reason) {
-      // Fallback: capitalize the raw reason
-      const label = notification.reason.replace(/_/g, ' ').replace(/^\w/, (c) => c.toUpperCase());
-      return { label, icon: Bell };
-    }
-    return null;
-  });
-
-  let stateInfo = $derived.by(() => {
-    const s = notification.subjectState;
-    if (s === 'merged')
-      return {
-        label: 'Merged',
-        class: 'bg-discovery/10 text-discovery',
-        icon: GitMerge
-      };
-    if (s === 'closed')
-      return {
-        label: 'Closed',
-        class: 'bg-destructive/10 text-destructive',
-        icon: CircleCheck
-      };
-    if (s === 'open')
-      return {
-        label: 'Open',
-        class: 'bg-success-text/10 text-success-text',
-        icon: CircleDot
-      };
-    return null;
   });
 
   async function openUrl(): Promise<void> {
@@ -290,7 +188,7 @@
   onkeydown={handleCardKeydown}
   class="overflow-hidden outline-none transition-all duration-300 ease-in-out focus:bg-surface-hovered focus:shadow-[inset_3px_0_0_var(--ds-border-focused)] {dismissing
     ? 'max-h-0 border-b-0'
-    : 'max-h-40 border-b border-border/60'}"
+    : 'max-h-40 border-b border-border'}"
   style={dismissing ? 'margin-top: 0; margin-bottom: 0; padding-top: 0; padding-bottom: 0;' : ''}
 >
   <button
@@ -298,83 +196,20 @@
     tabindex={-1}
     onclick={handleClick}
     oncontextmenu={handleContextMenu}
-    class="group relative flex w-full items-start gap-3 px-4 py-3 text-left transition-all duration-200 ease-in-out hover:bg-surface-hovered {notification.unread
-      ? ''
-      : 'opacity-45'} {notification.subjectState === 'closed' ||
-    notification.subjectState === 'merged'
-      ? 'opacity-60'
-      : ''} {dismissing ? 'translate-x-full opacity-0' : 'translate-x-0 opacity-100'}"
+    class="group relative block w-full text-left transition-all duration-200 ease-in-out hover:bg-surface-hovered {dismissing
+      ? 'translate-x-full opacity-0'
+      : 'translate-x-0 opacity-100'}"
   >
-    <!-- New-since-last-open indicator -->
-    {#if isNew}
-      <span class="absolute right-2 top-2 h-1.5 w-1.5 rounded-full bg-primary"></span>
-    {/if}
-
-    <!-- Avatar with username tooltip -->
-    <Avatar author={notification.author} source={notification.source} />
-
-    <!-- Content -->
-    <div class="min-w-0 flex-1">
-      <!-- Row 1: Source icon + repo -->
-      <div class="flex items-center gap-1.5">
-        {#if notification.source === 'github'}
-          <GitHubIcon size={11} class="flex-shrink-0 text-muted-foreground/70" />
-        {:else}
-          <GitLabIcon size={11} class="flex-shrink-0 text-muted-foreground/70" />
-        {/if}
-        <span class="truncate text-[11px] text-muted-foreground">{repoShort}</span>
-      </div>
-
-      <!-- Row 2: Title -->
-      <p class="mt-0.5 truncate text-[13px] font-medium leading-snug text-foreground">
-        {notification.title}
-      </p>
-
-      <!-- Row 3: Type badge + state + time (right-aligned) -->
-      <div class="mt-1 flex items-center gap-1.5">
-        <span
-          title={typeInfo.full}
-          class="shrink-0 rounded px-1.5 py-0.5 text-[10px] font-medium {typeInfo.badge}"
-        >
-          {typeInfo.short}
-        </span>
-        {#if isSyntheticNotification(notification)}
-          <span
-            title="Detected locally by Beacon — GitHub/GitLab did not send this notification"
-            class="flex shrink-0 items-center gap-0.5 rounded bg-primary/10 px-1.5 py-0.5 text-[10px] font-medium text-primary"
-          >
-            <Sparkles size={10} />
-            Beacon
-          </span>
-        {/if}
-        {#if stateInfo}
-          {@const StateIcon = stateInfo.icon}
-          <span
-            class="flex shrink-0 items-center gap-0.5 rounded px-1.5 py-0.5 text-[10px] font-medium {stateInfo.class}"
-          >
-            <StateIcon size={10} />
-            {stateInfo.label}
-          </span>
-        {/if}
-        {#if notification.draft}
-          <span
-            title="Draft — work in progress"
-            class="flex shrink-0 items-center gap-0.5 rounded border border-warning/30 bg-warning/15 px-1.5 py-0.5 text-[10px] font-medium text-warning"
-          >
-            <FileEdit size={10} />
-            Draft
-          </span>
-        {/if}
-        {#if reasonInfo}
-          {@const ReasonIcon = reasonInfo.icon}
-          <span class="flex shrink-0 items-center gap-0.5 text-[10px] text-muted-foreground">
-            <ReasonIcon size={9} />
-            {reasonInfo.label}
-          </span>
-        {/if}
-        <span class="ml-auto shrink-0 text-[11px] text-muted-foreground">{timeLabel}</span>
-      </div>
-    </div>
+    <ListRow
+      author={notification.author}
+      source={notification.source}
+      {repoLine}
+      title={notification.title}
+      time={timeLabel}
+      weight={notification.unread ? 'semibold' : 'normal'}
+      {isNew}
+      {chips}
+    />
   </button>
 </div>
 
