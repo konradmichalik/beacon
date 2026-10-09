@@ -4,7 +4,7 @@ use tauri::{
     image::Image,
     menu::{MenuBuilder, MenuItemBuilder},
     tray::{MouseButton, MouseButtonState, TrayIconBuilder, TrayIconEvent},
-    App, Manager, PhysicalPosition,
+    App, Emitter, Manager, PhysicalPosition,
 };
 
 pub const TRAY_ID: &str = "beacon-tray";
@@ -130,6 +130,9 @@ fn show_and_focus(window: &tauri::WebviewWindow) {
 
     let _ = window.show();
     let _ = window.set_focus();
+    // Lets the frontend replay its open animation: the webview is only hidden,
+    // never remounted, so there is no other signal that the popup reappeared.
+    let _ = window.emit("popup-shown", ());
 
     #[cfg(target_os = "macos")]
     if let Ok(ns_window) = window.ns_window() {
