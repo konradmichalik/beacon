@@ -174,21 +174,23 @@ Motion is opt-in for people who allow it. One rule in `src/app.css` cuts every C
 | `--dur-slow` | 380ms                           |
 | `--ease-out` | `cubic-bezier(0.16, 1, 0.3, 1)` |
 
-| Where                  | What                                                                                                                                          | Timing                          |
-| ---------------------- | --------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------- |
-| Popup opens            | Fade, 8px from above, scale 0.98 to 1, origin top centre. Starts on the `popup-shown` event that `show_and_focus` emits in Rust, not on mount | 180 / 380ms                     |
-| List appears           | Rows 6px up and fade, staggered, at most 7 staggered                                                                                          | 30ms apart, 360ms               |
-| Tab change             | Underline slides; the list enters 16px from the side of the change                                                                            | 340ms                           |
-| Source change          | Segment thumb slides, list fades in                                                                                                           | 300ms                           |
-| Mark as read           | Row moves 36px right and fades, then its height closes; rows below follow with `animate:flip`                                                 | 200ms, height 280ms after 150ms |
-| Mark all as read       | The same, cascading                                                                                                                           | 45ms apart                      |
-| New item after a poll  | Slides in at the top, `--ds-background-selected` fades out, the tab count ticks                                                               | 280ms, fade 1.4s                |
-| Refresh                | One full turn per click; it keeps spinning only while the request takes longer than 800ms                                                     | 800ms                           |
-| Section open and close | Chevron turns, content slides                                                                                                                 | 220 / 480ms                     |
-| Menu, popover, dialog  | Scale 0.96 and 4 to 6px, origin at the pointer or the button; scrim fades                                                                     | 220ms in, 140ms out             |
-| Toast                  | Rises 14px and fades                                                                                                                          | 380ms                           |
-| All clear              | Circle scales to 1, confetti bursts out of the popper (`burst` keyframes)                                                                     | 520ms, 100 to 260ms delays      |
-| Switch                 | Knob slides, track colour changes                                                                                                             | 260 / 200ms                     |
+| Where                  | What                                                                                                                                          | Timing                                      |
+| ---------------------- | --------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------- |
+| Popup opens            | Fade, 8px from above, scale 0.98 to 1, origin top centre. Starts on the `popup-shown` event that `show_and_focus` emits in Rust, not on mount | 180 / 380ms                                 |
+| List appears           | Rows 6px up and fade, staggered, at most 7 staggered                                                                                          | 30ms apart, 360ms                           |
+| Tab change             | Underline slides; the list enters 16px from the side of the change                                                                            | 340ms                                       |
+| Source change          | Segment thumb slides, list fades in                                                                                                           | 300ms                                       |
+| Mark as read           | Row moves 36px right and fades, then its height closes; rows below follow with `animate:flip`                                                 | 200ms, height 280ms after 150ms             |
+| Mark all as read       | The same, cascading                                                                                                                           | 45ms apart                                  |
+| New item after a poll  | Slides in at the top, `--ds-background-selected` fades out, the tab count ticks                                                               | 280ms, fade 1.4s                            |
+| Refresh                | One full turn per click; it keeps spinning only while the request takes longer than 800ms                                                     | 800ms                                       |
+| Section open and close | Chevron turns, content slides                                                                                                                 | 220 / 480ms                                 |
+| Menu, popover, dialog  | Scale 0.96 and 4 to 6px, origin at the pointer or the button; scrim fades                                                                     | 220ms in, 140ms out                         |
+| Toast                  | Rises 14px and fades                                                                                                                          | 380ms                                       |
+| All clear              | Circle scales to 1, confetti bursts out of the popper (`burst` keyframes)                                                                     | 520ms, 100 to 260ms delays                  |
+| Logo, popup opens      | Dot grows, then the inner and the outer arcs scale out from the centre                                                                        | 260ms dot, 480ms arcs, 150 and 290ms delays |
+| Logo, new items        | The dot and the arcs flash in `--ds-brand-flash` one after the other, once                                                                    | 560 to 640ms, arcs 80 and 230ms delay       |
+| Switch                 | Knob slides, track colour changes                                                                                                             | 260 / 200ms                                 |
 
 - Animate `transform` and `opacity` only, plus height when a row or section closes.
 - **The store updates first.** Never delay a store change with `setTimeout` to let an animation finish; use `out:` transitions and `animate:flip`.
