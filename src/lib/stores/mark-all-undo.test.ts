@@ -162,6 +162,34 @@ describe('markAllAsRead with undo', () => {
     expect(markGitHubThreadRead).toHaveBeenCalledWith('tok', '1');
   });
 
+  it('does not mark an item that arrived during the undo window', async () => {
+    updateFromBackend([notification('github-1'), notification('github-2')]);
+    markAllAsRead();
+    // A poll delivers a new unread item before the server has been told.
+    updateFromBackend([
+      notification('github-1'),
+      notification('github-2'),
+      notification('github-3')
+    ]);
+    await elapse(3700);
+
+    expect(markAllGitHubNotificationsRead).not.toHaveBeenCalled();
+    expect(markGitHubThreadRead).toHaveBeenCalledWith('tok', '1');
+    expect(markGitHubThreadRead).toHaveBeenCalledWith('tok', '2');
+    expect(markGitHubThreadRead).not.toHaveBeenCalledWith('tok', '3');
+    expect(unreadIds()).toEqual(['github-3']);
+  });
+
+  it('still uses the bulk endpoint when nothing new arrived', async () => {
+    updateFromBackend([notification('github-1'), notification('github-2')]);
+    markAllAsRead();
+    updateFromBackend([notification('github-1'), notification('github-2')]);
+    await elapse(3700);
+
+    expect(markAllGitHubNotificationsRead).toHaveBeenCalledTimes(1);
+    expect(markGitHubThreadRead).not.toHaveBeenCalled();
+  });
+
   it('does nothing when there is nothing to undo', () => {
     expect(() => undoMarkAllAsRead()).not.toThrow();
   });

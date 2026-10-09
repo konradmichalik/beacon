@@ -752,34 +752,19 @@ if (typeof window !== 'undefined') {
   window.addEventListener('beforeunload', flushPendingBulkRead);
 }
 
-export function markAllAsRead(ids?: ReadonlySet<string>): void {
-  flushPendingBulkRead();
-
-  const unread = notifications.filter((n) => n.unread && (!ids || ids.has(n.id)));
-  if (unread.length === 0) return;
-
-  const unreadReal = unread.filter((n) => !isSyntheticNotification(n));
-  const unreadSynthetic = unread.filter(isSyntheticNotification);
-
-  // Snapshot unread counts before mutating state (used by markOnServers) —
-  // scoped to the backend list only, synthetic entries never sync to a server
-  // and must not skew the bulk-vs-per-item threshold there.
-  const totalGhUnread = backendNotifications.filter(
-    (n) => n.source === 'github' && n.unread
-  ).length;
-  const totalGlUnread = backendNotifications.filter(
-    (n) => n.source === 'gitlab' && n.unread
-  ).length;
-
+/** Hides the notifications locally at once and returns the way back. */
+function markLocallyRead(
+  unreadReal: readonly UnifiedNotification[],
+  unreadSynthetic: readonly UnifiedNotification[],
+  realIds: ReadonlySet<string>
+): () => void {
   const now = Date.now();
-  // eslint-disable-next-line svelte/prefer-svelte-reactivity -- local lookup set, not state
-  const unreadRealIds = new Set(unreadReal.map((n) => n.id));
   for (const n of unreadReal) {
     locallyReadIds.set(n.id, now);
   }
   if (unreadReal.length > 0) persistReadIds();
   backendNotifications = backendNotifications.map((n) =>
-    n.unread && unreadRealIds.has(n.id) ? { ...n, unread: false } : n
+    n.unread && realIds.has(n.id) ? { ...n, unread: false } : n
   );
 
   if (unreadSynthetic.length > 0) {
@@ -791,24 +776,17 @@ export function markAllAsRead(ids?: ReadonlySet<string>): void {
   }
 
   recompose();
-  const unreadCount = countBadgeUnread(notifications);
-  updateTrayBadge(unreadCount);
+  updateTrayBadge(countBadgeUnread(notifications));
 
-  // Play ripple sound when all notifications are cleared
-  if (unreadCount === 0) {
-    playNotificationSound('ripple');
-  }
-
-  const commit = (): void => {
-    if (unreadReal.length > 0) {
-      markOnServers(unreadReal, { totalGhUnread, totalGlUnread }).catch(() => {});
+  return () => {
+    for (const id of realIds) {
+      locallyReadIds.delete(id);
     }
-  };
-  const restore = (): void => {
-    for (const id of unreadRealIds) locallyReadIds.delete(id);
+    // A poll during the undo window forgot them, so they would count as new.
+    knownUnreadIds = new Set([...knownUnreadIds, ...realIds]);
     if (unreadReal.length > 0) persistReadIds();
     backendNotifications = backendNotifications.map((n) =>
-      unreadRealIds.has(n.id) ? { ...n, unread: true } : n
+      realIds.has(n.id) ? { ...n, unread: true } : n
     );
     for (const n of unreadSynthetic) {
       syntheticNotificationsMap.set(n.id, n);
@@ -818,9 +796,49 @@ export function markAllAsRead(ids?: ReadonlySet<string>): void {
     recompose();
     updateTrayBadge(countBadgeUnread(notifications));
   };
+}
+
+/**
+ * The bulk endpoint marks everything on the server, so it is only safe while no
+ * other notification is unread. Counted at commit time, because an item can
+ * arrive during the undo window.
+ */
+function syncBulkReadToServers(
+  unreadReal: readonly UnifiedNotification[],
+  realIds: ReadonlySet<string>
+): void {
+  if (unreadReal.length === 0) return;
+  const unreadCount = (source: NotificationSource): number =>
+    unreadReal.filter((n) => n.source === source).length +
+    backendNotifications.filter((n) => n.source === source && n.unread && !realIds.has(n.id))
+      .length;
+  markOnServers([...unreadReal], {
+    totalGhUnread: unreadCount('github'),
+    totalGlUnread: unreadCount('gitlab')
+  }).catch(() => {});
+}
+
+export function markAllAsRead(ids?: ReadonlySet<string>): void {
+  flushPendingBulkRead();
+
+  const unread = notifications.filter((n) => n.unread && (!ids || ids.has(n.id)));
+  if (unread.length === 0) return;
+
+  const unreadReal = unread.filter((n) => !isSyntheticNotification(n));
+  const unreadSynthetic = unread.filter(isSyntheticNotification);
+  // eslint-disable-next-line svelte/prefer-svelte-reactivity -- local lookup set, not state
+  const realIds = new Set(unreadReal.map((n) => n.id));
+
+  const restore = markLocallyRead(unreadReal, unreadSynthetic, realIds);
+
+  // Play ripple sound when all notifications are cleared
+  if (countBadgeUnread(notifications) === 0) {
+    playNotificationSound('ripple');
+  }
+
   pendingBulkRead = {
     timer: setTimeout(flushPendingBulkRead, UNDO_WINDOW_MS),
-    commit,
+    commit: () => syncBulkReadToServers(unreadReal, realIds),
     restore
   };
 
