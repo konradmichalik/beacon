@@ -61,10 +61,6 @@ export interface IssueRow {
 
 const MAX_LABELS = 2;
 
-export function repoShortName(repository: string): string {
-  return repository.split('/').slice(-2).join('/');
-}
-
 export function pullRequestRef(source: NotificationSource, number: number): string {
   return `${source === 'gitlab' ? '!' : '#'}${number}`;
 }
@@ -97,7 +93,7 @@ const REASONS: Record<string, ReasonChip> = {
 function reasonChip(notification: UnifiedNotification): RowChip | null {
   const { reason } = notification;
   if (!reason) return null;
-  const mapped: ReasonChip = REASONS[reason] ?? {
+  const mapped: ReasonChip = (Object.hasOwn(REASONS, reason) ? REASONS[reason] : undefined) ?? {
     tone: 'neutral',
     icon: 'bell',
     label: reason.replace(/_/g, ' ').replace(/^\w/, (c) => c.toUpperCase())
@@ -241,7 +237,14 @@ export function issueRow(issue: UnifiedIssue): IssueRow {
     extraLabels: issue.labels.length - labels.length,
     metas:
       comments > 0
-        ? [{ icon: 'message', text: String(comments), tip: `${comments} comments`, tone: 'subtle' }]
+        ? [
+            {
+              icon: 'message',
+              text: String(comments),
+              tip: `${comments} ${comments === 1 ? 'comment' : 'comments'}`,
+              tone: 'subtle'
+            }
+          ]
         : []
   };
 }

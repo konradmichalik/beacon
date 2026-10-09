@@ -6,10 +6,9 @@
   import { playNotificationSound } from '$lib/services/notification-sound';
   import IconButton from '$lib/components/ui/IconButton.svelte';
   import Segmented from '$lib/components/ui/Segmented.svelte';
+  import { seg } from '$lib/utils/segments';
   import SettingsGroup from './SettingsGroup.svelte';
   import SettingsRow from './SettingsRow.svelte';
-
-  const seg = <T extends string>(value: T, label: string) => ({ value, aria: label, label });
 
   const notifyOptions = [
     seg<NotifyMode>('disabled', 'Off'),

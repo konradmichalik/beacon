@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import type { UnifiedPullRequest } from '$lib/types';
-import { filterAndSortPRs, countPRsByMerge } from './pull-requests.svelte';
+import { filterAndSortPRs } from './pull-requests.svelte';
 
 function pr(overrides: Partial<UnifiedPullRequest>): UnifiedPullRequest {
   return {
@@ -45,21 +45,5 @@ describe('merge filter', () => {
     ];
     const result = filterAndSortPRs(mixed, { merge: 'mergeable', source: 'gitlab' });
     expect(result.map((p) => p.id)).toEqual(['b']);
-  });
-});
-
-describe('countPRsByMerge', () => {
-  it('counts mergeable PRs', () => {
-    const counts = countPRsByMerge([
-      pr({ id: 'a', mergeStatus: 'mergeable' }),
-      pr({ id: 'b', mergeStatus: 'blocked' }),
-      pr({ id: 'c', mergeStatus: 'mergeable' })
-    ]);
-    expect(counts.get('mergeable')).toBe(2);
-  });
-
-  it('reports no count when nothing is mergeable', () => {
-    const counts = countPRsByMerge([pr({ id: 'a', mergeStatus: 'unknown' })]);
-    expect(counts.get('mergeable')).toBeUndefined();
   });
 });

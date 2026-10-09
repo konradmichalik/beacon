@@ -1,11 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import {
-  notificationChips,
-  pullRequestChips,
-  pullRequestRef,
-  issueRow,
-  repoShortName
-} from './row-chips';
+import { notificationChips, pullRequestChips, pullRequestRef, issueRow } from './row-chips';
 import type { UnifiedIssue, UnifiedNotification, UnifiedPullRequest } from '$lib/types';
 
 function makeNotification(overrides: Partial<UnifiedNotification> = {}): UnifiedNotification {
@@ -49,13 +43,6 @@ function makePR(overrides: Partial<UnifiedPullRequest> = {}): UnifiedPullRequest
 }
 
 const NOW = new Date('2026-08-17T12:00:00Z');
-
-describe('repoShortName', () => {
-  it('keeps the last two path segments', () => {
-    expect(repoShortName('group/sub/project')).toBe('sub/project');
-    expect(repoShortName('owner/repo')).toBe('owner/repo');
-  });
-});
 
 describe('pullRequestRef', () => {
   it('uses # for GitHub and ! for GitLab', () => {
@@ -130,6 +117,11 @@ describe('notificationChips', () => {
   it('falls back to a capitalized neutral chip for unknown reasons', () => {
     const chips = notificationChips(makeNotification({ reason: 'some_new_reason' }));
     expect(chips[0]).toMatchObject({ label: 'Some new reason', tone: 'neutral' });
+  });
+
+  it('treats an object prototype key as an unknown reason', () => {
+    const chips = notificationChips(makeNotification({ reason: 'constructor' }));
+    expect(chips[0]).toMatchObject({ label: 'Constructor', tone: 'neutral' });
   });
 
   it('returns no chip when there is neither a reason nor a state', () => {
@@ -268,5 +260,9 @@ describe('issueRow', () => {
       text: '4',
       tip: '4 comments'
     });
+  });
+
+  it('uses the singular for a single comment', () => {
+    expect(issueRow(makeIssue({ commentsCount: 1 })).metas[0].tip).toBe('1 comment');
   });
 });

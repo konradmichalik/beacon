@@ -90,19 +90,6 @@ function prsForSource(sourceFilter: NotificationSource | 'all'): readonly Unifie
     : pullRequests.filter((pr) => pr.source === sourceFilter);
 }
 
-export function countPRsByMerge(
-  prs: readonly UnifiedPullRequest[]
-): ReadonlyMap<PRMergeFilter, number> {
-  // eslint-disable-next-line svelte/prefer-svelte-reactivity -- local counting map, not state
-  const counts = new Map<PRMergeFilter, number>();
-  for (const pr of prs) {
-    if (pr.mergeStatus === 'mergeable') {
-      counts.set('mergeable', (counts.get('mergeable') ?? 0) + 1);
-    }
-  }
-  return counts;
-}
-
 export function getPRCountByProject(
   sourceFilter: NotificationSource | 'all'
 ): ReadonlyMap<string, number> {

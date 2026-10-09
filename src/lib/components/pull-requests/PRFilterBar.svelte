@@ -14,6 +14,7 @@
   import FilterField from '$lib/components/ui/FilterField.svelte';
   import ProjectFilter from '$lib/components/ui/ProjectFilter.svelte';
   import Segmented from '$lib/components/ui/Segmented.svelte';
+  import { seg } from '$lib/utils/segments';
   import type {
     NotificationSource,
     PRRoleFilter,
@@ -107,8 +108,6 @@
   }
 
   let initialLoading = $derived(getIsPRLoading() && totalCount === 0);
-
-  const seg = <T extends string>(value: T, label: string) => ({ value, aria: label, label });
 
   const roleOptions = [
     seg<PRRoleFilter>('all', 'All'),

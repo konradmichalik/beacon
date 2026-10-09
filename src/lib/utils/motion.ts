@@ -1,6 +1,7 @@
 import { cubicOut } from 'svelte/easing';
 import type { TransitionConfig } from 'svelte/transition';
 
+export const FLIP_MS = 280;
 const STAGGER_MS = 30;
 const MAX_STAGGERED = 7;
 const SWIPE_DISTANCE_PX = 36;

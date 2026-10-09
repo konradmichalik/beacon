@@ -10,7 +10,8 @@
   } from '$lib/utils/context-menu';
   import ListRow from '$lib/components/ui/ListRow.svelte';
   import ContextMenu from '$lib/components/ui/ContextMenu.svelte';
-  import { issueRow, repoShortName } from '$lib/utils/row-chips';
+  import { issueRow } from '$lib/utils/row-chips';
+  import { repoShortName } from '$lib/utils/repository';
 
   let { issue }: { issue: UnifiedIssue } = $props();
 

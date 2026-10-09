@@ -10,7 +10,7 @@
   import { slide } from 'svelte/transition';
   import SectionHeader from '$lib/components/ui/SectionHeader.svelte';
   import ListSkeleton from '$lib/components/ui/ListSkeleton.svelte';
-  import { motionMs, rise, swipe } from '$lib/utils/motion';
+  import { FLIP_MS, motionMs, rise, swipe } from '$lib/utils/motion';
   import type { NotificationSource, IssueRoleFilter } from '$lib/types';
   import { roving } from '$lib/actions/roving';
 
@@ -84,7 +84,11 @@
       {#if !collapsed[section.key]}
         <div use:roving transition:slide={{ duration: motionMs(220) }}>
           {#each section.items as issue, i (issue.id)}
-            <div in:rise|global={{ index: i }} out:swipe animate:flip={{ duration: motionMs(280) }}>
+            <div
+              in:rise|global={{ index: i }}
+              out:swipe
+              animate:flip={{ duration: motionMs(FLIP_MS) }}
+            >
               <IssueCard {issue} />
             </div>
           {/each}
