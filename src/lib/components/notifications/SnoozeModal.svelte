@@ -1,9 +1,8 @@
 <script lang="ts">
   import type { UnifiedNotification } from '$lib/types';
   import { snoozeNotification } from '$lib/stores/snooze.svelte';
-  import { SNOOZE_PRESET_LABELS, type SnoozePreset } from '$lib/utils/snooze';
-  import { X } from '@lucide/svelte';
-  import { focusTrap } from '$lib/actions/focusTrap';
+  import { SNOOZE_PRESET_NAMES, presetTimeLabel, type SnoozePreset } from '$lib/utils/snooze';
+  import Dialog from '$lib/components/ui/Dialog.svelte';
 
   let { notification, onClose }: { notification: UnifiedNotification; onClose: () => void } =
     $props();
@@ -12,12 +11,9 @@
 
   const presets: SnoozePreset[] = ['1h', 'tomorrow', 'monday'];
 
-  function handleKeydown(e: KeyboardEvent) {
-    if (e.key === 'Escape') onClose();
-  }
-
-  function handleBackdropClick(e: MouseEvent) {
-    if (e.target === e.currentTarget) onClose();
+  function handleKeydown(e: KeyboardEvent): void {
+    const preset = presets[Number(e.key) - 1];
+    if (preset && !e.metaKey && !e.ctrlKey && !e.altKey) handlePreset(preset);
   }
 
   function handlePreset(preset: SnoozePreset): void {
@@ -28,60 +24,46 @@
 
 <svelte:window onkeydown={handleKeydown} />
 
-<div
-  class="fixed inset-0 z-40 flex items-center justify-center backdrop-blur-[2px]"
-  role="presentation"
-  onclick={handleBackdropClick}
->
-  <div
-    class="z-50 w-72 rounded-lg border border-border bg-card shadow-lg"
-    role="dialog"
-    aria-modal="true"
-    aria-labelledby="snooze-modal-title"
-    use:focusTrap
-  >
-    <!-- Header -->
-    <div
-      class="flex items-center justify-between rounded-t-lg border-b border-border bg-secondary/40 px-3 py-2"
-    >
-      <span id="snooze-modal-title" class="text-[11px] font-semibold text-foreground"
-        >Snooze notification</span
-      >
+<Dialog title="Snooze until" subtitle={notification.title} {onClose}>
+  <div class="flex flex-col gap-0.5 px-2">
+    {#each presets as preset, i (preset)}
       <button
         type="button"
-        onclick={onClose}
-        aria-label="Close snooze dialog"
-        class="rounded p-0.5 text-muted-foreground transition-colors hover:text-foreground"
+        onclick={() => handlePreset(preset)}
+        class="flex h-9 w-full items-center gap-3 rounded-lg px-2.5 text-left text-[13px] text-foreground transition-colors hover:bg-surface-hovered"
       >
-        <X size={12} />
+        <span class="flex-1">{SNOOZE_PRESET_NAMES[preset]}</span>
+        <span class="text-xs tabular-nums text-subtlest">{presetTimeLabel(preset)}</span>
+        <kbd
+          class="inline-flex h-[18px] min-w-[18px] items-center justify-center rounded border border-border-strong px-1 font-sans text-[10.5px] text-subtlest"
+        >
+          {i + 1}
+        </kbd>
       </button>
-    </div>
-
-    <div class="space-y-2 p-3">
-      <p class="text-[10px] text-muted-foreground">Hide this until —</p>
-
-      {#each presets as preset (preset)}
-        <button
-          type="button"
-          onclick={() => handlePreset(preset)}
-          class="flex w-full items-center justify-between rounded px-2 py-1.5 text-left text-[11px] text-foreground hover:bg-secondary"
-        >
-          {SNOOZE_PRESET_LABELS[preset]}
-        </button>
-      {/each}
-
-      <label
-        class="flex cursor-pointer items-center gap-2 rounded px-1.5 py-1.5 pt-2 hover:bg-secondary"
-      >
-        <input
-          type="checkbox"
-          bind:checked={wakeOnUpdate}
-          class="h-3 w-3 rounded border-border accent-primary"
-        />
-        <span class="text-[11px] text-muted-foreground"
-          >Wake on new activity (can't tell what changed, only that it did)</span
-        >
-      </label>
-    </div>
+    {/each}
   </div>
-</div>
+
+  <label
+    class="mx-4 mt-2 flex cursor-pointer items-start gap-2 border-t border-border pb-3 pt-2.5 text-[12.5px] leading-[17px] text-foreground"
+  >
+    <input
+      type="checkbox"
+      bind:checked={wakeOnUpdate}
+      class="mt-0.5 h-3.5 w-3.5 shrink-0 rounded border-input accent-primary"
+    />
+    <span>
+      Wake early on new activity
+      <span class="block text-xs text-subtlest">Beacon sees that something changed, not what.</span>
+    </span>
+  </label>
+
+  {#snippet footer()}
+    <button
+      type="button"
+      onclick={onClose}
+      class="h-7 rounded-lg border border-border-strong bg-card px-3.5 text-[12.5px] font-medium text-foreground transition-colors hover:bg-surface-hovered"
+    >
+      Cancel
+    </button>
+  {/snippet}
+</Dialog>

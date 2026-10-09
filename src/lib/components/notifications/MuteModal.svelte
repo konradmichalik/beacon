@@ -1,10 +1,13 @@
 <script lang="ts">
-  import type { UnifiedNotification, MuteRule } from '$lib/types';
+  import type { UnifiedNotification } from '$lib/types';
   import { NOTIFICATION_TYPE_LABELS } from '$lib/types';
-  import { addMuteRule } from '$lib/stores/mute-rules.svelte';
+  import { addMuteRule, isNotificationMuted } from '$lib/stores/mute-rules.svelte';
+  import { getNotifications } from '$lib/stores/notifications.svelte';
+  import { countMuteMatches, type MuteCriteria } from '$lib/utils/mute-match';
+  import { repoShortName } from '$lib/utils/row-chips';
   import { untrack } from 'svelte';
-  import { X } from '@lucide/svelte';
-  import { focusTrap } from '$lib/actions/focusTrap';
+  import { ListFilter } from '@lucide/svelte';
+  import Dialog from '$lib/components/ui/Dialog.svelte';
 
   let { notification, onClose }: { notification: UnifiedNotification; onClose: () => void } =
     $props();
@@ -27,163 +30,121 @@
     return null;
   });
 
-  function handleKeydown(e: KeyboardEvent) {
-    if (e.key === 'Escape') onClose();
-  }
+  let criteria = $derived<MuteCriteria>({
+    ...(includeProject && { project: notification.repository }),
+    ...(includeType && { type: notification.type }),
+    ...(includeStatus && hasStatus && { status: notification.subjectState! }),
+    ...(includeAuthor && hasAuthor && { author: notification.author!.login })
+  });
 
-  function handleBackdropClick(e: MouseEvent) {
-    if (e.target === e.currentTarget) onClose();
-  }
+  let matchCount = $derived(
+    canConfirm
+      ? countMuteMatches(
+          criteria,
+          getNotifications().filter((n) => n.unread && !isNotificationMuted(n))
+        )
+      : 0
+  );
 
-  async function handleConfirm() {
-    const rule: Omit<MuteRule, 'id' | 'createdAt'> = {
-      ...(includeProject && { project: notification.repository }),
-      ...(includeType && { type: notification.type }),
-      ...(includeStatus && hasStatus && { status: notification.subjectState! }),
-      ...(includeAuthor && hasAuthor && { author: notification.author!.login })
-    };
-    await addMuteRule(rule);
+  async function handleConfirm(): Promise<void> {
+    await addMuteRule(criteria);
     onClose();
   }
+
+  const rowClass = 'flex h-8 items-center gap-2 border-b border-border text-[12.5px]';
+  const valueClass =
+    'max-w-[170px] truncate rounded-md bg-muted px-[7px] text-[11.5px] font-medium leading-5 text-muted-foreground';
 </script>
 
-<svelte:window onkeydown={handleKeydown} />
-
-<div
-  class="fixed inset-0 z-40 flex items-center justify-center backdrop-blur-[2px]"
-  role="presentation"
-  onclick={handleBackdropClick}
+<Dialog
+  title="Mute notifications like this"
+  subtitle="Hides notifications that match all selected criteria."
+  {onClose}
 >
-  <div
-    class="z-50 w-72 rounded-lg border border-border bg-card shadow-lg"
-    role="dialog"
-    aria-modal="true"
-    aria-labelledby="mute-modal-title"
-    use:focusTrap
+  <fieldset class="m-0 border-0 px-4 py-0">
+    <legend class="sr-only">Criteria</legend>
+
+    <label class="{rowClass} cursor-pointer">
+      <input
+        type="checkbox"
+        bind:checked={includeProject}
+        class="h-3.5 w-3.5 rounded border-input accent-primary"
+      />
+      <span class="flex-1 text-foreground">Project</span>
+      <span class={valueClass}>{repoShortName(notification.repository)}</span>
+    </label>
+
+    <label class="{rowClass} cursor-pointer">
+      <input
+        type="checkbox"
+        bind:checked={includeType}
+        class="h-3.5 w-3.5 rounded border-input accent-primary"
+      />
+      <span class="flex-1 text-foreground">Type</span>
+      <span class={valueClass}
+        >{NOTIFICATION_TYPE_LABELS[notification.type] ?? notification.type}</span
+      >
+    </label>
+
+    <label class="{rowClass} {hasStatus ? 'cursor-pointer' : 'cursor-not-allowed opacity-50'}">
+      <input
+        type="checkbox"
+        bind:checked={includeStatus}
+        disabled={!hasStatus}
+        class="h-3.5 w-3.5 rounded border-input accent-primary"
+      />
+      <span class="flex-1 text-foreground">Status</span>
+      {#if statusLabel}
+        <span class={valueClass}>{statusLabel}</span>
+      {:else}
+        <span class="text-xs text-subtlest">Not available</span>
+      {/if}
+    </label>
+
+    <label class="{rowClass} {hasAuthor ? 'cursor-pointer' : 'cursor-not-allowed opacity-50'}">
+      <input
+        type="checkbox"
+        bind:checked={includeAuthor}
+        disabled={!hasAuthor}
+        class="h-3.5 w-3.5 rounded border-input accent-primary"
+      />
+      <span class="flex-1 text-foreground">Author</span>
+      {#if notification.author}
+        <span class={valueClass}>@{notification.author.login}</span>
+      {:else}
+        <span class="text-xs text-subtlest">Not available</span>
+      {/if}
+    </label>
+  </fieldset>
+
+  <p
+    class="mx-4 mt-2.5 flex items-center gap-1.5 rounded-lg bg-brand-bg px-2.5 py-2 text-xs font-medium text-accent-foreground"
+    aria-live="polite"
   >
-    <!-- Header -->
-    <div
-      class="flex items-center justify-between rounded-t-lg border-b border-border bg-secondary/40 px-3 py-2"
+    <ListFilter size={13} />
+    {#if canConfirm}
+      Matches {matchCount}
+      {matchCount === 1 ? 'notification' : 'notifications'} in your inbox
+    {:else}
+      Select at least one criterion
+    {/if}
+  </p>
+
+  {#snippet footer()}
+    <button
+      type="button"
+      onclick={onClose}
+      class="h-7 rounded-lg border border-border-strong bg-card px-3.5 text-[12.5px] font-medium text-foreground transition-colors hover:bg-surface-hovered"
     >
-      <span id="mute-modal-title" class="text-[11px] font-semibold text-foreground"
-        >Mute notifications</span
-      >
-      <button
-        type="button"
-        onclick={onClose}
-        aria-label="Close mute dialog"
-        class="rounded p-0.5 text-muted-foreground transition-colors hover:text-foreground"
-      >
-        <X size={12} />
-      </button>
-    </div>
-
-    <div class="space-y-2 p-3">
-      <p class="text-[10px] text-muted-foreground">
-        Select which dimensions to match. Notifications matching all selected criteria will be
-        hidden.
-      </p>
-
-      <!-- Project -->
-      <label
-        class="flex cursor-pointer items-center gap-2 rounded px-1.5 py-1.5 hover:bg-secondary"
-      >
-        <input
-          type="checkbox"
-          bind:checked={includeProject}
-          class="h-3 w-3 rounded border-border accent-primary"
-        />
-        <span class="text-[11px] text-muted-foreground">Project</span>
-        <span
-          class="ml-auto shrink-0 rounded bg-secondary px-1.5 py-0.5 text-[10px] font-medium text-muted-foreground"
-        >
-          {notification.repository.split('/').slice(-2).join('/')}
-        </span>
-      </label>
-
-      <!-- Type -->
-      <label
-        class="flex cursor-pointer items-center gap-2 rounded px-1.5 py-1.5 hover:bg-secondary"
-      >
-        <input
-          type="checkbox"
-          bind:checked={includeType}
-          class="h-3 w-3 rounded border-border accent-primary"
-        />
-        <span class="text-[11px] text-muted-foreground">Type</span>
-        <span
-          class="ml-auto shrink-0 rounded bg-secondary px-1.5 py-0.5 text-[10px] font-medium text-muted-foreground"
-        >
-          {NOTIFICATION_TYPE_LABELS[notification.type] ?? notification.type}
-        </span>
-      </label>
-
-      <!-- Status -->
-      <label
-        class="flex items-center gap-2 rounded px-1.5 py-1.5 {hasStatus
-          ? 'cursor-pointer hover:bg-secondary'
-          : 'cursor-not-allowed opacity-40'}"
-      >
-        <input
-          type="checkbox"
-          bind:checked={includeStatus}
-          disabled={!hasStatus}
-          class="h-3 w-3 rounded border-border accent-primary"
-        />
-        <span class="text-[11px] text-muted-foreground">Status</span>
-        {#if statusLabel}
-          <span
-            class="ml-auto shrink-0 rounded bg-secondary px-1.5 py-0.5 text-[10px] font-medium text-muted-foreground"
-          >
-            {statusLabel}
-          </span>
-        {:else}
-          <span class="ml-auto text-[10px] italic text-muted-foreground">n/a</span>
-        {/if}
-      </label>
-
-      <!-- Author -->
-      <label
-        class="flex items-center gap-2 rounded px-1.5 py-1.5 {hasAuthor
-          ? 'cursor-pointer hover:bg-secondary'
-          : 'cursor-not-allowed opacity-40'}"
-      >
-        <input
-          type="checkbox"
-          bind:checked={includeAuthor}
-          disabled={!hasAuthor}
-          class="h-3 w-3 rounded border-border accent-primary"
-        />
-        <span class="text-[11px] text-muted-foreground">Author</span>
-        {#if notification.author}
-          <span
-            class="ml-auto shrink-0 rounded bg-secondary px-1.5 py-0.5 text-[10px] font-medium text-muted-foreground"
-          >
-            {notification.author.login}
-          </span>
-        {:else}
-          <span class="ml-auto text-[10px] italic text-muted-foreground">n/a</span>
-        {/if}
-      </label>
-    </div>
-
-    <!-- Footer -->
-    <div class="flex items-center justify-end gap-2 border-t border-border px-3 py-2">
-      <button
-        type="button"
-        onclick={onClose}
-        class="rounded-md px-2.5 py-1 text-[11px] font-medium text-muted-foreground transition-colors hover:text-foreground"
-      >
-        Cancel
-      </button>
-      <button
-        type="button"
-        onclick={handleConfirm}
-        disabled={!canConfirm}
-        class="rounded-md bg-primary px-3 py-1 text-[11px] font-medium text-primary-foreground transition-colors hover:bg-primary/90 disabled:opacity-40"
-      >
-        Mute
-      </button>
-    </div>
-  </div>
-</div>
+      Cancel
+    </button>
+    <button
+      type="button"
+      onclick={handleConfirm}
+      disabled={!canConfirm}
+      class="h-7 rounded-lg bg-primary px-3.5 text-[12.5px] font-semibold text-primary-foreground transition-colors hover:bg-[var(--ds-background-brand-bold-hovered)] disabled:opacity-40"
+    >
+      Mute
+    </button>
+  {/snippet}
+</Dialog>

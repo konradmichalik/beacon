@@ -471,22 +471,6 @@ export function getUnreadCountByStatus(
   return counts;
 }
 
-export function getUnreadCountByDraft(
-  sourceFilter: NotificationSource | 'all'
-): ReadonlyMap<NotificationDraftFilter, number> {
-  const filtered = unreadVisibleFrom(sourceFilter);
-  // eslint-disable-next-line svelte/prefer-svelte-reactivity -- local counting map, not state
-  const counts = new Map<NotificationDraftFilter, number>();
-  for (const n of filtered) {
-    if (n.draft === true) {
-      counts.set('draft', (counts.get('draft') ?? 0) + 1);
-    } else if (n.draft === false) {
-      counts.set('ready', (counts.get('ready') ?? 0) + 1);
-    }
-  }
-  return counts;
-}
-
 export function getUnreadCountByProject(
   sourceFilter: NotificationSource | 'all'
 ): ReadonlyMap<string, number> {
