@@ -34,9 +34,11 @@ All colours come from the `--ds-*` tokens in `src/app.css`, with a light and a d
 | `--ds-text-danger` / `--ds-background-danger`       | `#a3434d` / `#f8e5e7` | `#e0939a` / `#3d2b2e` | CI failed, Disconnect, destructive actions       |
 | `--ds-text-discovery` / `--ds-background-discovery` | `#7f5a79` / `#f1e7ef` | `#c9a6c2` / `#362a3c` | Merged, Review submitted                         |
 | `--ds-border`                                       | `#2e3440` at 10 %     | `#d8dee9` at 9 %      | Row separators, card outlines                    |
-| `--ds-border-strong` (new)                          | `#2e3440` at 18 %     | `#d8dee9` at 18 %     | Inputs, secondary buttons, label pills, `kbd`    |
+| `--ds-border-strong` (new)                          | `#2e3440` at 18 %     | `#d8dee9` at 18 %     | Secondary buttons, label pills, `kbd`            |
+| `--ds-border-input`                                 | `#858d9e`             | `#7a8294`             | Text input outlines                              |
 | `--ds-blanket`                                      | `#2e3440` at 28 %     | black at 45 %         | Scrim behind dialogs                             |
 
+- **An outline that identifies a control reaches 3:1** against both sides (WCAG 1.4.11). Text inputs use `--ds-border-input` (3.3:1 on white, 3.7:1 on the dark field). Outlines that only decorate, because a label or the pill text already identifies the element, may use `--ds-border-strong`.
 - Light values above replace the pastel Nord values (`#7b9e64`, `#d08770`, `#b48ead`, `#bf616a`, `#5e81ac`), which reach only 2.4 to 3.4:1 as chip text.
 - **Source colours never appear in data.** GitHub and GitLab are told apart by their icon, not by blue and orange.
 - **Avatar fallbacks** use the dark token values (`#4a6a91`, `#4a6e35`, `#7f5a79`, `#9a5236`, `#a3434d`, `#5c6578`) with white initials. Pastel Nord fills fail with white text.
