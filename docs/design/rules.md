@@ -200,7 +200,7 @@ Motion is added only inside `@media (prefers-reduced-motion: no-preference)`, or
 
 - Text contrast at least 4.5:1, icons and large text at least 3:1, in light and dark. Check new colours with a contrast tool before adding a token.
 - Every icon-only button has an `aria-label`. Decorative icons are `aria-hidden`.
-- Tabs report `aria-current`, segments and toggles `aria-pressed`, switches `role="switch"` with `aria-checked`, sections `aria-expanded`.
+- Tabs use `role="tab"` with `aria-selected` and arrow-key navigation, segments and toggles `aria-pressed`, switches `role="switch"` with `aria-checked`, sections `aria-expanded`.
 - Every `<button>` has an explicit `type`.
 - Focus is visible on every control. Rows keep the inset focus bar.
 - Keyboard covers everything the pointer does; new actions get a shortcut and appear in the Shortcuts pane.

@@ -11,8 +11,9 @@
   import GitLabIcon from '$lib/components/icons/GitLabIcon.svelte';
   import SourceToggle from '$lib/components/ui/SourceToggle.svelte';
   import SortMenu from '$lib/components/ui/SortMenu.svelte';
+  import IconButton from '$lib/components/ui/IconButton.svelte';
   import { focusTrap } from '$lib/actions/focusTrap';
-  import { Filter, X } from '@lucide/svelte';
+  import { ListFilter, X } from '@lucide/svelte';
   import type { NotificationSource, IssueRoleFilter } from '$lib/types';
   import { SvelteSet } from 'svelte/reactivity';
 
@@ -142,7 +143,7 @@
 
 <div
   data-filter-bar
-  class="flex items-center gap-1.5 overflow-x-auto border-b border-border bg-secondary/40 px-4 py-1.5 scrollbar-none"
+  class="flex h-10 items-center gap-2 overflow-x-auto border-b border-border pl-4 pr-2 scrollbar-none"
 >
   <SourceToggle
     source={sourceFilter}
@@ -153,19 +154,20 @@
     {onSourceChange}
   />
 
-  <div class="ml-auto flex items-center gap-1.5">
+  <div class="ml-auto flex items-center">
     <!-- Filter button -->
-    <button
-      type="button"
+    <IconButton
+      label="Filter"
+      expanded={filterOpen}
+      active={filterOpen}
       onclick={() => (filterOpen = !filterOpen)}
-      title="Filter"
-      class="relative rounded-full border border-border bg-card p-1.5 text-muted-foreground transition-colors hover:border-foreground/20 hover:text-foreground"
     >
-      <Filter size={11} />
+      <ListFilter size={15} />
       {#if hasActiveFilter}
-        <span class="absolute -right-0.5 -top-0.5 h-2 w-2 rounded-full bg-primary"></span>
+        <span class="absolute right-1 top-1 h-2 w-2 rounded-full bg-primary ring-2 ring-background"
+        ></span>
       {/if}
-    </button>
+    </IconButton>
 
     {#if filterOpen}
       <div
