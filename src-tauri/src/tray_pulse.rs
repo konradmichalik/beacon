@@ -13,9 +13,11 @@ const DIMMED_ALPHA: f32 = 0.35;
 const RING_WIDTH: f32 = 0.22;
 const MIN_RING_WIDTH_PX: f32 = 3.0;
 
-fn centre_distance(index: usize, width: u32, cx: f32, cy: f32) -> f32 {
-    let x = (index as u32 % width) as f32;
-    let y = (index as u32 / width) as f32;
+const CHANNELS: usize = 4;
+
+fn centre_distance(pixel: usize, width: u32, cx: f32, cy: f32) -> f32 {
+    let x = (pixel as u32 % width) as f32;
+    let y = (pixel as u32 / width) as f32;
     ((x - cx).powi(2) + (y - cy).powi(2)).sqrt()
 }
 
@@ -24,28 +26,24 @@ fn centre_distance(index: usize, width: u32, cx: f32, cy: f32) -> f32 {
 pub fn pulse_frame(rgba: &[u8], width: u32, height: u32, progress: f32) -> Vec<u8> {
     let cx = width as f32 / 2.0;
     let cy = height as f32 / 2.0;
+    let pixels = rgba.len() / CHANNELS;
+    let visible = |pixel: usize| rgba[pixel * CHANNELS + 3] > 0;
 
-    let radius = rgba
-        .chunks_exact(4)
-        .enumerate()
-        .filter(|(_, px)| px[3] > 0)
-        .map(|(i, _)| centre_distance(i, width, cx, cy))
+    let radius = (0..pixels)
+        .filter(|&pixel| visible(pixel))
+        .map(|pixel| centre_distance(pixel, width, cx, cy))
         .fold(0.0_f32, f32::max);
 
     let ring = progress * radius;
     let band = (radius * RING_WIDTH).max(MIN_RING_WIDTH_PX);
 
     let mut frame = rgba.to_vec();
-    for (i, px) in frame.chunks_exact_mut(4).enumerate() {
-        if px[3] == 0 {
-            continue;
-        }
-        if (centre_distance(i, width, cx, cy) - ring).abs() <= band {
-            px[0] = 255;
-            px[1] = 255;
-            px[2] = 255;
+    for pixel in (0..pixels).filter(|&pixel| visible(pixel)) {
+        let at = pixel * CHANNELS;
+        if (centre_distance(pixel, width, cx, cy) - ring).abs() <= band {
+            frame[at..at + 3].fill(255);
         } else {
-            px[3] = (px[3] as f32 * DIMMED_ALPHA) as u8;
+            frame[at + 3] = (frame[at + 3] as f32 * DIMMED_ALPHA) as u8;
         }
     }
     frame
