@@ -189,7 +189,7 @@ Motion is opt-in for people who allow it. One rule in `src/app.css` cuts every C
 | Toast                  | Rises 14px and fades                                                                                                                          | 380ms                                       |
 | All clear              | Circle scales to 1, confetti bursts out of the popper (`burst` keyframes)                                                                     | 520ms, 100 to 260ms delays                  |
 | Logo, popup opens      | Dot grows, then the inner and the outer arcs scale out from the centre                                                                        | 260ms dot, 480ms arcs, 150 and 290ms delays |
-| Logo, new items        | The dot and the arcs flash in `--ds-brand-flash` one after the other, once                                                                    | 560 to 640ms, arcs 80 and 230ms delay       |
+| Logo, new items        | The dot swells and the arcs flash in `--ds-brand-flash`, inner arcs first, once                                                               | 560 to 640ms, arcs 80 and 230ms delay       |
 | Switch                 | Knob slides, track colour changes                                                                                                             | 260 / 200ms                                 |
 
 - Animate `transform` and `opacity` only, plus height when a row or section closes.
