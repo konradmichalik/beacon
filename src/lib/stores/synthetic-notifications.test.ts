@@ -1,4 +1,4 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import type { UnifiedNotification } from '$lib/types';
 
 const isNotificationMuted = vi.fn().mockReturnValue(false);
@@ -57,6 +57,7 @@ import {
   pruneSyntheticNotifications,
   markAsRead,
   markAllAsRead,
+  undoMarkAllAsRead,
   markAsDone,
   unsubscribeFromNotification,
   getNotifications,
@@ -65,6 +66,15 @@ import {
 
 function flushMicrotasks(): Promise<void> {
   return new Promise((resolve) => setTimeout(resolve, 0));
+}
+
+// Bulk mark-as-read reaches the server once its undo window has passed.
+async function settleBulkRead(): Promise<void> {
+  await vi.advanceTimersByTimeAsync(3700);
+  for (let i = 0; i < 5; i++) {
+    await vi.dynamicImportSettled();
+    await vi.advanceTimersByTimeAsync(0);
+  }
 }
 
 function real(overrides: Partial<UnifiedNotification> = {}): UnifiedNotification {
@@ -112,6 +122,8 @@ describe('synthetic notifications in the notifications store', () => {
   beforeEach(async () => {
     await flushMicrotasks();
     vi.useRealTimers();
+    // A bulk action left pending by an earlier test must not commit in this one.
+    undoMarkAllAsRead();
     getGitHubConfig.mockReturnValue({ token: 'tok' });
     isNotificationMuted.mockReturnValue(false);
     markGitHubThreadRead.mockClear();
@@ -120,6 +132,10 @@ describe('synthetic notifications in the notifications store', () => {
     playNotificationSound.mockClear();
     showToast.mockClear();
     updateFromBackend([]);
+  });
+
+  afterEach(() => {
+    vi.useRealTimers();
   });
 
   it('survives two consecutive empty backend polls', () => {
@@ -145,6 +161,7 @@ describe('synthetic notifications in the notifications store', () => {
   });
 
   it('marking a subset that includes a synthetic entry does not take the bulk GitHub path for the rest', async () => {
+    vi.useFakeTimers();
     updateFromBackend([
       real({ id: 'github-1' }),
       real({ id: 'github-2' }),
@@ -153,7 +170,7 @@ describe('synthetic notifications in the notifications store', () => {
     addSyntheticNotifications([synthetic({ id: 'beacon:pr-ready:github-pr-mixed' })]);
 
     markAllAsRead(new Set(['github-1', 'github-2', 'beacon:pr-ready:github-pr-mixed']));
-    await flushMicrotasks();
+    await settleBulkRead();
 
     expect(markAllGitHubNotificationsRead).not.toHaveBeenCalled();
     expect(markGitHubThreadRead).toHaveBeenCalledWith('tok', '1');
@@ -164,11 +181,12 @@ describe('synthetic notifications in the notifications store', () => {
   });
 
   it('takes the bulk GitHub path when every real unread notification is included alongside a synthetic one', async () => {
+    vi.useFakeTimers();
     updateFromBackend([real({ id: 'github-10' }), real({ id: 'github-11' })]);
     addSyntheticNotifications([synthetic({ id: 'beacon:pr-ready:github-pr-bulk' })]);
 
     markAllAsRead();
-    await flushMicrotasks();
+    await settleBulkRead();
 
     expect(markAllGitHubNotificationsRead).toHaveBeenCalledTimes(1);
     expect(markGitHubThreadRead).not.toHaveBeenCalled();

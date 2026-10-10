@@ -719,7 +719,42 @@ export function loadDemoData(): void {
 
 // ── Mark as read/unread ─────────────────────────────────────────
 
+// Bulk "mark as read" stays reversible for a short window: the local state
+// changes at once, the server only hears about it once the window has passed.
+// GitHub and GitLab have no way to mark a thread unread again.
+const UNDO_WINDOW_MS = 3600;
+
+interface PendingBulkRead {
+  readonly timer: ReturnType<typeof setTimeout>;
+  readonly commit: () => void;
+  readonly restore: () => void;
+}
+
+let pendingBulkRead: PendingBulkRead | null = null;
+
+function flushPendingBulkRead(): void {
+  const pending = pendingBulkRead;
+  if (!pending) return;
+  clearTimeout(pending.timer);
+  pendingBulkRead = null;
+  pending.commit();
+}
+
+export function undoMarkAllAsRead(): void {
+  const pending = pendingBulkRead;
+  if (!pending) return;
+  clearTimeout(pending.timer);
+  pendingBulkRead = null;
+  pending.restore();
+}
+
+if (typeof window !== 'undefined') {
+  window.addEventListener('beforeunload', flushPendingBulkRead);
+}
+
 export function markAllAsRead(ids?: ReadonlySet<string>): void {
+  flushPendingBulkRead();
+
   const unread = notifications.filter((n) => n.unread && (!ids || ids.has(n.id)));
   if (unread.length === 0) return;
 
@@ -764,12 +799,35 @@ export function markAllAsRead(ids?: ReadonlySet<string>): void {
     playNotificationSound('ripple');
   }
 
-  // Mark on servers (best-effort), real notifications only
-  if (unreadReal.length > 0) {
-    markOnServers(unreadReal, { totalGhUnread, totalGlUnread }).catch(() => {});
-  }
+  const commit = (): void => {
+    if (unreadReal.length > 0) {
+      markOnServers(unreadReal, { totalGhUnread, totalGlUnread }).catch(() => {});
+    }
+  };
+  const restore = (): void => {
+    for (const id of unreadRealIds) locallyReadIds.delete(id);
+    if (unreadReal.length > 0) persistReadIds();
+    backendNotifications = backendNotifications.map((n) =>
+      unreadRealIds.has(n.id) ? { ...n, unread: true } : n
+    );
+    for (const n of unreadSynthetic) {
+      syntheticNotificationsMap.set(n.id, n);
+      syntheticReadAtMap.delete(n.id);
+    }
+    if (unreadSynthetic.length > 0) persistSynthetic();
+    recompose();
+    updateTrayBadge(countBadgeUnread(notifications));
+  };
+  pendingBulkRead = {
+    timer: setTimeout(flushPendingBulkRead, UNDO_WINDOW_MS),
+    commit,
+    restore
+  };
 
-  showToast(unread.length === 1 ? 'Marked as read' : `${unread.length} marked as read`);
+  showToast(unread.length === 1 ? 'Marked as read' : `${unread.length} marked as read`, {
+    duration: UNDO_WINDOW_MS,
+    action: { label: 'Undo', onAction: undoMarkAllAsRead }
+  });
 }
 
 export function markAsRead(id: string): void {
