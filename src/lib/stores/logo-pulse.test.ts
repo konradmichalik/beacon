@@ -20,6 +20,11 @@ vi.mock('$lib/utils/storage', () => ({
 }));
 vi.mock('$lib/stores/toast.svelte', () => ({ showToast: vi.fn() }));
 
+const pulseTrayIcon = vi.fn();
+vi.mock('$lib/utils/tray-pulse', () => ({
+  pulseTrayIcon: (...args: unknown[]) => pulseTrayIcon(...args)
+}));
+
 const playLogo = vi.fn();
 vi.mock('./logo-motion.svelte', () => ({ playLogo: (...args: unknown[]) => playLogo(...args) }));
 
@@ -46,8 +51,22 @@ function notification(id: string, overrides: Partial<UnifiedNotification> = {}) 
 describe('logo pulse on new notifications', () => {
   beforeEach(() => {
     playLogo.mockClear();
+    pulseTrayIcon.mockClear();
     updateFromBackend([]);
     playLogo.mockClear();
+    pulseTrayIcon.mockClear();
+  });
+
+  it('pulses the tray icon together with the logo', () => {
+    updateFromBackend([notification('github-1')]);
+    expect(pulseTrayIcon).toHaveBeenCalledTimes(1);
+  });
+
+  it('does not pulse the tray icon when nothing is new', () => {
+    updateFromBackend([notification('github-1')]);
+    pulseTrayIcon.mockClear();
+    updateFromBackend([notification('github-1')]);
+    expect(pulseTrayIcon).not.toHaveBeenCalled();
   });
 
   it('pulses when a poll brings an unread item that was not known before', () => {
