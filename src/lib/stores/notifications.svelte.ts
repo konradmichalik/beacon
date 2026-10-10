@@ -8,6 +8,7 @@ import { isTauri, getStorageItem, setStorageItem } from '$lib/utils/storage';
 import { demoNotifications } from '$lib/utils/demo-data';
 import { playNotificationSound } from '$lib/services/notification-sound';
 import { showToast } from '$lib/stores/toast.svelte';
+import { playLogo } from '$lib/stores/logo-motion.svelte';
 import { parseGitLabTargetUrl } from '$lib/utils/gitlab-target';
 import { filterByQuery } from '$lib/utils/filter-tokens';
 import {
@@ -614,10 +615,13 @@ export function updateFromBackend(items: UnifiedNotification[]): void {
   // Detect genuinely new unread notifications for sound playback
   // eslint-disable-next-line svelte/prefer-svelte-reactivity -- local lookup set, not state
   const currentUnreadIds = new Set(effectiveItems.filter((n) => n.unread).map((n) => n.id));
-  if (!isFirstLoad && settingsState.notifyMode !== 'disabled') {
+  if (!isFirstLoad) {
     const hasNew = [...currentUnreadIds].some((id) => !knownUnreadIds.has(id));
     if (hasNew) {
-      playNotificationSound(settingsState.notifySound);
+      playLogo('pulse');
+      if (settingsState.notifyMode !== 'disabled') {
+        playNotificationSound(settingsState.notifySound);
+      }
     }
   }
   knownUnreadIds = currentUnreadIds;
