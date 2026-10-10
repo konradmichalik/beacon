@@ -204,7 +204,10 @@ pub(crate) fn update_tray_icon(
             indicator_mode.to_string(),
             indicator_color.to_string(),
         );
-        if last_tray_state().lock().unwrap().as_ref() == Some(&tray_key) {
+        // Held until the new state is recorded, so a pulse that ends in between
+        // cannot redraw the previous state over it.
+        let mut last_state = last_tray_state().lock().unwrap();
+        if last_state.as_ref() == Some(&tray_key) {
             return Ok(());
         }
 
@@ -232,7 +235,7 @@ pub(crate) fn update_tray_icon(
             tray.set_title(Some(&title)).map_err(|e| e.to_string())?;
         }
 
-        *last_tray_state().lock().unwrap() = Some(tray_key);
+        *last_state = Some(tray_key);
     }
     Ok(())
 }
@@ -261,13 +264,14 @@ fn pulse_tray_icon(app: tauri::AppHandle) {
         }
         std::thread::spawn(move || {
             run_tray_pulse(&app);
+            // Same lock as `update_tray_icon`: whatever it recorded while the
+            // pulse played is drawn now, and a later update draws itself.
+            let last_state = last_tray_state().lock().unwrap();
             PULSING.store(false, Ordering::SeqCst);
-            // Whatever was recorded while the pulse played is drawn now.
-            if let Some(tray) = app.tray_by_id(tray::TRAY_ID) {
-                if let Some(state) = last_tray_state().lock().unwrap().clone() {
-                    let (rgba, w, h, as_template) = icon_for_state(&state);
-                    let _ = apply_icon(&tray, rgba, w, h, as_template);
-                }
+            if let (Some(tray), Some(state)) = (app.tray_by_id(tray::TRAY_ID), last_state.as_ref())
+            {
+                let (rgba, w, h, as_template) = icon_for_state(state);
+                let _ = apply_icon(&tray, rgba, w, h, as_template);
             }
         });
     }
