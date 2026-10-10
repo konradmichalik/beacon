@@ -45,10 +45,12 @@
   import Toast from './lib/components/ui/Toast.svelte';
   import { startConsoleCapture, stopConsoleCapture, info as logInfo } from './lib/utils/logger';
   import { onMount } from 'svelte';
+  import { isTauri } from './lib/utils/storage';
 
   const isSettingsWindow = new URLSearchParams(window.location.search).get('window') === 'settings';
 
   let isInitializing = $state(true);
+  let opening = $state(true);
   let initialTab: 'notifications' | 'settings' = $state('notifications');
 
   onMount(() => {
@@ -57,6 +59,7 @@
     let unlistenMuteRules: (() => void) | undefined;
     let unlistenPlatformStatus: (() => void) | undefined;
     let stopExportEffect: (() => void) | undefined;
+    let unlistenPopupShown: (() => void) | undefined;
     let destroyed = false;
 
     async function initialize(): Promise<void> {
@@ -165,7 +168,20 @@
       }
     }
 
+    // Replays the open animation each time the tray window is shown again.
+    async function listenForPopupShown(): Promise<void> {
+      if (!isTauri()) return;
+      const { listen } = await import('@tauri-apps/api/event');
+      const unlisten = await listen('popup-shown', () => {
+        opening = false;
+        requestAnimationFrame(() => (opening = true));
+      });
+      if (destroyed) unlisten();
+      else unlistenPopupShown = unlisten;
+    }
+
     initialize();
+    listenForPopupShown();
 
     return () => {
       destroyed = true;
@@ -176,6 +192,7 @@
       unlistenSettings?.();
       unlistenMuteRules?.();
       unlistenPlatformStatus?.();
+      unlistenPopupShown?.();
       stopExportEffect?.();
     };
   });
@@ -192,7 +209,7 @@
     <SettingsView />
   </div>
 {:else}
-  <div class="animate-fade-in">
+  <div class={opening ? 'animate-popup-open' : 'opacity-0'}>
     <TrayPopup {initialTab} />
   </div>
 {/if}

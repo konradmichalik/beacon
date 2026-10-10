@@ -15,7 +15,12 @@
   import GitHubIcon from '$lib/components/icons/GitHubIcon.svelte';
   import GitLabIcon from '$lib/components/icons/GitLabIcon.svelte';
   import PartyPopperIcon from '$lib/components/icons/PartyPopperIcon.svelte';
-  import { Inbox, ChevronRight, MailOpen, AlarmClockOff } from '@lucide/svelte';
+  import { Inbox, MailOpen, AlarmClockOff } from '@lucide/svelte';
+  import { flip } from 'svelte/animate';
+  import { slide } from 'svelte/transition';
+  import SectionHeader from '$lib/components/ui/SectionHeader.svelte';
+  import ListSkeleton from '$lib/components/ui/ListSkeleton.svelte';
+  import { motionMs, rise, swipe } from '$lib/utils/motion';
   import type { UnifiedNotification } from '$lib/types';
   import { roving } from '$lib/actions/roving';
   import { formatWakeTime } from '$lib/utils/time';
@@ -98,11 +103,20 @@
     <button
       type="button"
       onclick={openMuteRuleSettings}
-      class="mt-1.5 text-[10px] text-muted-foreground underline decoration-dotted underline-offset-2 transition-colors hover:text-foreground"
+      class="mt-1.5 text-[11px] text-subtlest underline decoration-dotted underline-offset-2 transition-colors hover:text-foreground"
     >
-      {hiddenCount} hidden — muted or snoozed
+      {hiddenCount} hidden, muted or snoozed
     </button>
   {/if}
+{/snippet}
+
+{#snippet allClear()}
+  <EmptyState
+    icon={PartyPopperIcon}
+    title="All clear"
+    description="No unread notifications."
+    iconSize={48}
+  />
 {/snippet}
 
 {#if !isConfigured}
@@ -112,25 +126,10 @@
     description="Open Settings to connect GitHub or GitLab."
   />
 {:else if isLoading && items.length === 0}
-  <div class="divide-y divide-border">
-    {#each [0, 1, 2, 3, 4] as i (i)}
-      <div class="flex gap-3 px-4 py-3">
-        <div class="h-7 w-7 shrink-0 animate-pulse rounded-full bg-secondary"></div>
-        <div class="flex min-w-0 flex-1 flex-col gap-1.5">
-          <div class="h-3 w-3/4 animate-pulse rounded bg-secondary"></div>
-          <div class="h-2.5 w-1/2 animate-pulse rounded bg-secondary/60"></div>
-        </div>
-      </div>
-    {/each}
-  </div>
+  <ListSkeleton />
 {:else if items.length === 0}
   <div class="flex min-h-full flex-col items-center justify-center">
-    <EmptyState
-      icon={PartyPopperIcon}
-      title="All clear"
-      description="No unread notifications."
-      iconSize={48}
-    />
+    {@render allClear()}
     {@render hiddenCountFooter()}
   </div>
 {:else}
@@ -139,111 +138,82 @@
     {#if filterState.sort === 'project' && projectGroups.length > 0}
       <div use:roving>
         {#each projectGroups as group (group.source + ':' + group.repository)}
-          <div
-            class="sticky top-0 z-10 flex items-center gap-1.5 border-b border-border bg-background/95 px-4 py-1.5 backdrop-blur-sm"
-          >
-            {#if group.source === 'github'}
-              <GitHubIcon size={12} class="text-muted-foreground" />
-            {:else}
-              <GitLabIcon size={12} class="text-muted-foreground" />
-            {/if}
-            <span class="truncate text-[11px] font-semibold text-muted-foreground">
-              {group.repository}
-            </span>
-            <span
-              class="ml-auto shrink-0 rounded-full bg-secondary px-1.5 py-px text-[9px] font-semibold leading-tight text-muted-foreground"
-            >
-              {group.notifications.length}
-            </span>
-          </div>
-          {#each group.notifications as notification (notification.id)}
-            <NotificationCard {notification} />
+          <SectionHeader
+            label={group.repository}
+            count={group.notifications.length}
+            icon={group.source === 'github' ? GitHubIcon : GitLabIcon}
+          />
+          {#each group.notifications as notification, i (notification.id)}
+            <div in:rise|global={{ index: i }} out:swipe animate:flip={{ duration: motionMs(280) }}>
+              <NotificationCard {notification} />
+            </div>
           {/each}
         {/each}
       </div>
     {:else}
       <div use:roving>
-        {#each unreadItems as notification (notification.id)}
-          <NotificationCard {notification} />
+        {#each unreadItems as notification, i (notification.id)}
+          <div in:rise|global={{ index: i }} out:swipe animate:flip={{ duration: motionMs(280) }}>
+            <NotificationCard {notification} />
+          </div>
         {/each}
       </div>
     {/if}
 
-    <!-- Spacer pushes read section to bottom when unread list is short -->
+    <!-- Spacer pushes the read section to the bottom when the unread list is short -->
     {#if unreadItems.length === 0}
       <div class="flex min-h-0 flex-1 items-center justify-center">
-        <EmptyState
-          icon={PartyPopperIcon}
-          title="All clear"
-          description="No unread notifications."
-          iconSize={48}
-        />
+        {@render allClear()}
       </div>
     {:else}
       <div class="flex-1"></div>
     {/if}
 
-    <!-- Read section (collapsible, always at bottom) -->
+    <!-- Read section (collapsible, pinned to the bottom) -->
     {#if readItems.length > 0}
-      <button
-        type="button"
+      <SectionHeader
+        label="Read"
+        count={readItems.length}
+        icon={MailOpen}
+        expanded={showRead}
         onclick={() => (showRead = !showRead)}
-        class="sticky top-0 z-10 flex w-full items-center gap-1.5 border-b border-border bg-card/95 px-4 py-1.5 backdrop-blur-sm transition-colors hover:bg-secondary/40"
-      >
-        <ChevronRight
-          size={12}
-          class="shrink-0 text-muted-foreground transition-transform {showRead ? 'rotate-90' : ''}"
-        />
-        <MailOpen size={10} class="shrink-0 text-muted-foreground" />
-        <span class="text-[11px] font-semibold text-muted-foreground">Read</span>
-        <span
-          class="ml-auto shrink-0 rounded-full bg-secondary px-1.5 py-px text-[9px] font-semibold text-muted-foreground"
-          >{readItems.length}</span
-        >
-      </button>
+        sticky="bottom"
+      />
       {#if showRead}
-        <div use:roving>
+        <div use:roving transition:slide={{ duration: motionMs(220) }}>
           {#each readItems as notification (notification.id)}
-            <NotificationCard {notification} />
+            <div animate:flip={{ duration: motionMs(280) }}>
+              <NotificationCard {notification} />
+            </div>
           {/each}
         </div>
       {/if}
     {/if}
 
-    <!-- Snoozed section (collapsible, always at bottom) -->
+    <!-- Snoozed section (collapsible) -->
     {#if snoozedItems.length > 0}
-      <button
-        type="button"
+      <SectionHeader
+        label="Snoozed"
+        count={snoozedItems.length}
+        icon={AlarmClockOff}
+        expanded={showSnoozed}
         onclick={() => (showSnoozed = !showSnoozed)}
-        class="sticky top-0 z-10 flex w-full items-center gap-1.5 border-b border-border bg-card/95 px-4 py-1.5 backdrop-blur-sm transition-colors hover:bg-secondary/40"
-      >
-        <ChevronRight
-          size={12}
-          class="shrink-0 text-muted-foreground transition-transform {showSnoozed
-            ? 'rotate-90'
-            : ''}"
-        />
-        <AlarmClockOff size={10} class="shrink-0 text-muted-foreground" />
-        <span class="text-[11px] font-semibold text-muted-foreground">Snoozed</span>
-        <span
-          class="ml-auto shrink-0 rounded-full bg-secondary px-1.5 py-px text-[9px] font-semibold text-muted-foreground"
-          >{snoozedItems.length}</span
-        >
-      </button>
+        sticky="none"
+      />
       {#if showSnoozed}
-        <div class="divide-y divide-border/60">
+        <div class="divide-y divide-border" transition:slide={{ duration: motionMs(220) }}>
           {#each snoozedItems as notification (notification.id)}
             {@const entry = getSnoozedEntries()[notification.id]}
             <div class="flex items-center gap-3 px-4 py-2">
               {#if notification.source === 'github'}
-                <GitHubIcon size={12} class="shrink-0 text-muted-foreground/70" />
+                <GitHubIcon size={12} class="shrink-0 text-muted-foreground" />
               {:else}
-                <GitLabIcon size={12} class="shrink-0 text-muted-foreground/70" />
+                <GitLabIcon size={12} class="shrink-0 text-muted-foreground" />
               {/if}
               <div class="min-w-0 flex-1">
-                <p class="truncate text-[12px] text-foreground">{notification.title}</p>
+                <p class="truncate text-xs text-foreground">{notification.title}</p>
                 {#if entry}
-                  <p class="text-[10px] text-muted-foreground">
+                  <p class="text-[11px] text-subtlest">
                     Wakes {formatWakeTime(entry.until)}
                   </p>
                 {/if}
@@ -251,7 +221,7 @@
               <button
                 type="button"
                 onclick={() => unsnooze(notification.id)}
-                class="shrink-0 rounded px-2 py-1 text-[10px] font-medium text-muted-foreground transition-colors hover:bg-secondary hover:text-foreground"
+                class="h-7 shrink-0 rounded-md px-2.5 text-[11.5px] font-medium text-muted-foreground transition-colors hover:bg-surface-hovered hover:text-foreground"
               >
                 Wake now
               </button>
@@ -262,7 +232,7 @@
     {/if}
 
     {#if hiddenCount > 0}
-      <div class="border-t border-border/60 px-4 py-2 text-center">
+      <div class="border-t border-border px-4 py-2 text-center">
         {@render hiddenCountFooter()}
       </div>
     {/if}

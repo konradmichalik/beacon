@@ -1,6 +1,8 @@
 <script lang="ts">
   import type { Snippet } from 'svelte';
+  import { fade } from 'svelte/transition';
   import { focusTrap } from '$lib/actions/focusTrap';
+  import { motionMs, pop } from '$lib/utils/motion';
 
   let {
     title,
@@ -30,13 +32,15 @@
 <svelte:window onkeydown={handleKeydown} />
 
 <div
+  transition:fade|global={{ duration: motionMs(160) }}
   class="fixed inset-0 z-40 flex items-start justify-center pt-[92px]"
   style="background: var(--ds-blanket)"
   role="presentation"
   onclick={handleBackdropClick}
 >
   <div
-    class="w-80 max-w-[calc(100%-32px)] rounded-xl border border-border bg-popover shadow-lg"
+    transition:pop|global
+    class="w-80 origin-top max-w-[calc(100%-32px)] rounded-xl border border-border bg-popover shadow-lg"
     role="dialog"
     aria-modal="true"
     aria-labelledby={titleId}

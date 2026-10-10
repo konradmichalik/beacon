@@ -1,7 +1,9 @@
 <script lang="ts">
   import type { Snippet } from 'svelte';
   import { X } from '@lucide/svelte';
+  import { fade } from 'svelte/transition';
   import { focusTrap } from '$lib/actions/focusTrap';
+  import { motionMs, pop } from '$lib/utils/motion';
   import IconButton from './IconButton.svelte';
 
   let { onClose, children, footer }: { onClose: () => void; children: Snippet; footer?: Snippet } =
@@ -20,9 +22,15 @@
 
 <svelte:window onkeydown={handleKeydown} />
 
-<div class="fixed inset-0 z-40 bg-foreground/5" role="presentation" onclick={handleBackdropClick}>
+<div
+  transition:fade|global={{ duration: motionMs(160) }}
+  class="fixed inset-0 z-40 bg-foreground/5"
+  role="presentation"
+  onclick={handleBackdropClick}
+>
   <div
-    class="fixed right-2 top-[90px] z-50 flex max-h-[calc(100vh-100px)] w-[300px] flex-col rounded-xl border border-border bg-popover shadow-lg"
+    transition:pop|global
+    class="fixed right-2 top-[90px] z-50 origin-top-right flex max-h-[calc(100vh-100px)] w-[300px] flex-col rounded-xl border border-border bg-popover shadow-lg"
     role="dialog"
     aria-modal="true"
     aria-labelledby={titleId}

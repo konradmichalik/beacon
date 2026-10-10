@@ -83,7 +83,21 @@
     });
   }
 
+  let turns = $state(0);
+  let slowRequest = $state(false);
+
+  // One full turn per click. Only a request that outlasts the turn keeps spinning.
+  $effect(() => {
+    if (!isLoading) {
+      slowRequest = false;
+      return;
+    }
+    const timer = setTimeout(() => (slowRequest = true), 800);
+    return () => clearTimeout(timer);
+  });
+
   function handleRefresh(): void {
+    turns += 1;
     if (activeView === 'notifications') {
       refreshNotifications();
     } else if (activeView === 'issues') {
@@ -148,7 +162,11 @@
 
   <div class="flex min-w-0 flex-1 basis-0 items-center justify-end">
     <IconButton label="Refresh" disabled={isLoading} onclick={handleRefresh}>
-      <RefreshCw size={15} class={isLoading ? 'animate-spin' : ''} />
+      <RefreshCw
+        size={15}
+        class={slowRequest ? 'animate-spin' : ''}
+        style="transform: rotate({turns * 360}deg); transition: transform 800ms var(--ease-out);"
+      />
     </IconButton>
     <IconButton label="Settings" onclick={onSettingsToggle}>
       <Settings size={15} />

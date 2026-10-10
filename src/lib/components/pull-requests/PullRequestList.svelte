@@ -11,15 +11,12 @@
   import PullRequestCard from './PullRequestCard.svelte';
   import EmptyState from '../notifications/EmptyState.svelte';
   import PartyPopperIcon from '$lib/components/icons/PartyPopperIcon.svelte';
-  import {
-    Inbox,
-    ChevronRight,
-    ChevronDown,
-    Star,
-    GitPullRequest,
-    Eye,
-    CircleCheckBig
-  } from '@lucide/svelte';
+  import { Inbox, ChevronDown, Star, GitPullRequest, Eye, CircleCheckBig } from '@lucide/svelte';
+  import { flip } from 'svelte/animate';
+  import { slide } from 'svelte/transition';
+  import SectionHeader from '$lib/components/ui/SectionHeader.svelte';
+  import ListSkeleton from '$lib/components/ui/ListSkeleton.svelte';
+  import { motionMs, rise, swipe } from '$lib/utils/motion';
   import type {
     NotificationSource,
     PRRoleFilter,
@@ -129,8 +126,31 @@
           : []
     )
   );
-  // Only rendered when groupPullRequests is off — the ungrouped fallback list.
-  let unstarredSorted = $derived(byAttention(unstarred));
+  // Without grouping, the unstarred PRs form one list without a header.
+  let sections = $derived(
+    [
+      {
+        key: 'starred',
+        label: 'Starred',
+        icon: Star,
+        iconClass: 'fill-warning text-warning',
+        items: starred
+      },
+      ...(settingsState.groupPullRequests
+        ? [
+            { key: 'authored', label: 'Created by me', icon: GitPullRequest, items: authored },
+            { key: 'toReview', label: 'To review', icon: Eye, items: toReview },
+            {
+              key: 'reviewed',
+              label: 'Reviewed',
+              icon: CircleCheckBig,
+              iconClass: 'text-success-text',
+              items: reviewed
+            }
+          ]
+        : [{ key: 'unstarred', items: byAttention(unstarred) }])
+    ].filter((section) => section.items.length > 0)
+  );
 </script>
 
 {#if !isConfigured}
@@ -140,17 +160,7 @@
     description="Open Settings to connect GitHub or GitLab."
   />
 {:else if isLoading && allItems.length === 0}
-  <div class="divide-y divide-border">
-    {#each [0, 1, 2, 3, 4] as i (i)}
-      <div class="flex gap-3 px-4 py-3">
-        <div class="h-7 w-7 shrink-0 animate-pulse rounded-full bg-secondary"></div>
-        <div class="flex min-w-0 flex-1 flex-col gap-1.5">
-          <div class="h-3 w-3/4 animate-pulse rounded bg-secondary"></div>
-          <div class="h-2.5 w-1/2 animate-pulse rounded bg-secondary/60"></div>
-        </div>
-      </div>
-    {/each}
-  </div>
+  <ListSkeleton />
 {:else if allItems.length === 0}
   <EmptyState
     icon={PartyPopperIcon}
@@ -159,107 +169,34 @@
     iconSize={48}
   />
 {:else}
-  {#snippet sectionHeader(
-    label: string,
-    count: number,
-    key: string,
-    icon?: typeof Star,
-    iconClass?: string
-  )}
-    <button
-      type="button"
-      onclick={() => toggle(key)}
-      class="sticky top-0 z-10 flex w-full items-center gap-1.5 border-b border-border bg-card/95 px-4 py-1.5 backdrop-blur-sm transition-colors hover:bg-secondary/40"
-    >
-      <ChevronRight
-        size={12}
-        class="shrink-0 text-muted-foreground transition-transform {collapsed[key]
-          ? ''
-          : 'rotate-90'}"
-      />
-      {#if icon}
-        {@const Icon = icon}
-        <Icon size={10} class="shrink-0 {iconClass ?? 'text-muted-foreground'}" />
-      {/if}
-      <span class="text-[11px] font-semibold text-muted-foreground">{label}</span>
-      <span
-        class="ml-auto shrink-0 rounded-full bg-secondary px-1.5 py-px text-[9px] font-semibold text-muted-foreground"
-      >
-        {count}
-      </span>
-    </button>
-  {/snippet}
-
   <div class="flex min-h-full flex-col">
-    {#if starred.length > 0}
-      {@render sectionHeader(
-        'Starred',
-        starred.length,
-        'starred',
-        Star,
-        'fill-warning text-warning'
-      )}
-      {#if !collapsed.starred}
-        <div use:roving>
-          {#each starred as pr (pr.id)}
-            <PullRequestCard pullRequest={pr} />
+    {#each sections as section (section.key)}
+      {#if section.label}
+        <SectionHeader
+          label={section.label}
+          count={section.items.length}
+          icon={section.icon}
+          iconClass={section.iconClass}
+          expanded={!collapsed[section.key]}
+          onclick={() => toggle(section.key)}
+        />
+      {/if}
+      {#if !section.label || !collapsed[section.key]}
+        <div use:roving transition:slide={{ duration: motionMs(220) }}>
+          {#each section.items as pr, i (pr.id)}
+            <div in:rise|global={{ index: i }} out:swipe animate:flip={{ duration: motionMs(280) }}>
+              <PullRequestCard pullRequest={pr} />
+            </div>
           {/each}
         </div>
       {/if}
-    {/if}
-
-    {#if settingsState.groupPullRequests}
-      {#if authored.length > 0}
-        {@render sectionHeader('Created by me', authored.length, 'authored', GitPullRequest)}
-        {#if !collapsed.authored}
-          <div use:roving>
-            {#each authored as pr (pr.id)}
-              <PullRequestCard pullRequest={pr} />
-            {/each}
-          </div>
-        {/if}
-      {/if}
-
-      {#if toReview.length > 0}
-        {@render sectionHeader('To review', toReview.length, 'toReview', Eye)}
-        {#if !collapsed.toReview}
-          <div use:roving>
-            {#each toReview as pr (pr.id)}
-              <PullRequestCard pullRequest={pr} />
-            {/each}
-          </div>
-        {/if}
-      {/if}
-
-      {#if reviewed.length > 0}
-        {@render sectionHeader(
-          'Reviewed',
-          reviewed.length,
-          'reviewed',
-          CircleCheckBig,
-          'text-success-text'
-        )}
-        {#if !collapsed.reviewed}
-          <div use:roving>
-            {#each reviewed as pr (pr.id)}
-              <PullRequestCard pullRequest={pr} />
-            {/each}
-          </div>
-        {/if}
-      {/if}
-    {:else}
-      <div use:roving>
-        {#each unstarredSorted as pr (pr.id)}
-          <PullRequestCard pullRequest={pr} />
-        {/each}
-      </div>
-    {/if}
+    {/each}
 
     {#if hasMore}
       <button
         type="button"
         onclick={loadMorePRs}
-        class="flex w-full items-center justify-center gap-1.5 border-t border-border px-4 py-2.5 text-[11px] font-medium text-muted-foreground transition-colors hover:bg-secondary/40 hover:text-foreground"
+        class="flex h-10 w-full items-center justify-center gap-1.5 border-t border-border text-xs font-medium text-muted-foreground transition-colors hover:bg-surface-hovered hover:text-foreground"
       >
         <ChevronDown size={12} class="shrink-0" />
         Load more ({remaining})
