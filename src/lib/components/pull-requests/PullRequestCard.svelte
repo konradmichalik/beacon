@@ -2,10 +2,14 @@
   import type { UnifiedPullRequest } from '$lib/types';
   import { timeShort } from '$lib/utils/time';
   import { openExternalUrl } from '$lib/utils/open-url';
-  import { clampMenuPosition, menuPositionFromElement } from '$lib/utils/context-menu';
-  import { focusTrap } from '$lib/actions/focusTrap';
+  import {
+    clampMenuPosition,
+    menuPositionFromElement,
+    menuSize,
+    type MenuEntry
+  } from '$lib/utils/context-menu';
   import ListRow from '$lib/components/ui/ListRow.svelte';
-  import { ExternalLink, ClipboardCopy, Star } from '@lucide/svelte';
+  import ContextMenu from '$lib/components/ui/ContextMenu.svelte';
   import { isStarred, toggleStar } from '$lib/stores/starred-prs.svelte';
   import { pullRequestChips, pullRequestRef, repoShortName } from '$lib/utils/row-chips';
 
@@ -31,19 +35,16 @@
   let starred = $derived(isStarred(pullRequest.id));
   let contextMenu: { x: number; y: number } | null = $state(null);
 
+  let menuEntries = $derived<MenuEntry[]>([
+    { label: 'Open', hint: '↵', onclick: openUrl },
+    { label: 'Copy link', onclick: () => navigator.clipboard.writeText(pullRequest.url) },
+    'divider',
+    { label: starred ? 'Unstar' : 'Star', hint: 'S', onclick: () => toggleStar(pullRequest.id) }
+  ]);
+
   function handleContextMenu(event: MouseEvent): void {
     event.preventDefault();
-    contextMenu = clampMenuPosition(event, { width: 160, height: 105 });
-
-    function close() {
-      contextMenu = null;
-      window.removeEventListener('click', close);
-      window.removeEventListener('contextmenu', close);
-    }
-    requestAnimationFrame(() => {
-      window.addEventListener('click', close);
-      window.addEventListener('contextmenu', close);
-    });
+    contextMenu = clampMenuPosition(event, menuSize(menuEntries));
   }
 
   function handleCardKeydown(e: KeyboardEvent): void {
@@ -51,16 +52,7 @@
     if (e.key === 'F10' && e.shiftKey) {
       e.preventDefault();
       const rect = (e.currentTarget as HTMLElement).getBoundingClientRect();
-      contextMenu = menuPositionFromElement(rect, { width: 160, height: 105 });
-      function close() {
-        contextMenu = null;
-        window.removeEventListener('click', close);
-        window.removeEventListener('contextmenu', close);
-      }
-      requestAnimationFrame(() => {
-        window.addEventListener('click', close);
-        window.addEventListener('contextmenu', close);
-      });
+      contextMenu = menuPositionFromElement(rect, menuSize(menuEntries));
     } else if (e.key === 'Enter') {
       e.preventDefault();
       openUrl();
@@ -97,44 +89,10 @@
 </div>
 
 {#if contextMenu}
-  <div
-    class="fixed z-50 min-w-[140px] rounded-md border border-border bg-popover py-1 shadow-lg"
-    style="left: {contextMenu.x}px; top: {contextMenu.y}px;"
-    use:focusTrap
-  >
-    <button
-      type="button"
-      onclick={() => {
-        contextMenu = null;
-        openUrl();
-      }}
-      class="flex w-full items-center gap-2 px-3 py-1.5 text-left text-xs text-foreground hover:bg-secondary"
-    >
-      <ExternalLink size={12} />
-      Open
-    </button>
-    <button
-      type="button"
-      onclick={() => {
-        contextMenu = null;
-        navigator.clipboard.writeText(pullRequest.url);
-      }}
-      class="flex w-full items-center gap-2 px-3 py-1.5 text-left text-xs text-foreground hover:bg-secondary"
-    >
-      <ClipboardCopy size={12} />
-      Copy link
-    </button>
-    <div class="mx-2 my-0.5 border-t border-border"></div>
-    <button
-      type="button"
-      onclick={() => {
-        contextMenu = null;
-        toggleStar(pullRequest.id);
-      }}
-      class="flex w-full items-center gap-2 px-3 py-1.5 text-left text-xs text-foreground hover:bg-secondary"
-    >
-      <Star size={12} class={starred ? 'fill-warning text-warning' : ''} />
-      {starred ? 'Unstar' : 'Star'}
-    </button>
-  </div>
+  <ContextMenu
+    x={contextMenu.x}
+    y={contextMenu.y}
+    entries={menuEntries}
+    onClose={() => (contextMenu = null)}
+  />
 {/if}

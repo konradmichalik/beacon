@@ -11,23 +11,19 @@
   import { snoozeNotification } from '$lib/stores/snooze.svelte';
   import { timeShort } from '$lib/utils/time';
   import { openExternalUrl } from '$lib/utils/open-url';
-  import { clampMenuPosition, menuPositionFromElement } from '$lib/utils/context-menu';
+  import {
+    clampMenuPosition,
+    menuPositionFromElement,
+    menuSize,
+    type MenuEntry
+  } from '$lib/utils/context-menu';
   import { parseGitLabTargetUrl } from '$lib/utils/gitlab-target';
   import { isSyntheticNotification } from '$lib/utils/synthetic-notifications';
   import { getGitLabConfig } from '$lib/stores/connections.svelte';
-  import { focusTrap } from '$lib/actions/focusTrap';
   import ListRow from '$lib/components/ui/ListRow.svelte';
   import { notificationChips, repoShortName } from '$lib/utils/row-chips';
   import { NOTIFICATION_TYPE_LABELS } from '$lib/types';
-  import {
-    ExternalLink,
-    CheckCheck,
-    ClipboardCopy,
-    BellOff,
-    BellMinus,
-    Archive,
-    AlarmClock
-  } from '@lucide/svelte';
+  import ContextMenu from '$lib/components/ui/ContextMenu.svelte';
   import MuteModal from './MuteModal.svelte';
   import SnoozeModal from './SnoozeModal.svelte';
 
@@ -63,49 +59,10 @@
   let showMuteModal = $state(false);
   let showSnoozeModal = $state(false);
 
-  function handleContextMenu(event: MouseEvent): void {
-    event.preventDefault();
-    contextMenu = clampMenuPosition(event, { width: 240, height: 254 });
-
-    function close() {
-      contextMenu = null;
-      window.removeEventListener('click', close);
-      window.removeEventListener('contextmenu', close);
-    }
-    // Close on next click or right-click anywhere
-    requestAnimationFrame(() => {
-      window.addEventListener('click', close);
-      window.addEventListener('contextmenu', close);
-    });
-  }
-
-  function closeContextMenu(action: () => void): void {
-    contextMenu = null;
-    action();
-  }
-
-  function handleContextOpen(): void {
-    closeContextMenu(() => handleClick());
-  }
-
-  function handleContextCopyLink(): void {
-    closeContextMenu(() => navigator.clipboard.writeText(notification.url));
-  }
-
-  function handleContextMarkRead(): void {
-    closeContextMenu(() => {
-      if (!notification.unread) return;
-      dismissing = true;
-      setTimeout(() => markAsRead(notification.id), 350);
-    });
-  }
-
-  function handleContextMute(): void {
-    closeContextMenu(() => (showMuteModal = true));
-  }
-
-  function handleContextSnooze(): void {
-    closeContextMenu(() => (showSnoozeModal = true));
+  function markReadAnimated(): void {
+    if (!notification.unread) return;
+    dismissing = true;
+    setTimeout(() => markAsRead(notification.id), 350);
   }
 
   function handleSnoozeShortcut(): void {
@@ -126,19 +83,6 @@
           parseGitLabTargetUrl(notification.url, getGitLabConfig()?.baseUrl ?? '') !== null))
   );
 
-  function handleContextUnsubscribe(): void {
-    closeContextMenu(() => {
-      unsubscribeFromNotification(notification.id);
-    });
-  }
-
-  function handleContextMarkDone(): void {
-    closeContextMenu(() => {
-      dismissing = true;
-      setTimeout(() => markAsDone(notification.id), 350);
-    });
-  }
-
   let unreadIdsByAuthor = $derived.by(() => {
     const login = notification.author?.login;
     if (!login) return null;
@@ -146,34 +90,69 @@
     return ids.size > 1 ? ids : null;
   });
 
-  function handleContextMarkAllByAuthor(): void {
-    closeContextMenu(() => {
-      if (!unreadIdsByAuthor) return;
-      markAllAsRead(unreadIdsByAuthor);
-    });
+  let menuEntries = $derived.by<MenuEntry[]>(() => {
+    const authorIds = unreadIdsByAuthor;
+    const author = notification.author;
+    const readActions: MenuEntry[] = [
+      ...(notification.unread
+        ? [{ label: 'Mark as read', hint: 'M', onclick: markReadAnimated }]
+        : []),
+      ...(authorIds && author
+        ? [
+            {
+              label: `Mark all from @${author.login} as read (${authorIds.size})`,
+              onclick: () => markAllAsRead(authorIds)
+            }
+          ]
+        : []),
+      ...(notification.source === 'github' && !isSyntheticNotification(notification)
+        ? [
+            {
+              label: 'Mark as done',
+              title: 'Removes the thread from your GitHub notification inbox — cannot be undone',
+              onclick: () => {
+                dismissing = true;
+                setTimeout(() => markAsDone(notification.id), 350);
+              }
+            }
+          ]
+        : [])
+    ];
+    return [
+      { label: 'Open', hint: '↵', onclick: () => handleClick() },
+      { label: 'Copy link', onclick: () => navigator.clipboard.writeText(notification.url) },
+      { label: 'Mute…', onclick: () => (showMuteModal = true) },
+      { label: 'Snooze…', onclick: () => (showSnoozeModal = true) },
+      ...(canUnsubscribe
+        ? [
+            {
+              label: 'Unsubscribe',
+              title:
+                'Tells GitHub/GitLab to stop notifying you about this thread — unlike Mute, this is not just hidden locally',
+              onclick: () => unsubscribeFromNotification(notification.id)
+            }
+          ]
+        : []),
+      ...(readActions.length > 0 ? ['divider' as const, ...readActions] : [])
+    ];
+  });
+
+  function handleContextMenu(event: MouseEvent): void {
+    event.preventDefault();
+    contextMenu = clampMenuPosition(event, menuSize(menuEntries));
   }
 
   function handleCardKeydown(e: KeyboardEvent): void {
     if (e.key === 'F10' && e.shiftKey) {
       e.preventDefault();
       const rect = (e.currentTarget as HTMLElement).getBoundingClientRect();
-      contextMenu = menuPositionFromElement(rect, { width: 240, height: 254 });
-      function close() {
-        contextMenu = null;
-        window.removeEventListener('click', close);
-        window.removeEventListener('contextmenu', close);
-      }
-      requestAnimationFrame(() => {
-        window.addEventListener('click', close);
-        window.addEventListener('contextmenu', close);
-      });
+      contextMenu = menuPositionFromElement(rect, menuSize(menuEntries));
     } else if (e.key === 'Enter') {
       e.preventDefault();
       handleClick();
     } else if (e.key === 'm' && notification.unread) {
       e.preventDefault();
-      dismissing = true;
-      setTimeout(() => markAsRead(notification.id), 350);
+      markReadAnimated();
     } else if (e.key === 'z') {
       e.preventDefault();
       handleSnoozeShortcut();
@@ -214,87 +193,12 @@
 </div>
 
 {#if contextMenu}
-  <div
-    class="fixed z-50 min-w-[140px] rounded-md border border-border bg-popover py-1 shadow-lg"
-    style="left: {contextMenu.x}px; top: {contextMenu.y}px;"
-    use:focusTrap
-  >
-    <button
-      type="button"
-      onclick={handleContextOpen}
-      class="flex w-full items-center gap-2 px-3 py-1.5 text-left text-xs text-foreground hover:bg-secondary"
-    >
-      <ExternalLink size={12} />
-      Open
-    </button>
-    <button
-      type="button"
-      onclick={handleContextCopyLink}
-      class="flex w-full items-center gap-2 px-3 py-1.5 text-left text-xs text-foreground hover:bg-secondary"
-    >
-      <ClipboardCopy size={12} />
-      Copy link
-    </button>
-    <button
-      type="button"
-      onclick={handleContextMute}
-      class="flex w-full items-center gap-2 px-3 py-1.5 text-left text-xs text-foreground hover:bg-secondary"
-    >
-      <BellOff size={12} />
-      Mute…
-    </button>
-    <button
-      type="button"
-      onclick={handleContextSnooze}
-      class="flex w-full items-center gap-2 px-3 py-1.5 text-left text-xs text-foreground hover:bg-secondary"
-    >
-      <AlarmClock size={12} />
-      Snooze…
-    </button>
-    {#if canUnsubscribe}
-      <button
-        type="button"
-        onclick={handleContextUnsubscribe}
-        title="Tells GitHub/GitLab to stop notifying you about this thread — unlike Mute, this is not just hidden locally"
-        class="flex w-full items-center gap-2 px-3 py-1.5 text-left text-xs text-foreground hover:bg-secondary"
-      >
-        <BellMinus size={12} />
-        Unsubscribe
-      </button>
-    {/if}
-    <div class="mx-2 my-0.5 border-t border-border"></div>
-    {#if notification.unread}
-      <button
-        type="button"
-        onclick={handleContextMarkRead}
-        class="flex w-full items-center gap-2 px-3 py-1.5 text-left text-xs text-foreground hover:bg-secondary"
-      >
-        <CheckCheck size={12} />
-        Mark as read
-      </button>
-    {/if}
-    {#if unreadIdsByAuthor && notification.author}
-      <button
-        type="button"
-        onclick={handleContextMarkAllByAuthor}
-        class="flex w-full items-center gap-2 px-3 py-1.5 text-left text-xs text-foreground hover:bg-secondary"
-      >
-        <CheckCheck size={12} />
-        Mark all from @{notification.author.login} as read ({unreadIdsByAuthor.size})
-      </button>
-    {/if}
-    {#if notification.source === 'github' && !isSyntheticNotification(notification)}
-      <button
-        type="button"
-        onclick={handleContextMarkDone}
-        title="Removes the thread from your GitHub notification inbox — cannot be undone"
-        class="flex w-full items-center gap-2 px-3 py-1.5 text-left text-xs text-foreground hover:bg-secondary"
-      >
-        <Archive size={12} />
-        Mark as done
-      </button>
-    {/if}
-  </div>
+  <ContextMenu
+    x={contextMenu.x}
+    y={contextMenu.y}
+    entries={menuEntries}
+    onClose={() => (contextMenu = null)}
+  />
 {/if}
 
 {#if showMuteModal}

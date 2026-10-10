@@ -2,10 +2,14 @@
   import type { UnifiedIssue } from '$lib/types';
   import { timeShort } from '$lib/utils/time';
   import { openExternalUrl } from '$lib/utils/open-url';
-  import { clampMenuPosition, menuPositionFromElement } from '$lib/utils/context-menu';
-  import { focusTrap } from '$lib/actions/focusTrap';
+  import {
+    clampMenuPosition,
+    menuPositionFromElement,
+    menuSize,
+    type MenuEntry
+  } from '$lib/utils/context-menu';
   import ListRow from '$lib/components/ui/ListRow.svelte';
-  import { ExternalLink, ClipboardCopy } from '@lucide/svelte';
+  import ContextMenu from '$lib/components/ui/ContextMenu.svelte';
   import { issueRow, repoShortName } from '$lib/utils/row-chips';
 
   let { issue }: { issue: UnifiedIssue } = $props();
@@ -20,29 +24,21 @@
 
   let contextMenu: { x: number; y: number } | null = $state(null);
 
-  function openContextMenu(position: { x: number; y: number }): void {
-    contextMenu = position;
-    function close() {
-      contextMenu = null;
-      window.removeEventListener('click', close);
-      window.removeEventListener('contextmenu', close);
-    }
-    requestAnimationFrame(() => {
-      window.addEventListener('click', close);
-      window.addEventListener('contextmenu', close);
-    });
-  }
+  const menuEntries: MenuEntry[] = [
+    { label: 'Open', hint: '↵', onclick: openUrl },
+    { label: 'Copy link', onclick: () => navigator.clipboard.writeText(issue.url) }
+  ];
 
   function handleContextMenu(event: MouseEvent): void {
     event.preventDefault();
-    openContextMenu(clampMenuPosition(event, { width: 160, height: 70 }));
+    contextMenu = clampMenuPosition(event, menuSize(menuEntries));
   }
 
   function handleCardKeydown(e: KeyboardEvent): void {
     if (e.key === 'F10' && e.shiftKey) {
       e.preventDefault();
       const rect = (e.currentTarget as HTMLElement).getBoundingClientRect();
-      openContextMenu(menuPositionFromElement(rect, { width: 160, height: 70 }));
+      contextMenu = menuPositionFromElement(rect, menuSize(menuEntries));
     } else if (e.key === 'Enter') {
       e.preventDefault();
       openUrl();
@@ -78,32 +74,10 @@
 </div>
 
 {#if contextMenu}
-  <div
-    class="fixed z-50 min-w-[140px] rounded-md border border-border bg-popover py-1 shadow-lg"
-    style="left: {contextMenu.x}px; top: {contextMenu.y}px;"
-    use:focusTrap
-  >
-    <button
-      type="button"
-      onclick={() => {
-        contextMenu = null;
-        openUrl();
-      }}
-      class="flex w-full items-center gap-2 px-3 py-1.5 text-left text-xs text-foreground hover:bg-secondary"
-    >
-      <ExternalLink size={12} />
-      Open
-    </button>
-    <button
-      type="button"
-      onclick={() => {
-        contextMenu = null;
-        navigator.clipboard.writeText(issue.url);
-      }}
-      class="flex w-full items-center gap-2 px-3 py-1.5 text-left text-xs text-foreground hover:bg-secondary"
-    >
-      <ClipboardCopy size={12} />
-      Copy link
-    </button>
-  </div>
+  <ContextMenu
+    x={contextMenu.x}
+    y={contextMenu.y}
+    entries={menuEntries}
+    onClose={() => (contextMenu = null)}
+  />
 {/if}

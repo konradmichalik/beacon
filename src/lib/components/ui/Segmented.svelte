@@ -15,6 +15,7 @@
     onChange,
     label,
     loading = false,
+    fill = false,
     class: className = ''
   }: {
     options: readonly SegmentOption[];
@@ -22,6 +23,7 @@
     onChange: (value: T) => void;
     label: string;
     loading?: boolean;
+    fill?: boolean;
     class?: string;
   } = $props();
 
@@ -31,7 +33,9 @@
 <div
   role="group"
   aria-label={label}
-  class="relative inline-grid auto-cols-fr grid-flow-col rounded-lg bg-muted p-0.5 {className}"
+  class="relative grid-flow-col rounded-lg bg-muted p-0.5 {fill
+    ? 'grid w-full auto-cols-[minmax(0,1fr)]'
+    : 'inline-grid auto-cols-fr'} {className}"
 >
   <span
     aria-hidden="true"
@@ -50,7 +54,9 @@
       aria-label={option.aria}
       title={option.aria}
       onclick={() => onChange(option.value)}
-      class="relative z-10 flex h-6 min-w-12 items-center justify-center gap-1.5 rounded-md px-2.5 text-[11.5px] transition-colors {selected
+      class="relative z-10 flex h-6 {fill
+        ? 'min-w-0'
+        : 'min-w-12'} items-center justify-center gap-1.5 rounded-md px-2.5 text-[11.5px] transition-colors {selected
         ? 'font-semibold text-foreground'
         : 'font-medium text-muted-foreground hover:text-foreground'}"
     >
@@ -58,7 +64,7 @@
         <Icon size={12} />
       {/if}
       {#if option.label}
-        <span>{option.label}</span>
+        <span class="truncate">{option.label}</span>
       {/if}
       {#if loading && option.count !== undefined}
         <span class="inline-block h-3 w-4 animate-pulse rounded-full bg-border-strong"></span>
