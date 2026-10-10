@@ -35,13 +35,12 @@
   function handleKeydown(e: KeyboardEvent): void {
     if (e.key !== 'ArrowLeft' && e.key !== 'ArrowRight') return;
     e.preventDefault();
+    const tablist = e.currentTarget as HTMLElement;
     const index = tabs.findIndex((tab) => tab.value === activeTab);
     const step = e.key === 'ArrowRight' ? 1 : -1;
     activeTab = tabs[(index + step + tabs.length) % tabs.length].value;
     requestAnimationFrame(() => {
-      (e.currentTarget as HTMLElement)
-        .querySelector<HTMLElement>('[aria-selected="true"]')
-        ?.focus();
+      tablist.querySelector<HTMLElement>('[aria-selected="true"]')?.focus();
     });
   }
 </script>
@@ -59,6 +58,8 @@
     <button
       type="button"
       role="tab"
+      id="settings-tab-{tab.value}"
+      aria-controls="settings-panel"
       aria-selected={selected}
       tabindex={selected ? 0 : -1}
       onclick={() => (activeTab = tab.value)}
@@ -72,7 +73,12 @@
   {/each}
 </div>
 
-<div class="px-5 pb-5 pt-4">
+<div
+  id="settings-panel"
+  role="tabpanel"
+  aria-labelledby="settings-tab-{activeTab}"
+  class="px-5 pb-5 pt-4"
+>
   {#if activeTab === 'connections'}
     <div class="space-y-3">
       <GitHubConnectionForm />

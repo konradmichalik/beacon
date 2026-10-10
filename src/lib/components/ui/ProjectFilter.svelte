@@ -1,6 +1,6 @@
 <script lang="ts">
   import type { NotificationSource } from '$lib/types';
-  import { repoShortName } from '$lib/utils/row-chips';
+  import { repoShortName } from '$lib/utils/repository';
   import GitHubIcon from '$lib/components/icons/GitHubIcon.svelte';
   import GitLabIcon from '$lib/components/icons/GitLabIcon.svelte';
   import CheckRow from './CheckRow.svelte';

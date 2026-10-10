@@ -21,7 +21,8 @@
   import { isSyntheticNotification } from '$lib/utils/synthetic-notifications';
   import { getGitLabConfig } from '$lib/stores/connections.svelte';
   import ListRow from '$lib/components/ui/ListRow.svelte';
-  import { notificationChips, repoShortName } from '$lib/utils/row-chips';
+  import { notificationChips } from '$lib/utils/row-chips';
+  import { repoShortName } from '$lib/utils/repository';
   import { NOTIFICATION_TYPE_LABELS } from '$lib/types';
   import ContextMenu from '$lib/components/ui/ContextMenu.svelte';
   import MuteModal from './MuteModal.svelte';

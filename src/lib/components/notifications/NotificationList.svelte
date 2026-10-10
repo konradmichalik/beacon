@@ -20,7 +20,7 @@
   import { slide } from 'svelte/transition';
   import SectionHeader from '$lib/components/ui/SectionHeader.svelte';
   import ListSkeleton from '$lib/components/ui/ListSkeleton.svelte';
-  import { motionMs, rise, swipe } from '$lib/utils/motion';
+  import { FLIP_MS, motionMs, rise, swipe } from '$lib/utils/motion';
   import type { UnifiedNotification } from '$lib/types';
   import { roving } from '$lib/actions/roving';
   import { formatWakeTime } from '$lib/utils/time';
@@ -144,7 +144,11 @@
             icon={group.source === 'github' ? GitHubIcon : GitLabIcon}
           />
           {#each group.notifications as notification, i (notification.id)}
-            <div in:rise|global={{ index: i }} out:swipe animate:flip={{ duration: motionMs(280) }}>
+            <div
+              in:rise|global={{ index: i }}
+              out:swipe
+              animate:flip={{ duration: motionMs(FLIP_MS) }}
+            >
               <NotificationCard {notification} />
             </div>
           {/each}
@@ -153,7 +157,11 @@
     {:else}
       <div use:roving>
         {#each unreadItems as notification, i (notification.id)}
-          <div in:rise|global={{ index: i }} out:swipe animate:flip={{ duration: motionMs(280) }}>
+          <div
+            in:rise|global={{ index: i }}
+            out:swipe
+            animate:flip={{ duration: motionMs(FLIP_MS) }}
+          >
             <NotificationCard {notification} />
           </div>
         {/each}
@@ -182,7 +190,7 @@
       {#if showRead}
         <div use:roving transition:slide={{ duration: motionMs(220) }}>
           {#each readItems as notification (notification.id)}
-            <div animate:flip={{ duration: motionMs(280) }}>
+            <div animate:flip={{ duration: motionMs(FLIP_MS) }}>
               <NotificationCard {notification} />
             </div>
           {/each}

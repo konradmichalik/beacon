@@ -79,7 +79,7 @@
     <div class="mt-3 flex flex-col gap-2.5">
       {@render children()}
       {#if error}
-        <p class="flex items-center gap-1.5 text-xs text-destructive">
+        <p role="alert" class="flex items-center gap-1.5 text-xs text-destructive">
           <X size={12} class="shrink-0" />
           {error}
         </p>
@@ -87,7 +87,8 @@
       <div class="flex justify-end">
         <Button variant="primary" onclick={onConnect} disabled={!canSubmit || isSubmitting}>
           {#if isSubmitting}
-            <Loader2 size={12} class="animate-spin" />
+            <Loader2 size={12} class="animate-spin" aria-hidden="true" />
+            <span class="sr-only">Connecting</span>
           {:else}
             Connect
           {/if}

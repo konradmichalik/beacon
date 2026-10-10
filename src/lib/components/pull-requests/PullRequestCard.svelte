@@ -11,7 +11,8 @@
   import ListRow from '$lib/components/ui/ListRow.svelte';
   import ContextMenu from '$lib/components/ui/ContextMenu.svelte';
   import { isStarred, toggleStar } from '$lib/stores/starred-prs.svelte';
-  import { pullRequestChips, pullRequestRef, repoShortName } from '$lib/utils/row-chips';
+  import { pullRequestChips, pullRequestRef } from '$lib/utils/row-chips';
+  import { repoShortName } from '$lib/utils/repository';
 
   let { pullRequest }: { pullRequest: UnifiedPullRequest } = $props();
 

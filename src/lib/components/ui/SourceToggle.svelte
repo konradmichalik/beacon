@@ -1,4 +1,5 @@
 <script lang="ts">
+  import CountSkeleton from './CountSkeleton.svelte';
   import { isServiceConnected } from '$lib/stores/connections.svelte';
   import GitHubIcon from '$lib/components/icons/GitHubIcon.svelte';
   import GitLabIcon from '$lib/components/icons/GitLabIcon.svelte';
@@ -61,14 +62,14 @@
     {#if githubConnected}
       <GitHubIcon size={12} />
       {#if initialLoading}
-        <span class="inline-block h-3 w-4 animate-pulse rounded-full bg-border-strong"></span>
+        <CountSkeleton />
       {:else}
         <span class="tabular-nums text-subtlest">{githubCount}</span>
       {/if}
     {:else}
       <GitLabIcon size={12} />
       {#if initialLoading}
-        <span class="inline-block h-3 w-4 animate-pulse rounded-full bg-border-strong"></span>
+        <CountSkeleton />
       {:else}
         <span class="tabular-nums text-subtlest">{gitlabCount}</span>
       {/if}

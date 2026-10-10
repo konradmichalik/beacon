@@ -5,11 +5,12 @@
   import { getMuteRules, removeMuteRule } from '$lib/stores/mute-rules.svelte';
   import { NOTIFICATION_TYPE_LABELS } from '$lib/types';
   import { clearLog } from '$lib/utils/logger';
-  import { repoShortName } from '$lib/utils/row-chips';
+  import { repoShortName } from '$lib/utils/repository';
   import { isTauri } from '$lib/utils/storage';
   import Button from '$lib/components/ui/Button.svelte';
   import IconButton from '$lib/components/ui/IconButton.svelte';
   import Segmented from '$lib/components/ui/Segmented.svelte';
+  import { seg } from '$lib/utils/segments';
   import Switch from '$lib/components/ui/Switch.svelte';
   import SettingsGroup from './SettingsGroup.svelte';
   import SettingsRow from './SettingsRow.svelte';
@@ -21,8 +22,6 @@
     const { invoke } = await import('@tauri-apps/api/core');
     await invoke(command);
   }
-
-  const seg = <T extends string>(value: T, label: string) => ({ value, aria: label, label });
 
   const intervalOptions = [
     seg('60', '1 min'),

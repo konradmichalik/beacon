@@ -4,7 +4,7 @@
   import { addMuteRule, isNotificationMuted } from '$lib/stores/mute-rules.svelte';
   import { getNotifications } from '$lib/stores/notifications.svelte';
   import { countMuteMatches, type MuteCriteria } from '$lib/utils/mute-match';
-  import { repoShortName } from '$lib/utils/row-chips';
+  import { repoShortName } from '$lib/utils/repository';
   import { untrack } from 'svelte';
   import { ListFilter } from '@lucide/svelte';
   import Dialog from '$lib/components/ui/Dialog.svelte';

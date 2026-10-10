@@ -16,7 +16,7 @@
   import { slide } from 'svelte/transition';
   import SectionHeader from '$lib/components/ui/SectionHeader.svelte';
   import ListSkeleton from '$lib/components/ui/ListSkeleton.svelte';
-  import { motionMs, rise, swipe } from '$lib/utils/motion';
+  import { FLIP_MS, motionMs, rise, swipe } from '$lib/utils/motion';
   import type {
     NotificationSource,
     PRRoleFilter,
@@ -184,7 +184,11 @@
       {#if !section.label || !collapsed[section.key]}
         <div use:roving transition:slide={{ duration: motionMs(220) }}>
           {#each section.items as pr, i (pr.id)}
-            <div in:rise|global={{ index: i }} out:swipe animate:flip={{ duration: motionMs(280) }}>
+            <div
+              in:rise|global={{ index: i }}
+              out:swipe
+              animate:flip={{ duration: motionMs(FLIP_MS) }}
+            >
               <PullRequestCard pullRequest={pr} />
             </div>
           {/each}

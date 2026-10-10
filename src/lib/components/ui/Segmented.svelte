@@ -1,4 +1,5 @@
 <script lang="ts" generics="T extends string">
+  import CountSkeleton from './CountSkeleton.svelte';
   import type { Component } from 'svelte';
 
   interface SegmentOption {
@@ -67,7 +68,7 @@
         <span class="truncate">{option.label}</span>
       {/if}
       {#if loading && option.count !== undefined}
-        <span class="inline-block h-3 w-4 animate-pulse rounded-full bg-border-strong"></span>
+        <CountSkeleton />
       {:else if option.count !== undefined}
         <span class="tabular-nums text-subtlest">{option.count}</span>
       {/if}

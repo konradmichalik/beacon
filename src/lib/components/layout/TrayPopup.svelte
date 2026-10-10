@@ -119,6 +119,8 @@
   function handleShortcuts(e: KeyboardEvent): void {
     if (showSettings) return;
     if (e.ctrlKey || e.altKey || e.metaKey) return;
+    // A dialog owns the keyboard, its own shortcuts must not also switch tabs.
+    if (document.querySelector('[role="dialog"][aria-modal="true"]')) return;
 
     const tag = (e.target as HTMLElement).tagName;
     if (tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT') return;
