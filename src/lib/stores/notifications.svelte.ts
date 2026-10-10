@@ -9,6 +9,7 @@ import { demoNotifications } from '$lib/utils/demo-data';
 import { playNotificationSound } from '$lib/services/notification-sound';
 import { showToast } from '$lib/stores/toast.svelte';
 import { playLogo } from '$lib/stores/logo-motion.svelte';
+import { pulseTrayIcon } from '$lib/utils/tray-pulse';
 import { parseGitLabTargetUrl } from '$lib/utils/gitlab-target';
 import { filterByQuery } from '$lib/utils/filter-tokens';
 import {
@@ -615,8 +616,9 @@ export function updateFromBackend(items: UnifiedNotification[]): void {
   // Detect genuinely new unread notifications for sound playback
   // eslint-disable-next-line svelte/prefer-svelte-reactivity -- local lookup set, not state
   const currentUnreadIds = new Set(effectiveItems.filter((n) => n.unread).map((n) => n.id));
+  let hasNew = false;
   if (!isFirstLoad) {
-    const hasNew = [...currentUnreadIds].some((id) => !knownUnreadIds.has(id));
+    hasNew = [...currentUnreadIds].some((id) => !knownUnreadIds.has(id));
     if (hasNew) {
       playLogo('pulse');
       if (settingsState.notifyMode !== 'disabled') {
@@ -635,6 +637,8 @@ export function updateFromBackend(items: UnifiedNotification[]): void {
   // Update badge accounting for locally-read and muted items
   const unreadCount = countBadgeUnread(notifications);
   updateTrayBadge(unreadCount);
+  // After the badge, so the pulse starts from the icon the backend just drew.
+  if (hasNew) pulseTrayIcon();
 }
 
 export async function setupNotificationListener(): Promise<() => void> {
