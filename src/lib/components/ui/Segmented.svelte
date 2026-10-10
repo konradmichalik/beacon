@@ -1,4 +1,5 @@
 <script lang="ts" generics="T extends string">
+  import { bump } from '$lib/actions/bump';
   import CountSkeleton from './CountSkeleton.svelte';
   import type { Component } from 'svelte';
 
@@ -70,7 +71,7 @@
       {#if loading && option.count !== undefined}
         <CountSkeleton />
       {:else if option.count !== undefined}
-        <span class="tabular-nums text-subtlest">{option.count}</span>
+        <span use:bump={option.count} class="tabular-nums text-subtlest">{option.count}</span>
       {/if}
     </button>
   {/each}
