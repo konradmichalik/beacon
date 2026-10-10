@@ -22,13 +22,13 @@ describe('timeShort', () => {
   it('returns an English short date for timestamps older than a week', () => {
     vi.useFakeTimers();
     vi.setSystemTime(new Date('2026-03-17T12:00:00Z'));
-    expect(timeShort('2026-03-01T12:00:00Z')).toBe('1 Mar');
+    expect(timeShort(new Date(2026, 2, 1, 12).toISOString())).toBe('1 Mar');
   });
 
   it('includes the year for timestamps from a different year', () => {
     vi.useFakeTimers();
     vi.setSystemTime(new Date('2026-03-17T12:00:00Z'));
-    expect(timeShort('2025-06-15T12:00:00Z')).toBe('15 Jun 2025');
+    expect(timeShort(new Date(2025, 5, 15, 12).toISOString())).toBe('15 Jun 2025');
   });
 });
 
