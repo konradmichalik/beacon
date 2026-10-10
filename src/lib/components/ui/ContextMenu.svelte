@@ -1,6 +1,7 @@
 <script lang="ts">
   import { onMount } from 'svelte';
   import { pop } from '$lib/utils/motion';
+  import Kbd from './Kbd.svelte';
   import { focusTrap } from '$lib/actions/focusTrap';
   import { MENU_WIDTH, type MenuEntry } from '$lib/utils/context-menu';
 
@@ -55,11 +56,7 @@
       >
         <span class="truncate">{entry.label}</span>
         {#if entry.hint}
-          <kbd
-            class="inline-flex h-[18px] min-w-[18px] items-center justify-center rounded border border-border-strong px-1 font-sans text-[10.5px] text-subtlest"
-          >
-            {entry.hint}
-          </kbd>
+          <Kbd>{entry.hint}</Kbd>
         {/if}
       </button>
     {/if}
