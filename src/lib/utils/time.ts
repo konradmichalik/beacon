@@ -1,26 +1,23 @@
-export function timeAgo(dateString: string): string {
-  const now = Date.now();
-  const date = new Date(dateString).getTime();
-  const seconds = Math.floor((now - date) / 1000);
+export function timeShort(dateString: string): string {
+  const seconds = Math.floor((Date.now() - new Date(dateString).getTime()) / 1000);
 
-  if (seconds < 60) return 'just now';
+  if (seconds < 60) return 'now';
 
   const minutes = Math.floor(seconds / 60);
-  if (minutes < 60) return `${minutes}m ago`;
+  if (minutes < 60) return `${minutes}m`;
 
   const hours = Math.floor(minutes / 60);
-  if (hours < 24) return `${hours}h ago`;
+  if (hours < 24) return `${hours}h`;
 
   const days = Math.floor(hours / 24);
-  if (days < 7) return `${days}d ago`;
+  if (days < 7) return `${days}d`;
 
-  // Older than a week: show date, include year if different
   const d = new Date(dateString);
   const options: Intl.DateTimeFormatOptions = { day: 'numeric', month: 'short' };
   if (d.getFullYear() !== new Date().getFullYear()) {
     options.year = 'numeric';
   }
-  return d.toLocaleDateString('de-DE', options);
+  return d.toLocaleDateString('en-GB', options);
 }
 
 export function formatWakeTime(dateString: string): string {

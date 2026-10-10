@@ -137,6 +137,7 @@ html[data-color-mode='dark'] {
   --color-ring: var(--ring);
 
   --color-border-strong: var(--ds-border-strong);
+  --color-subtlest: var(--ds-text-subtlest);
 
   /* Semantic colors: text tone and its chip background */
   --color-success-text: var(--ds-text-success);
