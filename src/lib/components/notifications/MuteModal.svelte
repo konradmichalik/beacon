@@ -3,6 +3,7 @@
   import { NOTIFICATION_TYPE_LABELS } from '$lib/types';
   import { addMuteRule, isNotificationMuted } from '$lib/stores/mute-rules.svelte';
   import { getNotifications } from '$lib/stores/notifications.svelte';
+  import { showToast } from '$lib/stores/toast.svelte';
   import { countMuteMatches, type MuteCriteria } from '$lib/utils/mute-match';
   import { repoShortName } from '$lib/utils/repository';
   import { untrack } from 'svelte';
@@ -47,9 +48,19 @@
       : 0
   );
 
+  let saving = $state(false);
+
   async function handleConfirm(): Promise<void> {
-    await addMuteRule(criteria);
-    onClose();
+    if (!canConfirm || saving) return;
+    saving = true;
+    try {
+      await addMuteRule(criteria);
+      onClose();
+    } catch {
+      showToast('Could not save the mute rule');
+    } finally {
+      saving = false;
+    }
   }
 
   const rowClass = 'flex h-8 items-center gap-2 border-b border-border text-[12.5px]';
@@ -133,6 +144,6 @@
 
   {#snippet footer()}
     <Button onclick={onClose}>Cancel</Button>
-    <Button variant="primary" onclick={handleConfirm} disabled={!canConfirm}>Mute</Button>
+    <Button variant="primary" onclick={handleConfirm} disabled={!canConfirm || saving}>Mute</Button>
   {/snippet}
 </Dialog>
