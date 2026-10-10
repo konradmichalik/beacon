@@ -2,6 +2,7 @@
   import { Settings, RefreshCw, Power } from '@lucide/svelte';
   import BeaconLogo from '$lib/components/icons/BeaconLogo.svelte';
   import IconButton from '$lib/components/ui/IconButton.svelte';
+  import { bump } from '$lib/actions/bump';
   import { logoMotion } from '$lib/stores/logo-motion.svelte';
   import {
     getIsLoading,
@@ -141,6 +142,7 @@
         {tab.label}
         {#if count > 0}
           <span
+            use:bump={count}
             class="inline-flex h-4 min-w-[18px] items-center justify-center rounded-full px-[5px] text-[10.5px] font-bold tabular-nums transition-colors {isActive
               ? 'bg-primary text-primary-foreground'
               : 'bg-muted text-muted-foreground'}"

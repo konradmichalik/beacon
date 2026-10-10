@@ -1,6 +1,7 @@
 <script lang="ts">
   import type { Component } from 'svelte';
   import { ChevronRight } from '@lucide/svelte';
+  import { bump } from '$lib/actions/bump';
 
   let {
     label,
@@ -39,6 +40,7 @@
   {/if}
   <span class="min-w-0 truncate">{label}</span>
   <span
+    use:bump={count}
     class="ml-auto inline-flex h-4 min-w-[18px] shrink-0 items-center justify-center rounded-full bg-muted px-[5px] text-[10.5px] font-semibold tabular-nums"
   >
     {count}

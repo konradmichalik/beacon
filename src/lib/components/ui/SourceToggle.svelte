@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { bump } from '$lib/actions/bump';
   import CountSkeleton from './CountSkeleton.svelte';
   import { isServiceConnected } from '$lib/stores/connections.svelte';
   import GitHubIcon from '$lib/components/icons/GitHubIcon.svelte';
@@ -64,14 +65,14 @@
       {#if initialLoading}
         <CountSkeleton />
       {:else}
-        <span class="tabular-nums text-subtlest">{githubCount}</span>
+        <span use:bump={githubCount} class="tabular-nums text-subtlest">{githubCount}</span>
       {/if}
     {:else}
       <GitLabIcon size={12} />
       {#if initialLoading}
         <CountSkeleton />
       {:else}
-        <span class="tabular-nums text-subtlest">{gitlabCount}</span>
+        <span use:bump={gitlabCount} class="tabular-nums text-subtlest">{gitlabCount}</span>
       {/if}
     {/if}
   </div>
