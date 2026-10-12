@@ -51,19 +51,6 @@ export function getUniqueIssueProjectsWithSource(): readonly {
     .sort((a, b) => a.repository.localeCompare(b.repository));
 }
 
-export function getIssueCountByRole(
-  sourceFilter: NotificationSource | 'all'
-): ReadonlyMap<IssueRoleFilter, number> {
-  const filtered =
-    sourceFilter === 'all' ? issues : issues.filter((issue) => issue.source === sourceFilter);
-  // eslint-disable-next-line svelte/prefer-svelte-reactivity -- local counting map, not state
-  const counts = new Map<IssueRoleFilter, number>();
-  for (const issue of filtered) {
-    counts.set(issue.role, (counts.get(issue.role) ?? 0) + 1);
-  }
-  return counts;
-}
-
 export function getIssueCountByProject(
   sourceFilter: NotificationSource | 'all'
 ): ReadonlyMap<string, number> {

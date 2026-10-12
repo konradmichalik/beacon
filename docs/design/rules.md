@@ -37,12 +37,13 @@ All colours come from the `--ds-*` tokens in `src/app.css`, with a light and a d
 | `--ds-border-strong` (new)                          | `#2e3440` at 18 %     | `#d8dee9` at 18 %     | Secondary buttons, label pills, `kbd`            |
 | `--ds-border-input`                                 | `#858d9e`             | `#7a8294`             | Text input outlines                              |
 | `--ds-blanket`                                      | `#2e3440` at 28 %     | black at 45 %         | Scrim behind dialogs                             |
+| `--ds-brand-flash`                                  | `#6fb3c9`             | `#d8f1f7`             | Colour the logo arcs flash in                    |
 
 - **An outline that identifies a control reaches 3:1** against both sides (WCAG 1.4.11). Text inputs use `--ds-border-input` (3.3:1 on white, 3.7:1 on the dark field). Outlines that only decorate, because a label or the pill text already identifies the element, may use `--ds-border-strong`.
 - Light values above replace the pastel Nord values (`#7b9e64`, `#d08770`, `#b48ead`, `#bf616a`, `#5e81ac`), which reach only 2.4 to 3.4:1 as chip text.
 - **Source colours never appear in data.** GitHub and GitLab are told apart by their icon, not by blue and orange.
 - **Avatar fallbacks** use the dark token values (`#4a6a91`, `#4a6e35`, `#7f5a79`, `#9a5236`, `#a3434d`, `#5c6578`) with white initials. Pastel Nord fills fail with white text.
-- The toast is inverted: `--ds-text` as background, `--ds-text-inverse` as text, `#88c0d0` (light) or `#4a6a91` (dark) for its action.
+- The toast is inverted and has its own tokens: `--ds-toast-background` (`#2e3440` light, `#e5e9f0` dark), `--ds-toast-text` (`#eceff4` light, `#2e3440` dark) and `--ds-toast-accent` for its action (`#a3d4e0` light, `#3a5a80` dark, both 4.5:1 or better on the action's fill).
 - Status colours differ from text in lightness, not only in hue, and never carry information alone: every coloured chip has an icon and a word.
 
 ## Typography
@@ -133,12 +134,12 @@ One row component for notifications, pull requests and issues.
 
 ## Overlays
 
-| Overlay               | Rules                                                                                                                                                                                                                                         |
-| --------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Context menu          | Opens at the pointer, clamped inside the popup. Items with a shortcut show it as `kbd` on the right. A divider separates read actions from the rest                                                                                           |
-| Filter popover        | Single choices are segmented controls, multiple choices are checkboxes with visible labels. Footer with "Reset all filters" and the number shown                                                                                              |
-| Dialog (Snooze, Mute) | Title, one line of context (the item's title, or what the rule does), the choices, Cancel and at most one primary button. Snooze options show their time and a number key. Mute shows how many items the rule would hide before it is created |
-| Toast                 | Bottom centre, above the Read footer, inverted colours, 3.6s. Bulk actions (mark all as read) carry Undo; single actions do not                                                                                                               |
+| Overlay               | Rules                                                                                                                                                                                                                                                                        |
+| --------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Context menu          | Opens at the pointer, clamped inside the popup. Items with a shortcut show it as `kbd` on the right, and only for a key that really triggers that item. A divider separates read actions from the rest                                                                       |
+| Filter popover        | Single choices are segmented controls without counts. Multiple choices are toggle chips with counts (Type, Status) or checkboxes with visible labels (Project, Author). The footer with "Reset all filters" appears only while a filter is active                            |
+| Dialog (Snooze, Mute) | Title, one line of context (the item's title, or what the rule does), the choices, Cancel and at most one primary button. Snooze options show their time and a number key. Mute shows how many items the rule would hide before it is created                                |
+| Toast                 | Bottom centre, above the Read footer, inverted colours, 3.6s. Bulk actions (mark all as read) carry Undo; single actions do not. Undo is only honest because the server hears about a bulk action after the 3.6s window, GitHub and GitLab cannot mark a thread unread again |
 
 - Menus and popovers dismiss on outside click and Escape. Dialogs trap focus, close on Escape and return focus to the row.
 - Only one overlay at a time. Opening a dialog from the context menu replaces the menu.
@@ -165,31 +166,33 @@ One row component for notifications, pull requests and issues.
 
 ## Motion
 
-Motion is added only inside `@media (prefers-reduced-motion: no-preference)`, or behind a check of `matchMedia('(prefers-reduced-motion: reduce)')` in Svelte transitions. Start from no motion and opt in. Under Reduce Motion every change shows its end state at once.
+Motion is opt-in for people who allow it. One rule in `src/app.css` cuts every CSS animation and transition to zero under `prefers-reduced-motion: reduce`, and Svelte transitions get their durations through `motionMs`, which returns 0 under Reduce Motion. Start from no motion and opt in: a new animation must work with both mechanisms. Under Reduce Motion every change shows its end state at once.
 
 | Token        | Value                           |
 | ------------ | ------------------------------- |
-| `--dur-fast` | 120ms                           |
 | `--dur-base` | 200ms                           |
 | `--dur-slow` | 380ms                           |
 | `--ease-out` | `cubic-bezier(0.16, 1, 0.3, 1)` |
-| `--ease-std` | `cubic-bezier(0.2, 0, 0, 1)`    |
 
-| Where                  | What                                                                                           | Timing                          |
-| ---------------------- | ---------------------------------------------------------------------------------------------- | ------------------------------- |
-| Popup opens            | Fade, 8px from above, scale 0.98 to 1, origin top centre. Starts on window focus, not on mount | 180 / 380ms                     |
-| List appears           | Rows 6px up and fade, staggered, at most 7 staggered                                           | 30ms apart, 360ms               |
-| Tab change             | Underline slides; the list enters 16px from the side of the change                             | 340ms                           |
-| Source change          | Segment thumb slides, list fades in                                                            | 300ms                           |
-| Mark as read           | Row moves 36px right and fades, then its height closes; rows below follow with `animate:flip`  | 200ms, height 280ms after 150ms |
-| Mark all as read       | The same, cascading                                                                            | 45ms apart                      |
-| New item after a poll  | Slides in at the top, `--ds-background-selected` fades out, the tab count ticks                | 280ms, fade 1.4s                |
-| Refresh                | One full turn per click; it keeps spinning only while the request takes longer than 800ms      | 800ms                           |
-| Section open and close | Chevron turns, content slides                                                                  | 220 / 480ms                     |
-| Menu, popover, dialog  | Scale 0.96 and 4 to 6px, origin at the pointer or the button; scrim fades                      | 220ms in, 140ms out             |
-| Toast                  | Rises 14px and fades                                                                           | 380ms                           |
-| All clear              | Circle scales to 1, confetti bursts out of the popper (`burst` keyframes)                      | 520ms, 100 to 260ms delays      |
-| Switch                 | Knob slides, track colour changes                                                              | 260 / 200ms                     |
+| Where                    | What                                                                                                                                                                                                        | Timing                                      |
+| ------------------------ | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------- |
+| Popup opens              | Fade, 8px from above, scale 0.98 to 1, origin top centre. Starts on the `popup-shown` event that `show_and_focus` emits in Rust, not on mount                                                               | 180 / 380ms                                 |
+| List appears             | Rows 6px up and fade, staggered, at most 7 staggered                                                                                                                                                        | 30ms apart, 360ms                           |
+| Tab change               | Underline slides; the list enters 16px from the side of the change                                                                                                                                          | 340ms                                       |
+| Source change            | Segment thumb slides, list fades in                                                                                                                                                                         | 300ms                                       |
+| Mark as read             | Row moves 36px right and fades, then its height closes; rows below follow with `animate:flip`                                                                                                               | 200ms, height 280ms after 150ms             |
+| Mark all as read         | The same, cascading                                                                                                                                                                                         | 45ms apart                                  |
+| New item after a poll    | Slides in at the top, `--ds-background-selected` fades out, the tab count ticks                                                                                                                             | 280ms, fade 1.4s                            |
+| Refresh                  | One full turn per click; it keeps spinning only while the request takes longer than 800ms                                                                                                                   | 800ms                                       |
+| Section open and close   | Chevron turns, content slides                                                                                                                                                                               | 220 / 480ms                                 |
+| Menu, popover, dialog    | Scale 0.96 and 4 to 6px, origin at the pointer or the button; scrim fades                                                                                                                                   | 220ms in, 140ms out                         |
+| Toast                    | Rises 14px and fades                                                                                                                                                                                        | 380ms                                       |
+| All clear                | Circle scales to 1, confetti bursts out of the popper (`burst` keyframes)                                                                                                                                   | 520ms, 100 to 260ms delays                  |
+| Logo, popup opens        | Dot grows, then the inner and the outer arcs scale out from the centre                                                                                                                                      | 260ms dot, 480ms arcs, 150 and 290ms delays |
+| Logo, new items          | The dot swells and the arcs flash in `--ds-brand-flash`, inner arcs first, once                                                                                                                             | 560 to 640ms, arcs 80 and 230ms delay       |
+| Count changes            | The count pill swells once when the number it shows changes (tabs, source control, section headers), not on first render                                                                                    | 180ms, scale 1 to 1.25 and back             |
+| Menu bar icon, new items | A bright ring travels from the dot to the outer arcs while the rest of the icon dims, then the icon is drawn again. Also in the monochrome mode, it works on the alpha channel. Skipped under Reduce Motion | 5 frames of 80ms                            |
+| Switch                   | Knob slides, track colour changes                                                                                                                                                                           | 260 / 200ms                                 |
 
 - Animate `transform` and `opacity` only, plus height when a row or section closes.
 - **The store updates first.** Never delay a store change with `setTimeout` to let an animation finish; use `out:` transitions and `animate:flip`.
@@ -200,7 +203,7 @@ Motion is added only inside `@media (prefers-reduced-motion: no-preference)`, or
 
 - Text contrast at least 4.5:1, icons and large text at least 3:1, in light and dark. Check new colours with a contrast tool before adding a token.
 - Every icon-only button has an `aria-label`. Decorative icons are `aria-hidden`.
-- Tabs report `aria-current`, segments and toggles `aria-pressed`, switches `role="switch"` with `aria-checked`, sections `aria-expanded`.
+- Tabs use `role="tab"` with `aria-selected` and arrow-key navigation, segments and toggles `aria-pressed`, switches `role="switch"` with `aria-checked`, sections `aria-expanded`.
 - Every `<button>` has an explicit `type`.
 - Focus is visible on every control. Rows keep the inset focus bar.
 - Keyboard covers everything the pointer does; new actions get a shortcut and appear in the Shortcuts pane.
@@ -214,6 +217,7 @@ Motion is added only inside `@media (prefers-reduced-motion: no-preference)`, or
 ## Brand
 
 - Wordmark `beacon` in lowercase, the `o` replaced by the signal mark in `--ds-text-brand` (`BeaconLogo`).
+- The arcs of the mark are the signal, the only part that moves: once when the popup opens and once when a poll brings new unread items. Never as a loop, static under Reduce Motion.
 - The beacon mark stands for Beacon only. GitHub and GitLab logos appear only to identify a source.
 
 ## Pull request checklist

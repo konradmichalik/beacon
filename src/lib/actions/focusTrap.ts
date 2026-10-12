@@ -40,7 +40,11 @@ export function focusTrap(node: HTMLElement): { destroy(): void } {
   return {
     destroy() {
       node.removeEventListener('keydown', handleKeydown);
-      previouslyFocused?.focus();
+      // Another overlay may have taken focus while this one faded out.
+      const active = document.activeElement;
+      if (!active || active === document.body || node.contains(active)) {
+        previouslyFocused?.focus();
+      }
     }
   };
 }

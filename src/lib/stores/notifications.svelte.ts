@@ -8,6 +8,8 @@ import { isTauri, getStorageItem, setStorageItem } from '$lib/utils/storage';
 import { demoNotifications } from '$lib/utils/demo-data';
 import { playNotificationSound } from '$lib/services/notification-sound';
 import { showToast } from '$lib/stores/toast.svelte';
+import { playLogo } from '$lib/stores/logo-motion.svelte';
+import { pulseTrayIcon } from '$lib/utils/tray-pulse';
 import { parseGitLabTargetUrl } from '$lib/utils/gitlab-target';
 import { filterByQuery } from '$lib/utils/filter-tokens';
 import {
@@ -471,22 +473,6 @@ export function getUnreadCountByStatus(
   return counts;
 }
 
-export function getUnreadCountByDraft(
-  sourceFilter: NotificationSource | 'all'
-): ReadonlyMap<NotificationDraftFilter, number> {
-  const filtered = unreadVisibleFrom(sourceFilter);
-  // eslint-disable-next-line svelte/prefer-svelte-reactivity -- local counting map, not state
-  const counts = new Map<NotificationDraftFilter, number>();
-  for (const n of filtered) {
-    if (n.draft === true) {
-      counts.set('draft', (counts.get('draft') ?? 0) + 1);
-    } else if (n.draft === false) {
-      counts.set('ready', (counts.get('ready') ?? 0) + 1);
-    }
-  }
-  return counts;
-}
-
 export function getUnreadCountByProject(
   sourceFilter: NotificationSource | 'all'
 ): ReadonlyMap<string, number> {
@@ -630,10 +616,14 @@ export function updateFromBackend(items: UnifiedNotification[]): void {
   // Detect genuinely new unread notifications for sound playback
   // eslint-disable-next-line svelte/prefer-svelte-reactivity -- local lookup set, not state
   const currentUnreadIds = new Set(effectiveItems.filter((n) => n.unread).map((n) => n.id));
-  if (!isFirstLoad && settingsState.notifyMode !== 'disabled') {
-    const hasNew = [...currentUnreadIds].some((id) => !knownUnreadIds.has(id));
+  let hasNew = false;
+  if (!isFirstLoad) {
+    hasNew = [...currentUnreadIds].some((id) => !knownUnreadIds.has(id));
     if (hasNew) {
-      playNotificationSound(settingsState.notifySound);
+      playLogo('pulse');
+      if (settingsState.notifyMode !== 'disabled') {
+        playNotificationSound(settingsState.notifySound);
+      }
     }
   }
   knownUnreadIds = currentUnreadIds;
@@ -647,6 +637,8 @@ export function updateFromBackend(items: UnifiedNotification[]): void {
   // Update badge accounting for locally-read and muted items
   const unreadCount = countBadgeUnread(notifications);
   updateTrayBadge(unreadCount);
+  // After the badge, so the pulse starts from the icon the backend just drew.
+  if (hasNew) pulseTrayIcon();
 }
 
 export async function setupNotificationListener(): Promise<() => void> {
@@ -735,32 +727,52 @@ export function loadDemoData(): void {
 
 // ── Mark as read/unread ─────────────────────────────────────────
 
-export function markAllAsRead(ids?: ReadonlySet<string>): void {
-  const unread = notifications.filter((n) => n.unread && (!ids || ids.has(n.id)));
-  if (unread.length === 0) return;
+// Bulk "mark as read" stays reversible for a short window: the local state
+// changes at once, the server only hears about it once the window has passed.
+// GitHub and GitLab have no way to mark a thread unread again.
+const UNDO_WINDOW_MS = 3600;
 
-  const unreadReal = unread.filter((n) => !isSyntheticNotification(n));
-  const unreadSynthetic = unread.filter(isSyntheticNotification);
+interface PendingBulkRead {
+  readonly timer: ReturnType<typeof setTimeout>;
+  readonly commit: () => void;
+  readonly restore: () => void;
+}
 
-  // Snapshot unread counts before mutating state (used by markOnServers) —
-  // scoped to the backend list only, synthetic entries never sync to a server
-  // and must not skew the bulk-vs-per-item threshold there.
-  const totalGhUnread = backendNotifications.filter(
-    (n) => n.source === 'github' && n.unread
-  ).length;
-  const totalGlUnread = backendNotifications.filter(
-    (n) => n.source === 'gitlab' && n.unread
-  ).length;
+let pendingBulkRead: PendingBulkRead | null = null;
 
+function flushPendingBulkRead(): void {
+  const pending = pendingBulkRead;
+  if (!pending) return;
+  clearTimeout(pending.timer);
+  pendingBulkRead = null;
+  pending.commit();
+}
+
+export function undoMarkAllAsRead(): void {
+  const pending = pendingBulkRead;
+  if (!pending) return;
+  clearTimeout(pending.timer);
+  pendingBulkRead = null;
+  pending.restore();
+}
+
+if (typeof window !== 'undefined') {
+  window.addEventListener('beforeunload', flushPendingBulkRead);
+}
+
+/** Hides the notifications locally at once and returns the way back. */
+function markLocallyRead(
+  unreadReal: readonly UnifiedNotification[],
+  unreadSynthetic: readonly UnifiedNotification[],
+  realIds: ReadonlySet<string>
+): () => void {
   const now = Date.now();
-  // eslint-disable-next-line svelte/prefer-svelte-reactivity -- local lookup set, not state
-  const unreadRealIds = new Set(unreadReal.map((n) => n.id));
   for (const n of unreadReal) {
     locallyReadIds.set(n.id, now);
   }
   if (unreadReal.length > 0) persistReadIds();
   backendNotifications = backendNotifications.map((n) =>
-    n.unread && unreadRealIds.has(n.id) ? { ...n, unread: false } : n
+    n.unread && realIds.has(n.id) ? { ...n, unread: false } : n
   );
 
   if (unreadSynthetic.length > 0) {
@@ -772,20 +784,76 @@ export function markAllAsRead(ids?: ReadonlySet<string>): void {
   }
 
   recompose();
-  const unreadCount = countBadgeUnread(notifications);
-  updateTrayBadge(unreadCount);
+  updateTrayBadge(countBadgeUnread(notifications));
+
+  return () => {
+    for (const id of realIds) {
+      locallyReadIds.delete(id);
+    }
+    // A poll during the undo window forgot them, so they would count as new.
+    knownUnreadIds = new Set([...knownUnreadIds, ...realIds]);
+    if (unreadReal.length > 0) persistReadIds();
+    backendNotifications = backendNotifications.map((n) =>
+      realIds.has(n.id) ? { ...n, unread: true } : n
+    );
+    for (const n of unreadSynthetic) {
+      syntheticNotificationsMap.set(n.id, n);
+      syntheticReadAtMap.delete(n.id);
+    }
+    if (unreadSynthetic.length > 0) persistSynthetic();
+    recompose();
+    updateTrayBadge(countBadgeUnread(notifications));
+  };
+}
+
+/**
+ * The bulk endpoint marks everything on the server, so it is only safe while no
+ * other notification is unread. Counted at commit time, because an item can
+ * arrive during the undo window.
+ */
+function syncBulkReadToServers(
+  unreadReal: readonly UnifiedNotification[],
+  realIds: ReadonlySet<string>
+): void {
+  if (unreadReal.length === 0) return;
+  const unreadCount = (source: NotificationSource): number =>
+    unreadReal.filter((n) => n.source === source).length +
+    backendNotifications.filter((n) => n.source === source && n.unread && !realIds.has(n.id))
+      .length;
+  markOnServers([...unreadReal], {
+    totalGhUnread: unreadCount('github'),
+    totalGlUnread: unreadCount('gitlab')
+  }).catch(() => {});
+}
+
+export function markAllAsRead(ids?: ReadonlySet<string>): void {
+  flushPendingBulkRead();
+
+  const unread = notifications.filter((n) => n.unread && (!ids || ids.has(n.id)));
+  if (unread.length === 0) return;
+
+  const unreadReal = unread.filter((n) => !isSyntheticNotification(n));
+  const unreadSynthetic = unread.filter(isSyntheticNotification);
+  // eslint-disable-next-line svelte/prefer-svelte-reactivity -- local lookup set, not state
+  const realIds = new Set(unreadReal.map((n) => n.id));
+
+  const restore = markLocallyRead(unreadReal, unreadSynthetic, realIds);
 
   // Play ripple sound when all notifications are cleared
-  if (unreadCount === 0) {
+  if (countBadgeUnread(notifications) === 0) {
     playNotificationSound('ripple');
   }
 
-  // Mark on servers (best-effort), real notifications only
-  if (unreadReal.length > 0) {
-    markOnServers(unreadReal, { totalGhUnread, totalGlUnread }).catch(() => {});
-  }
+  pendingBulkRead = {
+    timer: setTimeout(flushPendingBulkRead, UNDO_WINDOW_MS),
+    commit: () => syncBulkReadToServers(unreadReal, realIds),
+    restore
+  };
 
-  showToast(unread.length === 1 ? 'Marked as read' : `${unread.length} marked as read`);
+  showToast(unread.length === 1 ? 'Marked as read' : `${unread.length} marked as read`, {
+    duration: UNDO_WINDOW_MS,
+    action: { label: 'Undo', onAction: undoMarkAllAsRead }
+  });
 }
 
 export function markAsRead(id: string): void {

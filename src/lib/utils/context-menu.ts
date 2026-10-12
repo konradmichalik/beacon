@@ -1,3 +1,25 @@
+export interface MenuAction {
+  readonly label: string;
+  readonly onclick: () => void;
+  readonly hint?: string;
+  readonly title?: string;
+}
+
+export type MenuEntry = MenuAction | 'divider';
+
+export const MENU_WIDTH = 268;
+const ITEM_HEIGHT = 28;
+const DIVIDER_HEIGHT = 9;
+const MENU_PADDING = 8;
+
+export function menuSize(entries: readonly MenuEntry[]): { width: number; height: number } {
+  const rows = entries.reduce(
+    (sum, entry) => sum + (entry === 'divider' ? DIVIDER_HEIGHT : ITEM_HEIGHT),
+    0
+  );
+  return { width: MENU_WIDTH, height: rows + MENU_PADDING };
+}
+
 export function clampMenuPosition(
   event: MouseEvent,
   menuSize: { width: number; height: number }

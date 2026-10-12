@@ -22,27 +22,26 @@
     getUnreadCountByType,
     getUnreadCountByProject,
     getUnreadCountByStatus,
-    getUnreadCountByDraft,
     getUnreadCountByAuthor
   } from '$lib/stores/notifications.svelte';
   import { NOTIFICATION_TYPE_LABELS } from '$lib/types';
-  import GitHubIcon from '$lib/components/icons/GitHubIcon.svelte';
-  import GitLabIcon from '$lib/components/icons/GitLabIcon.svelte';
-  import { X, Search } from '@lucide/svelte';
-  import { focusTrap } from '$lib/actions/focusTrap';
+  import { Search } from '@lucide/svelte';
+  import FilterPanel from '$lib/components/ui/FilterPanel.svelte';
+  import FilterField from '$lib/components/ui/FilterField.svelte';
+  import CheckRow from '$lib/components/ui/CheckRow.svelte';
+  import Segmented from '$lib/components/ui/Segmented.svelte';
+  import ProjectFilter from '$lib/components/ui/ProjectFilter.svelte';
 
   let { onClose }: { onClose: () => void } = $props();
 
   const VISIBLE_LIMIT = 5;
 
-  let showAllProjects = $state(false);
   let showAllAuthors = $state(false);
 
   let availableTypes = $derived(getUniqueTypes());
   let unreadByType = $derived(getUnreadCountByType(filterState.source));
   let unreadByProject = $derived(getUnreadCountByProject(filterState.source));
   let unreadByStatus = $derived(getUnreadCountByStatus(filterState.source));
-  let unreadByDraft = $derived(getUnreadCountByDraft(filterState.source));
   let unreadByAuthor = $derived(getUnreadCountByAuthor(filterState.source));
   let availableProjects = $derived.by(() => {
     const projects = getUniqueProjectsWithSource();
@@ -62,344 +61,162 @@
       return a.login.localeCompare(b.login);
     });
   });
-  let visibleProjects = $derived(
-    showAllProjects ? availableProjects : availableProjects.slice(0, VISIBLE_LIMIT)
-  );
   let visibleAuthors = $derived(
     showAllAuthors ? availableAuthors : availableAuthors.slice(0, VISIBLE_LIMIT)
   );
   let filtersActive = $derived(hasActiveFilters());
 
-  function handleKeydown(e: KeyboardEvent) {
-    if (e.key === 'Escape') onClose();
-  }
+  const draftOptions = [
+    { value: 'all' as const, aria: 'All', label: 'All' },
+    { value: 'ready' as const, aria: 'Ready', label: 'Ready' },
+    { value: 'draft' as const, aria: 'Draft', label: 'Draft' }
+  ];
 
-  function handleBackdropClick(e: MouseEvent) {
-    if (e.target === e.currentTarget) onClose();
-  }
+  const statusOptions = [
+    { value: 'open', label: 'Open' },
+    { value: 'closed', label: 'Closed / Merged' }
+  ];
+
+  const chipBase =
+    'inline-flex h-6 items-center gap-1.5 rounded-md border px-2 text-[11.5px] font-medium transition-colors';
 </script>
 
-<svelte:window onkeydown={handleKeydown} />
-
-<!-- Backdrop -->
-<div
-  class="fixed inset-0 z-40 flex items-center justify-center backdrop-blur-[2px]"
-  role="presentation"
-  onclick={handleBackdropClick}
->
-  <!-- Modal -->
-  <div
-    class="z-50 flex max-h-[calc(100vh-2rem)] w-80 flex-col rounded-lg border border-border bg-card shadow-lg"
-    role="dialog"
-    aria-modal="true"
-    use:focusTrap
+{#snippet toggleChip(label: string, active: boolean, count: number, onclick: () => void)}
+  <button
+    type="button"
+    aria-pressed={active}
+    {onclick}
+    class="{chipBase} {active
+      ? 'border-primary bg-primary text-primary-foreground'
+      : count === 0
+        ? 'border-border-strong text-subtlest'
+        : 'border-border-strong text-muted-foreground hover:text-foreground'}"
   >
-    <!-- Header -->
+    {label}
+    {#if count > 0}
+      <span class="tabular-nums opacity-80">{count}</span>
+    {/if}
+  </button>
+{/snippet}
+
+{#snippet clearAction(onclick: () => void)}
+  <button type="button" {onclick} class="text-[11.5px] font-medium text-accent-foreground">
+    Clear
+  </button>
+{/snippet}
+
+{#snippet resetFooter()}
+  <button
+    type="button"
+    onclick={() => {
+      clearAllFilters();
+      onClose();
+    }}
+    class="text-xs font-semibold text-accent-foreground"
+  >
+    Reset all filters
+  </button>
+{/snippet}
+
+<FilterPanel {onClose} footer={filtersActive ? resetFooter : undefined}>
+  <FilterField title="Search">
+    <label for="notification-query" class="sr-only">Search</label>
     <div
-      class="flex shrink-0 items-center justify-between rounded-t-lg border-b border-border bg-secondary/40 px-3 py-2"
+      class="flex h-[30px] items-center gap-1.5 rounded-[7px] border border-input bg-background px-2 text-subtlest focus-within:ring-1 focus-within:ring-primary"
     >
-      <span class="text-[11px] font-semibold text-foreground">Filters</span>
-      <button
-        type="button"
-        onclick={onClose}
-        class="rounded p-0.5 text-muted-foreground transition-colors hover:text-foreground"
-      >
-        <X size={12} />
-      </button>
+      <Search size={13} class="shrink-0" />
+      <input
+        id="notification-query"
+        type="text"
+        value={filterState.query}
+        oninput={(e) => setQuery(e.currentTarget.value)}
+        placeholder="repo:owner/name author:login -bot"
+        class="min-w-0 flex-1 bg-transparent text-xs text-foreground outline-none placeholder:text-subtlest"
+      />
     </div>
+  </FilterField>
 
-    <div class="min-h-0 space-y-3 overflow-y-auto p-3">
-      <!-- Search query -->
-      <div>
-        <label
-          for="notification-query"
-          class="mb-1.5 block text-[10px] font-semibold uppercase tracking-wide text-muted-foreground"
-          >Search</label
-        >
-        <div class="relative flex items-center">
-          <Search size={11} class="pointer-events-none absolute left-2 text-muted-foreground" />
-          <input
-            id="notification-query"
-            type="text"
-            value={filterState.query}
-            oninput={(e) => setQuery(e.currentTarget.value)}
-            placeholder="repo:owner/name author:login -bot"
-            class="w-full rounded-md border border-border bg-card py-1 pl-6 pr-2 text-[11px] text-foreground placeholder:text-muted-foreground/70 focus:outline-none focus:ring-1 focus:ring-primary"
-          />
-        </div>
+  {#if availableTypes.length > 0}
+    <FilterField title="Type">
+      <div class="flex flex-wrap gap-1">
+        {@render toggleChip('All', filterState.types.size === 0, 0, clearTypeFilters)}
+        {#each availableTypes as type (type)}
+          {@render toggleChip(
+            NOTIFICATION_TYPE_LABELS[type] ?? type,
+            filterState.types.has(type),
+            unreadByType.get(type) ?? 0,
+            () => toggleTypeFilter(type)
+          )}
+        {/each}
       </div>
+    </FilterField>
+  {/if}
 
-      <!-- Type filter -->
-      {#if availableTypes.length > 0}
-        <div>
-          <span
-            class="mb-1.5 block text-[10px] font-semibold uppercase tracking-wide text-muted-foreground"
-            >Type</span
-          >
-          <div class="flex flex-wrap gap-1">
-            <button
-              type="button"
-              onclick={clearTypeFilters}
-              class="rounded-md border px-2 py-0.5 text-[10px] font-medium transition-colors
-                {filterState.types.size === 0
-                ? 'border-primary bg-primary text-primary-foreground'
-                : 'border-border text-muted-foreground hover:border-foreground/20 hover:text-foreground'}"
-            >
-              All
-            </button>
-            {#each availableTypes as type (type)}
-              {@const active = filterState.types.has(type)}
-              {@const count = unreadByType.get(type) ?? 0}
-              <button
-                type="button"
-                onclick={() => toggleTypeFilter(type)}
-                class="flex items-center gap-1 rounded-md border px-2 py-0.5 text-[10px] font-medium transition-colors
-                  {active
-                  ? 'border-primary bg-primary text-primary-foreground'
-                  : count === 0
-                    ? 'border-border text-muted-foreground/50'
-                    : 'border-border text-muted-foreground hover:border-foreground/20 hover:text-foreground'}"
-              >
-                {NOTIFICATION_TYPE_LABELS[type] ?? type}
-                {#if count > 0}
-                  <span
-                    class="rounded-full px-1 py-px text-[9px] font-semibold leading-tight
-                      {active
-                      ? 'bg-primary-foreground/20 text-primary-foreground'
-                      : 'bg-secondary text-muted-foreground'}"
-                  >
-                    {count}
-                  </span>
-                {/if}
-              </button>
-            {/each}
-          </div>
-        </div>
-      {/if}
-
-      <!-- Status filter -->
-      <div>
-        <span
-          class="mb-1.5 block text-[10px] font-semibold uppercase tracking-wide text-muted-foreground"
-          >Status</span
-        >
-        <div class="flex flex-wrap gap-1">
-          <button
-            type="button"
-            onclick={clearStatusFilters}
-            class="rounded-md border px-2 py-0.5 text-[10px] font-medium transition-colors
-              {filterState.statuses.size === 0
-              ? 'border-primary bg-primary text-primary-foreground'
-              : 'border-border text-muted-foreground hover:border-foreground/20 hover:text-foreground'}"
-          >
-            All
-          </button>
-          {#each [{ value: 'open', label: 'Open' }, { value: 'closed', label: 'Closed / Merged' }] as status (status.value)}
-            {@const active = filterState.statuses.has(status.value as StatusFilter)}
-            {@const count = unreadByStatus.get(status.value as StatusFilter) ?? 0}
-            <button
-              type="button"
-              onclick={() => toggleStatusFilter(status.value as StatusFilter)}
-              class="flex items-center gap-1 rounded-md border px-2 py-0.5 text-[10px] font-medium transition-colors
-                {active
-                ? 'border-primary bg-primary text-primary-foreground'
-                : count === 0
-                  ? 'border-border text-muted-foreground/50'
-                  : 'border-border text-muted-foreground hover:border-foreground/20 hover:text-foreground'}"
-            >
-              {status.label}
-              {#if count > 0}
-                <span
-                  class="rounded-full px-1 py-px text-[9px] font-semibold leading-tight
-                    {active
-                    ? 'bg-primary-foreground/20 text-primary-foreground'
-                    : 'bg-secondary text-muted-foreground'}"
-                >
-                  {count}
-                </span>
-              {/if}
-            </button>
-          {/each}
-        </div>
-      </div>
-
-      <!-- Draft filter -->
-      <div>
-        <span
-          class="mb-1.5 block text-[10px] font-semibold uppercase tracking-wide text-muted-foreground"
-          >Draft</span
-        >
-        <div class="flex flex-wrap gap-1">
-          {#each [{ value: 'all', label: 'All' }, { value: 'ready', label: 'Ready' }, { value: 'draft', label: 'Draft' }] as opt (opt.value)}
-            {@const active = filterState.draftFilter === opt.value}
-            {@const count = unreadByDraft.get(opt.value as NotificationDraftFilter) ?? 0}
-            <button
-              type="button"
-              onclick={() => setDraftFilter(opt.value as NotificationDraftFilter)}
-              class="flex items-center gap-1 rounded-md border px-2 py-0.5 text-[10px] font-medium transition-colors
-                {active
-                ? 'border-primary bg-primary text-primary-foreground'
-                : opt.value !== 'all' && count === 0
-                  ? 'border-border text-muted-foreground/50'
-                  : 'border-border text-muted-foreground hover:border-foreground/20 hover:text-foreground'}"
-            >
-              {opt.label}
-              {#if opt.value !== 'all' && count > 0}
-                <span
-                  class="rounded-full px-1 py-px text-[9px] font-semibold leading-tight
-                    {active
-                    ? 'bg-primary-foreground/20 text-primary-foreground'
-                    : 'bg-secondary text-muted-foreground'}"
-                >
-                  {count}
-                </span>
-              {/if}
-            </button>
-          {/each}
-        </div>
-      </div>
-
-      <!-- Project filter -->
-      {#if availableProjects.length > 0}
-        <div>
-          <div class="mb-1.5 flex items-center justify-between">
-            <span class="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground"
-              >Project</span
-            >
-            {#if filterState.projects.size > 0}
-              <button
-                type="button"
-                onclick={clearProjectFilters}
-                class="text-[10px] text-primary hover:underline">Clear</button
-              >
-            {/if}
-          </div>
-          <div class="space-y-0.5">
-            {#each visibleProjects as project (project.repository)}
-              {@const active = filterState.projects.has(project.repository)}
-              {@const count = unreadByProject.get(project.repository) ?? 0}
-              <label
-                class="flex cursor-pointer items-center gap-2 rounded px-1.5 py-1 transition-colors hover:bg-secondary"
-              >
-                <input
-                  type="checkbox"
-                  checked={active}
-                  onchange={() => toggleProjectFilter(project.repository)}
-                  class="h-3 w-3 rounded border-border accent-primary"
-                />
-                {#if project.source === 'github'}
-                  <GitHubIcon size={11} class="shrink-0 text-muted-foreground" />
-                {:else}
-                  <GitLabIcon size={11} class="shrink-0 text-muted-foreground" />
-                {/if}
-                <span
-                  class="truncate text-[11px] {active
-                    ? 'font-medium text-foreground'
-                    : count === 0
-                      ? 'text-muted-foreground/50'
-                      : 'text-muted-foreground'}"
-                >
-                  {project.repository.split('/').slice(-2).join('/')}
-                </span>
-                {#if count > 0}
-                  <span
-                    class="ml-auto shrink-0 rounded-full bg-secondary px-1 py-px text-[9px] font-semibold leading-tight text-muted-foreground"
-                  >
-                    {count}
-                  </span>
-                {/if}
-              </label>
-            {/each}
-            {#if !showAllProjects && availableProjects.length > VISIBLE_LIMIT}
-              <button
-                type="button"
-                onclick={() => (showAllProjects = true)}
-                class="w-full rounded px-1.5 py-1 text-left text-[10px] text-primary hover:underline"
-              >
-                +{availableProjects.length - VISIBLE_LIMIT} more
-              </button>
-            {/if}
-          </div>
-        </div>
-      {/if}
-
-      <!-- Author filter -->
-      {#if availableAuthors.length > 0}
-        <div>
-          <div class="mb-1.5 flex items-center justify-between">
-            <span class="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground"
-              >Author</span
-            >
-            {#if filterState.authors.size > 0}
-              <button
-                type="button"
-                onclick={clearAuthorFilters}
-                class="text-[10px] text-primary hover:underline">Clear</button
-              >
-            {/if}
-          </div>
-          <div class="space-y-0.5">
-            {#each visibleAuthors as author (author.login)}
-              {@const active = filterState.authors.has(author.login)}
-              {@const count = unreadByAuthor.get(author.login) ?? 0}
-              <label
-                class="flex cursor-pointer items-center gap-2 rounded px-1.5 py-1 transition-colors hover:bg-secondary"
-              >
-                <input
-                  type="checkbox"
-                  checked={active}
-                  onchange={() => toggleAuthorFilter(author.login)}
-                  class="h-3 w-3 rounded border-border accent-primary"
-                />
-                {#if author.avatarUrl}
-                  <img src={author.avatarUrl} alt="" class="h-4 w-4 shrink-0 rounded-full" />
-                {/if}
-                <span
-                  class="truncate text-[11px] {active
-                    ? 'font-medium text-foreground'
-                    : count === 0
-                      ? 'text-muted-foreground/50'
-                      : 'text-muted-foreground'}"
-                >
-                  {author.login}
-                </span>
-                {#if count > 0}
-                  <span
-                    class="ml-auto shrink-0 rounded-full bg-secondary px-1 py-px text-[9px] font-semibold leading-tight text-muted-foreground"
-                  >
-                    {count}
-                  </span>
-                {/if}
-              </label>
-            {/each}
-            {#if !showAllAuthors && availableAuthors.length > VISIBLE_LIMIT}
-              <button
-                type="button"
-                onclick={() => (showAllAuthors = true)}
-                class="w-full rounded px-1.5 py-1 text-left text-[10px] text-primary hover:underline"
-              >
-                +{availableAuthors.length - VISIBLE_LIMIT} more
-              </button>
-            {/if}
-          </div>
-        </div>
-      {/if}
+  <FilterField title="Status">
+    <div class="flex flex-wrap gap-1">
+      {@render toggleChip('All', filterState.statuses.size === 0, 0, clearStatusFilters)}
+      {#each statusOptions as status (status.value)}
+        {@render toggleChip(
+          status.label,
+          filterState.statuses.has(status.value as StatusFilter),
+          unreadByStatus.get(status.value as StatusFilter) ?? 0,
+          () => toggleStatusFilter(status.value as StatusFilter)
+        )}
+      {/each}
     </div>
+  </FilterField>
 
-    <!-- Footer -->
-    {#if filtersActive}
-      <div class="shrink-0 border-t border-border px-3 py-2">
+  <FilterField title="Draft">
+    <Segmented
+      fill
+      label="Draft"
+      options={draftOptions}
+      value={filterState.draftFilter}
+      onChange={(value) => setDraftFilter(value as NotificationDraftFilter)}
+    />
+  </FilterField>
+
+  <ProjectFilter
+    projects={availableProjects}
+    selected={filterState.projects}
+    counts={unreadByProject}
+    onToggle={toggleProjectFilter}
+    onClear={clearProjectFilters}
+    limit={VISIBLE_LIMIT}
+  />
+
+  {#if availableAuthors.length > 0}
+    <FilterField title="Author">
+      {#snippet action()}
+        {#if filterState.authors.size > 0}
+          {@render clearAction(clearAuthorFilters)}
+        {/if}
+      {/snippet}
+      {#each visibleAuthors as author (author.login)}
+        {@const count = unreadByAuthor.get(author.login) ?? 0}
+        <CheckRow
+          checked={filterState.authors.has(author.login)}
+          onchange={() => toggleAuthorFilter(author.login)}
+          label={author.login}
+          {count}
+          dimmed={count === 0}
+        >
+          {#snippet leading()}
+            {#if author.avatarUrl}
+              <img src={author.avatarUrl} alt="" class="h-4 w-4 shrink-0 rounded-full" />
+            {/if}
+          {/snippet}
+        </CheckRow>
+      {/each}
+      {#if !showAllAuthors && availableAuthors.length > VISIBLE_LIMIT}
         <button
           type="button"
-          onclick={() => {
-            clearAllFilters();
-            onClose();
-          }}
-          class="w-full rounded-md bg-secondary px-2 py-1 text-[10px] font-medium text-foreground transition-colors hover:bg-secondary/80"
+          onclick={() => (showAllAuthors = true)}
+          class="h-7 w-full rounded-md px-1.5 text-left text-xs font-medium text-accent-foreground"
         >
-          Reset all filters
+          +{availableAuthors.length - VISIBLE_LIMIT} more
         </button>
-      </div>
-    {/if}
-  </div>
-</div>
+      {/if}
+    </FilterField>
+  {/if}
+</FilterPanel>

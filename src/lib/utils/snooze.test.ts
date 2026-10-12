@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { presetUntil, shouldWake, type SnoozeEntry } from './snooze';
+import { presetUntil, presetTimeLabel, shouldWake, type SnoozeEntry } from './snooze';
 
 describe('presetUntil', () => {
   it('1h resolves to exactly one hour later', () => {
@@ -69,5 +69,14 @@ describe('shouldWake', () => {
   it('stays asleep on activity when wakeOnUpdate is disabled', () => {
     const now = new Date('2026-08-17T12:00:00Z').getTime();
     expect(shouldWake(entry({ wakeOnUpdate: false }), '2026-08-17T11:00:00.000Z', now)).toBe(false);
+  });
+});
+
+describe('presetTimeLabel', () => {
+  it('shows the clock time a preset wakes up at', () => {
+    const now = new Date('2026-08-17T10:40:00');
+    expect(presetTimeLabel('1h', now)).toBe('11:40');
+    expect(presetTimeLabel('tomorrow', now)).toBe('09:00');
+    expect(presetTimeLabel('monday', now)).toBe('09:00');
   });
 });

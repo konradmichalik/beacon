@@ -16,8 +16,9 @@
   } from '$lib/stores/notifications.svelte';
   import SourceToggle from '$lib/components/ui/SourceToggle.svelte';
   import SortMenu from '$lib/components/ui/SortMenu.svelte';
+  import IconButton from '$lib/components/ui/IconButton.svelte';
   import FilterPopover from './FilterPopover.svelte';
-  import { CheckCheck, Filter, ChevronDown } from '@lucide/svelte';
+  import { CheckCheck, ListFilter, ChevronDown } from '@lucide/svelte';
 
   let totalCount = $derived(getFilteredUnreadCount());
   let githubCount = $derived(getCountBySource('github'));
@@ -68,7 +69,7 @@
 
 <div
   data-filter-bar
-  class="flex items-center gap-1.5 overflow-x-auto border-b border-border bg-secondary/40 px-4 py-1.5 scrollbar-none"
+  class="flex h-10 items-center gap-2 overflow-x-auto border-b border-border pl-4 pr-2 scrollbar-none"
 >
   <SourceToggle
     source={filterState.source}
@@ -79,36 +80,34 @@
     onSourceChange={setSourceFilter}
   />
 
-  <div class="ml-auto flex items-center gap-1.5">
-    <!-- Mark as read (split button) -->
-    <div class="flex items-center overflow-hidden rounded-full border border-border bg-card">
-      <button
-        type="button"
-        onclick={() => markAllAsRead(filteredIds)}
-        disabled={totalCount === 0}
-        title="Mark all as read"
-        class="p-1.5 text-muted-foreground transition-colors hover:text-foreground disabled:opacity-30"
-      >
-        <CheckCheck size={11} />
-      </button>
-      <button
-        type="button"
-        bind:this={markReadBtnEl}
-        onclick={() => (markReadOpen = !markReadOpen)}
-        disabled={totalCount === 0}
-        title="Mark as read options"
-        class="border-l border-border px-0.5 py-1.5 text-muted-foreground transition-colors hover:text-foreground disabled:opacity-30"
-      >
-        <ChevronDown size={9} />
-      </button>
-    </div>
+  <div class="ml-auto flex items-center">
+    <!-- Mark as read: the action and its options -->
+    <IconButton
+      label="Mark all as read"
+      disabled={totalCount === 0}
+      onclick={() => markAllAsRead(filteredIds)}
+      class="rounded-r-none pr-1"
+    >
+      <CheckCheck size={15} />
+    </IconButton>
+    <IconButton
+      label="Mark as read options"
+      bind:el={markReadBtnEl}
+      disabled={totalCount === 0}
+      expanded={markReadOpen}
+      active={markReadOpen}
+      onclick={() => (markReadOpen = !markReadOpen)}
+      class="min-w-5 rounded-l-none px-0.5"
+    >
+      <ChevronDown size={10} />
+    </IconButton>
 
     {#if markReadOpen && markReadBtnEl}
       {@const rect = markReadBtnEl.getBoundingClientRect()}
       <div
         use:clickOutside={() => (markReadOpen = false)}
         style="position:fixed;top:{rect.bottom + 4}px;right:{window.innerWidth - rect.right}px;"
-        class="z-50 min-w-[160px] rounded-lg border border-border bg-card py-1 shadow-lg"
+        class="z-50 min-w-[180px] rounded-[10px] border border-border bg-popover p-1 shadow-lg"
       >
         {#each markReadOptions as opt, i (opt.label)}
           <button
@@ -118,7 +117,7 @@
               markAllAsRead(opt.ids);
               markReadOpen = false;
             }}
-            class="flex w-full items-center px-3 py-1.5 text-[11px] font-medium text-muted-foreground transition-colors hover:bg-secondary hover:text-foreground disabled:opacity-30"
+            class="flex h-7 w-full items-center rounded-md px-2.5 text-xs font-medium text-foreground transition-colors hover:bg-surface-hovered disabled:pointer-events-none disabled:opacity-35"
           >
             {opt.label}
           </button>
@@ -126,18 +125,18 @@
       </div>
     {/if}
 
-    <!-- Filter button -->
-    <button
-      type="button"
+    <IconButton
+      label="Filter"
+      expanded={popoverOpen}
+      active={popoverOpen}
       onclick={() => (popoverOpen = !popoverOpen)}
-      title="Filter"
-      class="relative rounded-full border border-border bg-card p-1.5 text-muted-foreground transition-colors hover:border-foreground/20 hover:text-foreground"
     >
-      <Filter size={11} />
+      <ListFilter size={15} />
       {#if filtersActive}
-        <span class="absolute -right-0.5 -top-0.5 h-2 w-2 rounded-full bg-primary"></span>
+        <span class="absolute right-1 top-1 h-2 w-2 rounded-full bg-primary ring-2 ring-background"
+        ></span>
       {/if}
-    </button>
+    </IconButton>
 
     {#if popoverOpen}
       <FilterPopover onClose={() => (popoverOpen = false)} />

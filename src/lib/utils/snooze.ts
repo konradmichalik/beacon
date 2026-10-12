@@ -12,6 +12,12 @@ export const SNOOZE_PRESET_LABELS: Record<SnoozePreset, string> = {
   monday: 'Monday, 9:00'
 };
 
+export const SNOOZE_PRESET_NAMES: Record<SnoozePreset, string> = {
+  '1h': 'In 1 hour',
+  tomorrow: 'Tomorrow',
+  monday: 'Next Monday'
+};
+
 /** Wall-clock time a preset resolves to, relative to `now`. */
 export function presetUntil(preset: SnoozePreset, now: Date = new Date()): Date {
   const result = new Date(now);
@@ -33,6 +39,13 @@ export function presetUntil(preset: SnoozePreset, now: Date = new Date()): Date 
   result.setDate(result.getDate() + daysUntilMonday);
   result.setHours(9, 0, 0, 0);
   return result;
+}
+
+export function presetTimeLabel(preset: SnoozePreset, now: Date = new Date()): string {
+  return presetUntil(preset, now).toLocaleTimeString('en-GB', {
+    hour: '2-digit',
+    minute: '2-digit'
+  });
 }
 
 /**

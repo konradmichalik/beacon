@@ -5,6 +5,7 @@ mod platform_status;
 mod polling;
 mod settings_perms;
 mod tray;
+mod tray_pulse;
 
 /// Custom NSPanel subclass that accepts keyboard input and suppresses NSBeep.
 ///
@@ -140,6 +141,52 @@ fn last_tray_state() -> &'static std::sync::Mutex<Option<TrayState>> {
     STATE.get_or_init(|| std::sync::Mutex::new(None))
 }
 
+/// Set while a pulse plays, so a regular update only records its state and the
+/// pulse draws the latest one when it ends.
+static PULSING: std::sync::atomic::AtomicBool = std::sync::atomic::AtomicBool::new(false);
+
+#[cfg(target_os = "macos")]
+fn indicator_rgb(indicator_color: &str) -> [u8; 3] {
+    match indicator_color {
+        "red" => [255, 120, 110],
+        "yellow" => [235, 203, 139],
+        "green" => [163, 190, 140],
+        _ => [94, 129, 172], // blue (default)
+    }
+}
+
+/// Set icon + template flag atomically on the main thread via the inner
+/// tray-icon API. Tauri's separate `set_icon` / `set_icon_as_template` calls
+/// each post their own main-thread task and `set_icon` hardcodes
+/// `icon_is_template = false`, so a render pass can interleave between them
+/// with template=false and cache a non-template rendering — leaving the icon
+/// stuck white on light wallpapers (tauri-apps/tauri#9332).
+#[cfg(target_os = "macos")]
+fn apply_icon(
+    tray: &tauri::tray::TrayIcon,
+    rgba: Vec<u8>,
+    w: u32,
+    h: u32,
+    as_template: bool,
+) -> Result<(), String> {
+    tray.with_inner_tray_icon(move |inner| -> Result<(), String> {
+        let icon = tray_icon::Icon::from_rgba(rgba, w, h).map_err(|e| e.to_string())?;
+        inner
+            .set_icon_with_as_template(Some(icon), as_template)
+            .map_err(|e| e.to_string())
+    })
+    .map_err(|e| e.to_string())?
+}
+
+/// The icon for a recorded tray state, and whether it is a template image.
+#[cfg(target_os = "macos")]
+fn icon_for_state(state: &TrayState) -> (Vec<u8>, u32, u32, bool) {
+    let (count, _mode, indicator_mode, indicator_color) = state;
+    let active = indicator_mode != "none" && *count > 0;
+    let (rgba, w, h) = create_tray_icon(indicator_mode, active, indicator_rgb(indicator_color));
+    (rgba, w, h, indicator_mode == "none" || !active)
+}
+
 pub(crate) fn update_tray_icon(
     app: &tauri::AppHandle,
     count: u32,
@@ -157,7 +204,10 @@ pub(crate) fn update_tray_icon(
             indicator_mode.to_string(),
             indicator_color.to_string(),
         );
-        if last_tray_state().lock().unwrap().as_ref() == Some(&tray_key) {
+        // Held until the new state is recorded, so a pulse that ends in between
+        // cannot redraw the previous state over it.
+        let mut last_state = last_tray_state().lock().unwrap();
+        if last_state.as_ref() == Some(&tray_key) {
             return Ok(());
         }
 
@@ -171,42 +221,21 @@ pub(crate) fn update_tray_icon(
 
         #[cfg(target_os = "macos")]
         {
-            let rgb = match indicator_color {
-                "red" => [255u8, 120, 110],
-                "yellow" => [235u8, 203, 139],
-                "green" => [163u8, 190, 140],
-                _ => [94u8, 129, 172], // blue (default)
-            };
-
-            let active = indicator_mode != "none" && count > 0;
             let title = if mode == "count" && count > 0 {
                 count.to_string()
             } else {
                 String::new()
             };
 
-            let (rgba, w, h) = create_tray_icon(indicator_mode, active, rgb);
-            let as_template = indicator_mode == "none" || !active;
-
-            // Set icon + template flag atomically on the main thread via the
-            // inner tray-icon API. Tauri's separate `set_icon` /
-            // `set_icon_as_template` calls each post their own main-thread
-            // task and `set_icon` hardcodes `icon_is_template = false`, so a
-            // render pass can interleave between them with template=false and
-            // cache a non-template rendering — leaving the icon stuck white
-            // on light wallpapers (tauri-apps/tauri#9332).
-            tray.with_inner_tray_icon(move |inner| -> Result<(), String> {
-                let icon = tray_icon::Icon::from_rgba(rgba, w, h).map_err(|e| e.to_string())?;
-                inner
-                    .set_icon_with_as_template(Some(icon), as_template)
-                    .map_err(|e| e.to_string())
-            })
-            .map_err(|e| e.to_string())??;
+            if !PULSING.load(std::sync::atomic::Ordering::SeqCst) {
+                let (rgba, w, h, as_template) = icon_for_state(&tray_key);
+                apply_icon(&tray, rgba, w, h, as_template)?;
+            }
 
             tray.set_title(Some(&title)).map_err(|e| e.to_string())?;
         }
 
-        *last_tray_state().lock().unwrap() = Some(tray_key);
+        *last_state = Some(tray_key);
     }
     Ok(())
 }
@@ -220,6 +249,52 @@ fn update_badge(
     indicator_color: String,
 ) -> Result<(), String> {
     update_tray_icon(&app, count, &mode, &indicator_mode, &indicator_color)
+}
+
+/// Plays a short pulse on the menu bar icon, then draws the latest state again.
+/// Returns at once, a pulse already running is not started a second time.
+#[tauri::command]
+fn pulse_tray_icon(app: tauri::AppHandle) {
+    #[cfg(target_os = "macos")]
+    {
+        use std::sync::atomic::Ordering;
+
+        if PULSING.swap(true, Ordering::SeqCst) {
+            return;
+        }
+        std::thread::spawn(move || {
+            run_tray_pulse(&app);
+            // Same lock as `update_tray_icon`: whatever it recorded while the
+            // pulse played is drawn now, and a later update draws itself.
+            let last_state = last_tray_state().lock().unwrap();
+            PULSING.store(false, Ordering::SeqCst);
+            if let (Some(tray), Some(state)) = (app.tray_by_id(tray::TRAY_ID), last_state.as_ref())
+            {
+                let (rgba, w, h, as_template) = icon_for_state(state);
+                let _ = apply_icon(&tray, rgba, w, h, as_template);
+            }
+        });
+    }
+    #[cfg(not(target_os = "macos"))]
+    let _ = app;
+}
+
+#[cfg(target_os = "macos")]
+fn run_tray_pulse(app: &tauri::AppHandle) {
+    let Some(tray) = app.tray_by_id(tray::TRAY_ID) else {
+        return;
+    };
+    let Some(state) = last_tray_state().lock().unwrap().clone() else {
+        return;
+    };
+    let (rgba, w, h, as_template) = icon_for_state(&state);
+    for progress in tray_pulse::PULSE_STEPS {
+        let frame = tray_pulse::pulse_frame(&rgba, w, h, progress);
+        if apply_icon(&tray, frame, w, h, as_template).is_err() {
+            return;
+        }
+        std::thread::sleep(std::time::Duration::from_millis(tray_pulse::PULSE_FRAME_MS));
+    }
 }
 
 /// Check whether a macOS Focus mode (Do Not Disturb) is currently active.
@@ -705,6 +780,7 @@ pub fn run() {
         })
         .invoke_handler(tauri::generate_handler![
             update_badge,
+            pulse_tray_icon,
             play_sound,
             quit_app,
             open_settings_window,
