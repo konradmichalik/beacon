@@ -121,6 +121,8 @@
     if (e.ctrlKey || e.altKey || e.metaKey) return;
     // A dialog owns the keyboard, its own shortcuts must not also switch tabs.
     if (document.querySelector('[role="dialog"][aria-modal="true"]')) return;
+    // An open context menu handles Escape itself, which must not also hide the popup.
+    if (document.querySelector('[role="menu"]')) return;
 
     const tag = (e.target as HTMLElement).tagName;
     if (tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT') return;
