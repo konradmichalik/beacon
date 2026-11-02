@@ -48,5 +48,11 @@
       "minimumSystemVersion": "13.0"
     }
   },
-  "plugins": {}
+  "plugins": {
+    "deep-link": {
+      "desktop": {
+        "schemes": ["beacon"]
+      }
+    }
+  }
 }
