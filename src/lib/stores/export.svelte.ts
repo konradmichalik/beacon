@@ -19,6 +19,15 @@ function clearPendingWrite(): void {
   }
 }
 
+let heartbeatTimer: ReturnType<typeof setInterval> | null = null;
+
+function clearExportHeartbeat(): void {
+  if (heartbeatTimer) {
+    clearInterval(heartbeatTimer);
+    heartbeatTimer = null;
+  }
+}
+
 // write_export_data and delete_export_data are two independent IPC calls; without
 // this queue a disable landing between the debounced write's re-check and its
 // invoke resolving could race the delete, leaving a stale data.json on disk if
@@ -97,6 +106,14 @@ export function evaluateExport(input: ExportDecisionInput): void {
   }, WRITE_DEBOUNCE_MS);
 }
 
+// Rust skips the frontend emit for an unchanged poll, so the effect would not
+// rerun and updatedAt would outlive the TTL (GH-152).
+export function armExportHeartbeat(input: ExportDecisionInput): void {
+  clearExportHeartbeat();
+  if (!input.exportEnabled) return;
+  heartbeatTimer = setInterval(() => evaluateExport(input), input.ttlSeconds * 500);
+}
+
 /**
  * Wires the export effect at the store level (GH-127) so it keeps running
  * for the lifetime of the tray window's JS context, independent of whether
@@ -125,7 +142,7 @@ export function initExportEffect(): () => void {
       const issuesLoaded = getIssueHasLoadedOnce();
       const ttlSeconds = settingsState.pollingInterval;
 
-      evaluateExport({
+      const input: ExportDecisionInput = {
         exportEnabled,
         displayName: __APP_NAME__,
         ttlSeconds,
@@ -136,9 +153,14 @@ export function initExportEffect(): () => void {
         issuesEnabled,
         issuesLoaded,
         filteredIssues
-      });
+      };
+      evaluateExport(input);
+      armExportHeartbeat(input);
     });
 
-    return clearPendingWrite;
+    return () => {
+      clearPendingWrite();
+      clearExportHeartbeat();
+    };
   });
 }

@@ -11,7 +11,7 @@ vi.mock('$lib/utils/storage', () => ({ isTauri: () => true }));
 vi.mock('$lib/utils/logger', () => ({ info: logInfo, warn: logWarn }));
 vi.mock('@tauri-apps/api/core', () => ({ invoke }));
 
-import { evaluateExport, requestExportDelete } from './export.svelte';
+import { armExportHeartbeat, evaluateExport, requestExportDelete } from './export.svelte';
 
 function makeInput(overrides: Partial<ExportDecisionInput> = {}): ExportDecisionInput {
   return {
@@ -123,5 +123,50 @@ describe('evaluateExport', () => {
     await vi.runAllTimersAsync();
 
     expect(logWarn).toHaveBeenCalledWith('export', 'failed to write data.json', expect.any(Error));
+  });
+});
+
+describe('armExportHeartbeat', () => {
+  beforeEach(() => {
+    vi.useFakeTimers();
+    settingsState.exportData = true;
+    invoke.mockClear();
+    invoke.mockResolvedValue(undefined);
+  });
+
+  afterEach(() => {
+    armExportHeartbeat(makeInput({ exportEnabled: false }));
+    vi.useRealTimers();
+  });
+
+  it('rewrites an unchanged snapshot with a fresh updatedAt on every half-ttl tick (GH-152)', async () => {
+    armExportHeartbeat(makeInput({ now: undefined, ttlSeconds: 300 }));
+
+    await vi.advanceTimersByTimeAsync(151_000);
+    expect(invoke).toHaveBeenCalledTimes(1);
+
+    await vi.advanceTimersByTimeAsync(150_000);
+    expect(invoke).toHaveBeenCalledTimes(2);
+
+    const [first, second] = invoke.mock.calls.map(([, args]) => JSON.parse(args.payload).updatedAt);
+    expect(Date.parse(second)).toBeGreaterThan(Date.parse(first));
+  });
+
+  it('stops writing once re-armed with the export disabled', async () => {
+    armExportHeartbeat(makeInput({ now: undefined }));
+    armExportHeartbeat(makeInput({ exportEnabled: false, now: undefined }));
+
+    await vi.advanceTimersByTimeAsync(600_000);
+
+    expect(invoke).not.toHaveBeenCalled();
+  });
+
+  it('replaces the previous timer when re-armed', async () => {
+    armExportHeartbeat(makeInput({ now: undefined, ttlSeconds: 300 }));
+    armExportHeartbeat(makeInput({ now: undefined, ttlSeconds: 300 }));
+
+    await vi.advanceTimersByTimeAsync(151_000);
+
+    expect(invoke).toHaveBeenCalledTimes(1);
   });
 });
