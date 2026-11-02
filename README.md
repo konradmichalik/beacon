@@ -24,6 +24,7 @@
 - **Desktop notifications** — instant alerts or batched summaries
 - **Configurable badge** — unread count or a colored dot indicator
 - **Export for external tools** _(opt-in)_ — writes unread/review/PR/issue counts to `~/Library/Application Support/com.beacon.notifications/data.json` for external tools such as a Stream Deck plugin; disabling the setting removes the file
+- **URL scheme** — `open beacon://show` opens the popup, `open beacon://toggle` toggles it, so other tools can bring it up without a tray click
 
 ## 🍺 Installation
 

@@ -19,6 +19,7 @@ Beacon is a macOS menu bar app that provides a unified notification hub for GitH
   - `tray.rs`: tray click handling and window positioning
   - `keychain.rs`: forge tokens in the macOS Keychain
   - `export.rs`: opt-in `data.json` export (atomic write, `0600`)
+  - `deep_link.rs`: `beacon://show` and `beacon://toggle` handling, the scheme is declared in `tauri.conf.json` and only registered in a bundled build (`tauri:test`)
   - `debug_log.rs`: optional file logging with rotation
 - `docs/`: `DEVELOPMENT.md` and `RELEASE.md`, `docs/design/`: design rules and screen designs
 

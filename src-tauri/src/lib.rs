@@ -1,4 +1,5 @@
 pub mod debug_log;
+mod deep_link;
 mod export;
 mod keychain;
 mod platform_status;
@@ -501,6 +502,7 @@ pub fn run() {
         .plugin(tauri_plugin_shell::init())
         .plugin(tauri_plugin_http::init())
         .plugin(tauri_plugin_notification::init())
+        .plugin(tauri_plugin_deep_link::init())
         .plugin(
             tauri_plugin_global_shortcut::Builder::new()
                 .with_handler(|app, _shortcut, event| {
@@ -774,6 +776,18 @@ pub fn run() {
                         });
                     });
                 }
+            }
+
+            // Last, so a URL that launched the app finds the tray and panel ready.
+            // on_open_url does not replay it, get_current() holds it.
+            {
+                use tauri_plugin_deep_link::DeepLinkExt;
+                if let Ok(Some(urls)) = app.deep_link().get_current() {
+                    deep_link::handle(app.handle(), &urls);
+                }
+                let deep_link_handle = app.handle().clone();
+                app.deep_link()
+                    .on_open_url(move |event| deep_link::handle(&deep_link_handle, &event.urls()));
             }
 
             Ok(())
